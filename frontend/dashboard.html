@@ -163,24 +163,31 @@
     .sep-row td{background:var(--bg);height:3px;padding:0;border:none}
 
     /* DAILY REPORTS */
-    .daily-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
-    .daily-card{background:var(--card);border-radius:14px;border:0.5px solid var(--b);overflow:hidden;transition:border-color .15s}
+    .daily-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:12px}
+    .daily-card{background:var(--card);border-radius:14px;border:0.5px solid var(--b);overflow:hidden;transition:border-color .15s;min-width:0}
     .daily-card:hover{border-color:var(--b2)}
     .daily-card-head{padding:12px 14px;border-bottom:0.5px solid var(--b);display:flex;align-items:center;justify-content:space-between}
     .daily-date{font-size:13px;font-weight:600;color:var(--t)}
     .daily-mgr{font-size:11px;color:var(--wb);font-weight:500;margin-top:1px}
     .daily-actions{display:flex;gap:6px}
     .daily-tasks{padding:10px 14px}
-    .task-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--b);font-size:12px}
-    .task-row:last-child{border-bottom:none}
-    .task-num{color:var(--g2);font-size:10px;min-width:16px;padding-top:1px}
-    .task-name{flex:1;color:var(--t);font-weight:500}
-    .task-art{color:var(--g2);font-size:11px;min-width:80px}
-    .task-metric{color:var(--g);font-size:11px;min-width:60px}
-    .task-fact{font-size:11px;min-width:60px}
-    .task-fact.done{color:var(--green)}
-    .task-fact.pending{color:var(--amber)}
+    .daily-tasks{padding:10px 14px 6px;overflow-x:auto}
+    .task-table{width:100%;border-collapse:collapse;font-size:11.5px;min-width:500px}
+    .task-table th{color:var(--g2);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:0 8px 6px;text-align:left;border-bottom:0.5px solid var(--b2);white-space:nowrap}
+    .task-table td{padding:6px 8px;border-bottom:0.5px solid rgba(255,255,255,.04);vertical-align:top;color:var(--t)}
+    .task-table tr:last-child td{border-bottom:none}
+    .task-table tr:hover td{background:var(--wb2)}
+    .task-table .t-num{color:var(--g2);font-size:10px;width:24px}
+    .task-table .t-name{font-weight:500;min-width:120px}
+    .task-table .t-art{color:var(--g2);min-width:80px}
+    .task-table .t-metric{color:var(--g);min-width:70px}
+    .task-table .t-plan{color:var(--g);min-width:70px}
+    .task-table .t-fact{min-width:60px}
+    .task-table .t-time{color:var(--g2);font-size:10px;min-width:70px}
+    .t-fact.done{color:var(--green);font-weight:600}
+    .t-fact.pending{color:var(--amber)}
     .daily-notes{padding:8px 14px;font-size:12px;color:var(--g);border-top:0.5px solid var(--b);font-style:italic}
+    .daily-expand{padding:6px 14px;border-top:0.5px solid var(--b);display:flex;align-items:center;justify-content:space-between}
 
     /* MODAL */
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200;padding:16px}
@@ -810,37 +817,51 @@ function renderDailyGrid(reports) {
   const el = document.getElementById('daily-grid');
   if (!reports.length) { el.innerHTML='<div class="empty">Нет отчётов за выбранный период</div>'; return; }
   el.innerHTML = reports.map(r => {
-    const tasks   = r.tasks || [];
-    const LIMIT   = 10;
-    const visible = tasks.slice(0, LIMIT);
-    const hidden  = tasks.slice(LIMIT);
+    const tasks  = r.tasks || [];
+    const LIMIT  = 10;
+    const hasMore = tasks.length > LIMIT;
 
     function taskRow(t, i) {
-      return `<div style="display:grid;grid-template-columns:20px 1fr 90px 80px 80px 70px 70px;gap:4px;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.05);font-size:11px;align-items:center">
-        <span style="color:var(--g2);font-size:10px">${i+1}</span>
-        <span style="color:var(--t);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name||'—'}</span>
-        <span style="color:var(--g2)">${t.article||''}</span>
-        <span style="color:var(--g)">${t.metric_start||''}</span>
-        <span style="color:var(--g)">${t.metric_plan||''}</span>
-        <span style="${t.fact?'color:var(--green);font-weight:600':'color:var(--amber)'}">${t.fact||'—'}</span>
-        <span style="color:var(--g2);font-size:10px">${t.time_spent||''}</span>
-      </div>`;
+      return `<tr>
+        <td class="t-num">${i+1}</td>
+        <td class="t-name">${t.name||'—'}</td>
+        <td class="t-art">${t.article||''}</td>
+        <td class="t-metric">${t.metric_start||''}</td>
+        <td class="t-plan">${t.metric_plan||''}</td>
+        <td class="t-fact ${t.fact?'done':'pending'}">${t.fact||'—'}</td>
+        <td style="color:var(--g2);font-size:10px">${t.time_spent||''}</td>
+      </tr>`;
     }
-    const colHeaders = tasks.length ? `<div style="display:grid;grid-template-columns:20px 1fr 90px 80px 80px 70px 70px;gap:4px;padding:4px 0 6px;border-bottom:0.5px solid var(--b2);margin-bottom:2px">
-      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">#</span>
-      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">Задача</span>
-      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">Арт./Кабинет</span>
-      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">Метрика</span>
-      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">Плановая</span>
-      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">Факт</span>
-      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">Время</span>
-    </div>` : '';
 
-    const visHtml  = visible.length ? colHeaders + visible.map(taskRow).join('') : '<div style="padding:10px;font-size:12px;color:var(--g2)">Нет задач</div>';
-    const hidHtml  = hidden.length  ? `<div class="tasks-hidden" id="th-${r.id}" style="display:none">${hidden.map((t,i)=>taskRow(t,LIMIT+i)).join('')}</div>
-      <div style="padding:6px 14px;border-top:0.5px solid var(--b)">
-        <button class="btn btn-ghost btn-sm" onclick="expandTasks('${r.id}',this)">＋${hidden.length} задач — показать все</button>
-      </div>` : '';
+    const thead = tasks.length ? `<thead><tr>
+      <th class="t-num">#</th>
+      <th class="t-name">Задача</th>
+      <th class="t-art">Арт./Кабинет</th>
+      <th class="t-metric">Метрика</th>
+      <th class="t-plan">Плановая</th>
+      <th class="t-fact">Факт</th>
+      <th>Время</th>
+    </tr></thead>` : '';
+
+    const visRows  = tasks.slice(0, LIMIT).map(taskRow).join('');
+    const hidRows  = hasMore ? tasks.slice(LIMIT).map((t,i) => taskRow(t, LIMIT+i)).join('') : '';
+
+    const tableHtml = tasks.length
+      ? `<div class="daily-tasks"><table class="task-table">
+          ${thead}
+          <tbody>${visRows}</tbody>
+          ${hasMore ? `<tbody id="th-${r.id}" style="display:none">${hidRows}</tbody>` : ''}
+        </table></div>`
+      : '<div style="padding:12px 14px;font-size:12px;color:var(--g2)">Нет задач</div>';
+
+    const expandBtn = hasMore
+      ? `<div class="daily-expand">
+          <button class="btn btn-ghost btn-sm" id="exp-btn-${r.id}" onclick="expandTasks('${r.id}')">
+            ＋${tasks.length - LIMIT} задач — развернуть
+          </button>
+          <span style="font-size:10px;color:var(--g2)">${tasks.length} задач всего</span>
+        </div>`
+      : (tasks.length ? `<div style="padding:4px 14px 8px;font-size:10px;color:var(--g2)">${tasks.length} задач</div>` : '');
 
     return `<div class="daily-card">
       <div class="daily-card-head">
@@ -849,25 +870,25 @@ function renderDailyGrid(reports) {
           <div class="daily-mgr">${r.manager_name}</div>
         </div>
         <div class="daily-actions">
-          <button class="btn btn-ghost btn-sm" title="Развернуть все" onclick="expandTasks('${r.id}',this)">↕</button>
           <button class="btn btn-ghost btn-sm" onclick='editDaily(${JSON.stringify(r).replace(/'/g,"&#39;")})'>✏️</button>
           <button class="btn btn-danger btn-sm" onclick="deleteDaily('${r.id}')">✕</button>
         </div>
       </div>
-      <div class="daily-tasks">${visHtml}</div>
-      ${hidHtml}
+      ${tableHtml}
+      ${expandBtn}
       ${r.notes ? `<div class="daily-notes">${r.notes}</div>` : ''}
     </div>`;
   }).join('');
 }
 
-function expandTasks(id, btn) {
-  const el = document.getElementById('th-'+id);
-  if (!el) return;
-  const expanded = el.style.display !== 'none';
-  el.style.display = expanded ? 'none' : 'block';
-  if (btn.textContent === '↕') return;
-  btn.textContent = expanded ? '+' + btn.textContent.match(/\d+/)[0] + ' задач — показать все' : 'Свернуть';
+function expandTasks(id) {
+  const tbody = document.getElementById('th-'+id);
+  const btn   = document.getElementById('exp-btn-'+id);
+  if (!tbody || !btn) return;
+  const expanded = tbody.style.display !== 'none';
+  tbody.style.display = expanded ? 'none' : '';
+  const count = tbody.querySelectorAll('tr').length;
+  btn.textContent = expanded ? `＋${count} задач — развернуть` : '↑ Свернуть';
 }
 
 function openDailyModal() {
