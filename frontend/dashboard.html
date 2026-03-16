@@ -861,9 +861,19 @@ function renderAll() {
 }
 
 
-// ─── FILE HANDLERS ───
-dz.ondrop = e => { e.preventDefault(); dz.classList.remove('over'); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); };
+// ─── FILE HANDLERS (handled in dashboard section) ───
 
+</script>
+<script>
+// showPage needs to be available immediately when nav buttons are clicked
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'daily')    { if(typeof loadDailyReports==='function') loadDailyReports(); }
+  if (name === 'cabinets') { if(typeof loadCabinets==='function') loadCabinets(); }
+}
 </script>
 <script>
 requireAuth();
@@ -1295,7 +1305,7 @@ function renderDailyGrid(reports) {
       <div style="padding:8px 14px 0">
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--g2);margin-bottom:4px">
           <span>Выполнено: ${done}/${total} задач</span>
-          <span style="color:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)';}">${pct}%</span>
+          <span style="color:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'}>${pct}%</span>
         </div>
         <div style="height:3px;background:var(--card2);border-radius:2px;overflow:hidden">
           <div style="height:100%;width:${pct}%;background:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'};border-radius:2px;transition:width .3s"></div>
