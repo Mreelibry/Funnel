@@ -8,38 +8,65 @@
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     :root{
-      --wb:#8B5CF6;--wb2:rgba(139,92,246,0.1);--wb3:rgba(139,92,246,0.2);
-      --green:#22C55E;--red:#EF4444;
+      --wb:#8B5CF6;--wb2:rgba(139,92,246,.1);--wb3:rgba(139,92,246,.2);
+      --green:#22C55E;--red:#EF4444;--amber:#F59E0B;
       --t:#F1F0F5;--g:#9CA3AF;--g2:#6B7280;
-      --bg:#1A1825;--card:#231F35;--card2:#2D2845;
-      --b:rgba(255,255,255,0.08);--b2:rgba(255,255,255,0.14)
+      --bg:#13111E;--card:#1E1B2E;--card2:#282440;
+      --b:rgba(255,255,255,.07);--b2:rgba(255,255,255,.13)
     }
     body{font-family:'Onest',sans-serif;background:var(--bg);color:var(--t);min-height:100vh}
 
     /* NAV */
-    nav{background:var(--card);border-bottom:1px solid var(--b);padding:0 16px;display:flex;align-items:center;gap:10px;height:50px;position:sticky;top:0;z-index:50}
+    nav{background:var(--card);border-bottom:1px solid var(--b);padding:0 16px;display:flex;align-items:center;gap:10px;height:50px;position:sticky;top:0;z-index:100}
     .nav-logo{width:28px;height:28px;border-radius:7px;background:var(--wb);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;flex-shrink:0}
     .nav-title{font-size:14px;font-weight:700;color:var(--t)}
-    .nav-links{display:flex;gap:2px;margin-left:8px}
-    .nav-link{padding:4px 11px;border-radius:8px;font-size:12px;color:var(--g);text-decoration:none;transition:background .15s}
-    .nav-link:hover,.nav-link.active{background:var(--wb2);color:var(--wb);font-weight:500}
+    .nav-tabs{display:flex;gap:2px;margin-left:12px}
+    .nav-tab{padding:5px 12px;border-radius:8px;font-size:12px;color:var(--g);text-decoration:none;cursor:pointer;border:none;background:none;font-family:inherit;transition:all .15s}
+    .nav-tab:hover,.nav-tab.active{background:var(--wb2);color:var(--wb);font-weight:500}
     .nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
     .nav-username{font-size:12px;color:var(--g)}
     .btn-logout{border:none;background:none;cursor:pointer;font-size:12px;color:var(--red);font-family:inherit}
 
-    /* SELECTS */
-    select{border:0.5px solid var(--b2);border-radius:8px;padding:5px 10px;font-size:12px;font-family:inherit;color:var(--t);background:var(--card2);min-width:140px}
+    select{border:0.5px solid var(--b2);border-radius:8px;padding:5px 10px;font-size:12px;font-family:inherit;color:var(--t);background:var(--card2);cursor:pointer}
     select:focus{outline:none;border-color:var(--wb)}
     select option{background:var(--card2)}
 
-    /* MAIN */
-    #app{padding:14px 16px;max-width:1400px;margin:0 auto}
+    /* LAYOUT */
+    .page{display:none;padding:14px 16px;max-width:1400px;margin:0 auto}
+    .page.active{display:block}
 
-    /* UPLOAD */
-    .upload-section{background:var(--card);border-radius:14px;border:0.5px solid var(--b);padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-    .upload-section h3{font-size:13px;font-weight:600;color:var(--t);margin-bottom:2px}
-    .upload-section p{font-size:11px;color:var(--g)}
-    .upload-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    /* CARDS */
+    .card{background:var(--card);border-radius:14px;border:0.5px solid var(--b);overflow:hidden}
+    .card-head{padding:11px 16px;border-bottom:0.5px solid var(--b);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .card-title{font-size:13px;font-weight:600;color:var(--t)}
+
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;gap:5px;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .15s}
+    .btn:hover{opacity:.85}
+    .btn-primary{background:var(--wb);color:#fff}
+    .btn-ghost{background:var(--card2);color:var(--g);border:0.5px solid var(--b2)}
+    .btn-danger{background:rgba(239,68,68,.15);color:var(--red)}
+    .btn-sm{padding:4px 10px;font-size:11px}
+
+    /* FILTER BAR */
+    .filter-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+    .filter-label{font-size:11px;color:var(--g2);font-weight:500}
+
+    /* DATE RANGE */
+    .date-range{display:flex;align-items:center;gap:6px;background:var(--card2);border:0.5px solid var(--b2);border-radius:9px;padding:5px 10px}
+    .date-range input{border:none;background:transparent;color:var(--t);font-size:12px;font-family:inherit;width:90px}
+    .date-range input:focus{outline:none}
+    .date-range span{color:var(--g2);font-size:11px}
+
+    /* PERIOD PILLS */
+    .periods-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+    .period-pill{border:0.5px solid var(--b2);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--g);cursor:pointer;background:var(--card2);transition:all .15s;display:flex;align-items:center;gap:4px;user-select:none;white-space:nowrap}
+    .period-pill.on{background:var(--wb);color:#fff;border-color:var(--wb)}
+    .period-pill .px{font-size:10px;opacity:.7}
+
+    /* UPLOAD SECTION */
+    .upload-section{background:var(--card);border-radius:14px;border:0.5px solid var(--b);padding:14px 16px;margin-bottom:14px}
+    .upload-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
     .btn-upload{display:inline-flex;align-items:center;gap:6px;background:var(--wb);color:#fff;border:none;padding:8px 16px;border-radius:9px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;position:relative;transition:opacity .15s}
     .btn-upload:hover{opacity:.87}
     .btn-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}
@@ -47,34 +74,25 @@
     .upload-status.ok{color:var(--green)}
     .upload-status.err{color:var(--red)}
 
-    /* REPORTS TABLE */
-    .reports-card{background:var(--card);border-radius:12px;border:0.5px solid var(--b);overflow:hidden;margin-bottom:14px}
-    .reports-head{padding:10px 16px;border-bottom:0.5px solid var(--b);font-size:12px;font-weight:600;color:var(--g);display:flex;justify-content:space-between;align-items:center}
-    .reports-table{width:100%;border-collapse:collapse;font-size:12px}
-    .reports-table th{background:var(--card2);padding:7px 14px;text-align:left;font-weight:600;font-size:11px;color:var(--g);border-bottom:0.5px solid var(--b)}
-    .reports-table td{padding:8px 14px;border-bottom:0.5px solid var(--b);color:var(--t)}
-    .reports-table tr:last-child td{border-bottom:none}
-    .reports-table tr:hover td{background:var(--wb2)}
-    .btn-del{border:none;background:rgba(239,68,68,.15);color:var(--red);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit}
-    .btn-del:hover{background:rgba(239,68,68,.25)}
+    /* CABINET CHIP */
+    .cab-chip{display:inline-flex;align-items:center;gap:4px;background:var(--wb3);border:0.5px solid var(--wb);color:var(--wb);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:500}
 
-    /* WEEK PILLS */
-    .wbar{display:flex;flex-wrap:wrap;gap:6px;padding:0 0 10px;align-items:center}
-    .wlabel{font-size:10px;font-weight:600;color:var(--g2);text-transform:uppercase;letter-spacing:.05em;margin-right:2px}
-    .wpill{border:0.5px solid var(--b2);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--g);cursor:pointer;background:var(--card2);transition:all .15s;display:flex;align-items:center;gap:4px;white-space:nowrap;user-select:none}
-    .wpill.on{background:var(--wb);color:#fff;border-color:var(--wb)}
-    .wpill .x{font-size:10px;opacity:.7}
+    /* REPORTS TABLE */
+    .rtable{width:100%;border-collapse:collapse;font-size:12px}
+    .rtable th{background:var(--card2);padding:7px 14px;text-align:left;font-weight:600;font-size:11px;color:var(--g);border-bottom:0.5px solid var(--b)}
+    .rtable td{padding:8px 14px;border-bottom:0.5px solid var(--b);color:var(--t)}
+    .rtable tr:last-child td{border-bottom:none}
+    .rtable tr:hover td{background:var(--wb2)}
 
     /* TABS */
-    .tabs{display:flex;gap:1px;border-bottom:1px solid var(--b);margin-bottom:12px;overflow-x:auto}
+    .tabs{display:flex;gap:1px;border-bottom:1px solid var(--b);margin-bottom:14px}
     .tab{padding:7px 16px;font-size:13px;font-family:inherit;border:none;background:none;color:var(--g);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:color .15s}
     .tab.on{color:var(--wb);border-bottom-color:var(--wb);font-weight:600}
-    .tbody{padding:4px 0}
     .slabel{font-size:10px;font-weight:600;color:var(--g2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
 
     /* CHIPS */
     .chips-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
-    .chip{border:1.5px solid var(--b2);border-radius:9px;padding:5px 13px;font-size:12px;font-weight:500;cursor:pointer;background:var(--card2);color:var(--g);transition:all .15s;user-select:none;font-family:inherit;line-height:1.4}
+    .chip{border:1.5px solid var(--b2);border-radius:9px;padding:5px 13px;font-size:12px;font-weight:500;cursor:pointer;background:var(--card2);color:var(--g);transition:all .15s;user-select:none;font-family:inherit}
     .chip:hover{border-color:var(--wb);color:var(--wb)}
     .chip.on{background:var(--wb)!important;border-color:var(--wb)!important;color:#fff!important;font-weight:600}
 
@@ -82,7 +100,7 @@
     .grp{margin-bottom:16px}
     .srow{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:7px}
     .sc{background:var(--card);border-radius:10px;padding:11px 13px;border:0.5px solid var(--b)}
-    .sc-lbl{font-size:10px;color:var(--g);margin-bottom:4px;line-height:1.3}
+    .sc-lbl{font-size:10px;color:var(--g);margin-bottom:4px}
     .sc-val{font-size:18px;font-weight:700;color:var(--t);line-height:1}
     .sc-sub{font-size:10px;color:var(--g2);margin-top:3px}
     .sc-delta{font-size:11px;margin-top:3px;font-weight:600}
@@ -100,7 +118,7 @@
     .goods-layout{display:flex;gap:12px;align-items:flex-start}
     .filter-panel{width:210px;flex-shrink:0;background:var(--card);border-radius:12px;border:0.5px solid var(--b);overflow:hidden}
     .fp-header{padding:9px 12px;border-bottom:0.5px solid var(--b);display:flex;align-items:center;justify-content:space-between}
-    .fp-title{font-size:12px;font-weight:700;color:var(--t);display:flex;align-items:center;gap:7px}
+    .fp-title{font-size:12px;font-weight:700;color:var(--t);display:flex;align-items:center;gap:6px}
     .fp-badge{background:var(--wb);color:#fff;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700}
     .fp-clear{font-size:11px;color:var(--wb);background:none;border:none;cursor:pointer;font-family:inherit}
     .fp-search{padding:7px 10px;border-bottom:0.5px solid var(--b);position:relative}
@@ -110,8 +128,6 @@
     .fp-selall{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:0.5px solid var(--b);cursor:pointer;font-size:11px;font-weight:500;color:var(--g);user-select:none;transition:background .12s}
     .fp-selall:hover{background:var(--wb2)}
     .fp-list{max-height:320px;overflow-y:auto}
-    .fp-list::-webkit-scrollbar{width:3px}
-    .fp-list::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
     .fp-item{display:flex;align-items:center;gap:9px;padding:7px 12px;cursor:pointer;transition:background .1s;user-select:none}
     .fp-item:hover{background:var(--wb2)}
     .fp-cb{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--b2);flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--card2);transition:all .1s}
@@ -121,9 +137,11 @@
     .fp-art{font-size:11px;font-weight:500;color:var(--t);line-height:1.3}
     .fp-wb{font-size:10px;color:var(--g2)}
     .goods-right{flex:1;min-width:0}
+
+    /* TABLE */
     .twrap{overflow-x:auto;border-radius:10px;border:0.5px solid var(--b)}
     table{width:100%;border-collapse:collapse;font-size:11px;min-width:400px}
-    thead th{background:var(--card2);padding:7px 10px;text-align:left;font-weight:600;color:var(--g);border-bottom:0.5px solid var(--b);white-space:nowrap;user-select:none;position:relative}
+    thead th{background:var(--card2);padding:7px 10px;text-align:left;font-weight:600;color:var(--g);border-bottom:0.5px solid var(--b);white-space:nowrap;user-select:none}
     thead th.draggable{cursor:grab}
     thead th.drag-over{background:var(--wb3);border-left:2px solid var(--wb)}
     thead th.dragging{opacity:.35}
@@ -140,19 +158,72 @@
     .tag.dn{background:rgba(239,68,68,.15);color:var(--red)}
     .tag.zero{background:var(--card2);color:var(--g2);font-weight:500}
     .sep-row td{background:var(--bg);height:3px;padding:0;border:none}
-    .empty{text-align:center;padding:28px;color:var(--g);font-size:13px}
 
-    @media(max-width:600px){.goods-layout{flex-direction:column}.filter-panel{width:100%}}
+    /* DAILY REPORTS */
+    .daily-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+    .daily-card{background:var(--card);border-radius:14px;border:0.5px solid var(--b);overflow:hidden;transition:border-color .15s}
+    .daily-card:hover{border-color:var(--b2)}
+    .daily-card-head{padding:12px 14px;border-bottom:0.5px solid var(--b);display:flex;align-items:center;justify-content:space-between}
+    .daily-date{font-size:13px;font-weight:600;color:var(--t)}
+    .daily-mgr{font-size:11px;color:var(--wb);font-weight:500;margin-top:1px}
+    .daily-actions{display:flex;gap:6px}
+    .daily-tasks{padding:10px 14px}
+    .task-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--b);font-size:12px}
+    .task-row:last-child{border-bottom:none}
+    .task-num{color:var(--g2);font-size:10px;min-width:16px;padding-top:1px}
+    .task-name{flex:1;color:var(--t);font-weight:500}
+    .task-art{color:var(--g2);font-size:11px;min-width:80px}
+    .task-metric{color:var(--g);font-size:11px;min-width:60px}
+    .task-fact{font-size:11px;min-width:60px}
+    .task-fact.done{color:var(--green)}
+    .task-fact.pending{color:var(--amber)}
+    .daily-notes{padding:8px 14px;font-size:12px;color:var(--g);border-top:0.5px solid var(--b);font-style:italic}
+
+    /* MODAL */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200;padding:16px}
+    .overlay.show{display:flex}
+    .modal{background:var(--card);border-radius:16px;padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;border:0.5px solid var(--b2)}
+    .modal h2{font-size:17px;font-weight:700;margin-bottom:16px;color:var(--t)}
+    .field{margin-bottom:12px}
+    .field label{display:block;font-size:11px;font-weight:600;color:var(--g);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+    .field input,.field select,.field textarea{width:100%;border:1.5px solid var(--b2);border-radius:9px;padding:8px 12px;font-size:13px;font-family:inherit;color:var(--t);background:var(--card2)}
+    .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--wb)}
+    .field textarea{min-height:80px;resize:vertical}
+    .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+    .modal-err{color:var(--red);font-size:12px;margin-bottom:10px;display:none}
+    .modal-err.show{display:block}
+
+    /* TASK EDITOR */
+    .task-editor{border:0.5px solid var(--b2);border-radius:10px;overflow:hidden;margin-bottom:8px}
+    .task-editor-head{background:var(--card2);padding:6px 10px;font-size:11px;font-weight:600;color:var(--g);display:grid;grid-template-columns:1fr 1fr 1fr 1fr 28px;gap:6px}
+    .task-editor-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 28px;gap:6px;padding:5px 6px;border-top:0.5px solid var(--b)}
+    .task-editor-row input{border:0.5px solid var(--b2);border-radius:6px;padding:4px 7px;font-size:12px;font-family:inherit;color:var(--t);background:var(--bg);width:100%}
+    .task-editor-row input:focus{outline:none;border-color:var(--wb)}
+    .task-del-btn{background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:0;line-height:1;opacity:.6}
+    .task-del-btn:hover{opacity:1}
+
+    /* CABINETS PAGE */
+    .cab-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-bottom:14px}
+    .cab-card{background:var(--card);border-radius:12px;border:0.5px solid var(--b);padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+    .cab-info{flex:1}
+    .cab-name{font-size:14px;font-weight:600;color:var(--t);margin-bottom:3px}
+    .cab-meta{font-size:11px;color:var(--g)}
+
+    .empty{text-align:center;padding:30px;color:var(--g);font-size:13px}
+    @media(max-width:600px){.goods-layout{flex-direction:column}.filter-panel{width:100%}.daily-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
 
+<!-- NAV -->
 <nav>
   <div class="nav-logo">WB</div>
-  <div class="nav-title">Воронка продаж</div>
-  <div class="nav-links">
-    <a class="nav-link active" href="dashboard.html">Дашборд</a>
-    <a class="nav-link" href="admin.html" id="admin-link" style="display:none">Управление</a>
+  <div class="nav-title">Аналитика</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('funnel',this)">Воронка</button>
+    <button class="nav-tab" onclick="showPage('daily',this)">Ежедневный</button>
+    <button class="nav-tab" id="nav-cabinets" onclick="showPage('cabinets',this)" style="display:none">Кабинеты</button>
+    <a class="nav-tab" href="admin.html" id="nav-admin" style="display:none">Управление</a>
   </div>
   <div class="nav-right">
     <select id="mgr-select" style="display:none" onchange="onManagerChange()">
@@ -163,35 +234,45 @@
   </div>
 </nav>
 
-<div id="app">
+<!-- ═══ ВОРОНКА ═══ -->
+<div class="page active" id="page-funnel">
+
   <!-- Upload -->
-  <div class="upload-section" id="upload-section">
-    <div>
-      <h3>Загрузить отчёт</h3>
-      <p>Файл «Воронка продаж» из кабинета WB · Excel</p>
-    </div>
-    <div class="upload-right">
-      <select id="upload-mgr-select" style="display:none">
-        <option value="">— выберите менеджера —</option>
-      </select>
-      <button class="btn-upload">
-        <input type="file" id="upload-input" accept=".xlsx,.xls" onchange="uploadReport()">
-        📂 Загрузить Excel
-      </button>
-      <span class="upload-status" id="upload-status"></span>
+  <div class="upload-section" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--t);margin-bottom:2px">Загрузить отчёт</div>
+        <div style="font-size:11px;color:var(--g)">Файл «Воронка продаж» из кабинета WB</div>
+      </div>
+      <div class="upload-row">
+        <select id="upload-mgr" style="display:none"><option value="">— менеджер —</option></select>
+        <select id="upload-cab"><option value="">— кабинет —</option></select>
+        <button class="btn btn-ghost btn-sm" id="btn-new-cab" onclick="openCabModal()">＋ Кабинет</button>
+        <button class="btn-upload">
+          <input type="file" id="upload-input" accept=".xlsx,.xls" onchange="uploadReport()">
+          📂 Excel
+        </button>
+        <span class="upload-status" id="upload-status"></span>
+      </div>
     </div>
   </div>
 
   <!-- Reports list -->
-  <div id="reports-list"></div>
+  <div id="reports-list" style="margin-bottom:14px"></div>
 
-  <!-- Week selector -->
-  <div class="wbar" id="wbar" style="display:none">
-    <span class="wlabel">Периоды:</span>
-    <div id="wrow"></div>
+  <!-- Filter bar -->
+  <div class="filter-bar" id="filter-bar" style="display:none">
+    <span class="filter-label">Период:</span>
+    <div class="periods-row" id="periods-row"></div>
+    <div class="date-range">
+      <input type="date" id="date-from" onchange="onDateFilter()">
+      <span>—</span>
+      <input type="date" id="date-to" onchange="onDateFilter()">
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="resetDateFilter()">Сбросить</button>
   </div>
 
-  <!-- Dashboard content -->
+  <!-- Dashboard -->
   <div id="main-content" style="display:none">
     <div class="tabs">
       <button class="tab on" onclick="switchTab('summary',this)">Сводка</button>
@@ -199,19 +280,19 @@
       <button class="tab" onclick="switchTab('goods',this)">По товарам</button>
     </div>
 
-    <div class="tbody" id="tab-summary">
+    <div id="tab-summary">
       <div class="slabel">Показатели</div>
       <div class="chips-row" id="chips-s"></div>
       <div id="scards"></div>
     </div>
 
-    <div class="tbody" id="tab-charts" style="display:none">
-      <div class="slabel">Метрики для графиков</div>
+    <div id="tab-charts" style="display:none">
+      <div class="slabel">Метрики</div>
       <div class="chips-row" id="chips-c"></div>
       <div class="cgrid" id="cgrid"></div>
     </div>
 
-    <div class="tbody" id="tab-goods" style="display:none">
+    <div id="tab-goods" style="display:none">
       <div class="slabel">Столбцы</div>
       <div class="chips-row" id="chips-g"></div>
       <div class="goods-layout">
@@ -238,6 +319,88 @@
   <div class="empty" id="empty-state">Загрузите первый отчёт чтобы начать</div>
 </div>
 
+<!-- ═══ ЕЖЕДНЕВНЫЙ ОТЧЁТ ═══ -->
+<div class="page" id="page-daily">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <div>
+      <div style="font-size:17px;font-weight:700;color:var(--t)">Ежедневные отчёты</div>
+      <div style="font-size:12px;color:var(--g);margin-top:2px">Задачи и выполнение по дням</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <select id="daily-mgr-filter" style="display:none" onchange="loadDailyReports()">
+        <option value="">Все менеджеры</option>
+      </select>
+      <div class="date-range">
+        <input type="date" id="daily-from">
+        <span>—</span>
+        <input type="date" id="daily-to">
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="loadDailyReports()">Применить</button>
+      <button class="btn btn-primary" onclick="openDailyModal()">＋ Создать отчёт</button>
+    </div>
+  </div>
+  <div class="daily-grid" id="daily-grid">
+    <div class="empty">Загрузка...</div>
+  </div>
+</div>
+
+<!-- ═══ КАБИНЕТЫ ═══ -->
+<div class="page" id="page-cabinets">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+    <div style="font-size:17px;font-weight:700;color:var(--t)">Кабинеты WB</div>
+    <button class="btn btn-primary" onclick="openCabModal()">＋ Добавить кабинет</button>
+  </div>
+  <div class="cab-grid" id="cab-grid">
+    <div class="empty">Загрузка...</div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Кабинет ═══ -->
+<div class="overlay" id="cab-modal">
+  <div class="modal">
+    <h2>Новый кабинет</h2>
+    <div class="field"><label>Название кабинета</label><input type="text" id="cab-name" placeholder="Например: Основной, Сезонный..."></div>
+    <div class="field" id="cab-mgr-field" style="display:none"><label>Менеджер</label>
+      <select id="cab-mgr-select"><option value="">— выберите —</option></select>
+    </div>
+    <div class="modal-err" id="cab-err"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeCabModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveCabinet()">Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Ежедневный отчёт ═══ -->
+<div class="overlay" id="daily-modal">
+  <div class="modal">
+    <h2 id="daily-modal-title">Новый отчёт</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div class="field"><label>Дата</label><input type="date" id="dr-date"></div>
+      <div class="field" id="dr-mgr-field" style="display:none"><label>Менеджер</label>
+        <select id="dr-mgr"><option value="">— выберите —</option></select>
+      </div>
+    </div>
+
+    <div class="slabel" style="margin-bottom:6px">Задачи</div>
+    <div class="task-editor">
+      <div class="task-editor-head">
+        <span>Задача</span><span>Артикул/Кабинет</span><span>Метрика старта</span><span>Факт</span><span></span>
+      </div>
+      <div id="task-rows"></div>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="addTaskRow()" style="margin-bottom:12px">＋ Добавить задачу</button>
+
+    <div class="field"><label>Заметки</label><textarea id="dr-notes" placeholder="Комментарии, итоги дня..."></textarea></div>
+
+    <div class="modal-err" id="dr-err"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeDailyModal()">Отмена</button>
+      <button class="btn btn-primary" onclick="saveDailyReport()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="api.js"></script>
 <script src="app.js"></script>
@@ -247,181 +410,405 @@ const user = getUser();
 document.getElementById('nav-username').textContent = user?.username || '—';
 
 if (user?.role === 'admin') {
-  document.getElementById('admin-link').style.display = 'block';
+  document.getElementById('nav-admin').style.display = 'block';
+  document.getElementById('nav-cabinets').style.display = 'block';
   document.getElementById('mgr-select').style.display = 'block';
-  document.getElementById('upload-mgr-select').style.display = 'block';
+  document.getElementById('upload-mgr').style.display = 'block';
+  document.getElementById('daily-mgr-filter').style.display = 'block';
+  document.getElementById('cab-mgr-field').style.display = 'block';
+  document.getElementById('dr-mgr-field').style.display = 'block';
 }
 
-let selectedManagerId = user?.role === 'manager' ? user.manager_id : null;
-let reportsFromDB = [];
+// Set default dates for daily
+const today = new Date().toISOString().slice(0,10);
+const monthAgo = new Date(Date.now()-30*864e5).toISOString().slice(0,10);
+document.getElementById('daily-from').value = monthAgo;
+document.getElementById('daily-to').value   = today;
 
-// Форматирование даты из ISO в читаемый вид
+// ── PAGE NAVIGATION ──
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  el.classList.add('active');
+  if (name === 'daily')    loadDailyReports();
+  if (name === 'cabinets') loadCabinets();
+}
+
+// ── FORMAT ──
 function fmtDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  const dd = String(d.getDate()).padStart(2,'0');
-  const mm = String(d.getMonth()+1).padStart(2,'0');
-  return dd+'.'+mm;
+  return String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0');
+}
+function fmtPeriod(s,e){ return fmtDate(s)+' — '+fmtDate(e); }
+function fmtDateFull(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('ru',{day:'2-digit',month:'long',year:'numeric'});
 }
 
-function fmtPeriod(start, end) {
-  return fmtDate(start) + ' — ' + fmtDate(end);
+// ── STATE ──
+let selectedManagerId = user?.role === 'manager' ? user.manager_id : null;
+let reportsFromDB     = [];
+let allCabinets       = [];
+let allManagers       = [];
+let dateFrom = null, dateTo = null;
+
+// ── INIT ──
+async function init() {
+  await loadManagers();
+  await loadCabinetsForUpload();
+  await loadReports();
 }
 
 async function loadManagers() {
   try {
-    const managers = await API.get('/managers');
+    allManagers = await API.get('/managers');
     const sel  = document.getElementById('mgr-select');
-    const sel2 = document.getElementById('upload-mgr-select');
-    managers.forEach(m => {
-      sel.innerHTML  += `<option value="${m.id}">${m.name}</option>`;
-      sel2.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+    const selU = document.getElementById('upload-mgr');
+    const selD = document.getElementById('daily-mgr-filter');
+    const selC = document.getElementById('cab-mgr-select');
+    const selDR= document.getElementById('dr-mgr');
+    allManagers.forEach(m => {
+      [sel,selU,selD,selC,selDR].forEach(s => {
+        s.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+      });
     });
     if (user?.role === 'manager' && user.manager_id) {
-      sel2.value = user.manager_id;
+      selU.value = user.manager_id;
     }
+  } catch(e) { console.error(e); }
+}
+
+async function loadCabinetsForUpload() {
+  try {
+    const mgr = selectedManagerId || (user?.role==='manager'?user.manager_id:'');
+    const q   = mgr ? `?manager_id=${mgr}` : '';
+    allCabinets = await API.get('/cabinets'+q);
+    const sel = document.getElementById('upload-cab');
+    sel.innerHTML = '<option value="">— кабинет —</option>';
+    allCabinets.forEach(c => { sel.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
   } catch(e) { console.error(e); }
 }
 
 function onManagerChange() {
   selectedManagerId = document.getElementById('mgr-select').value || null;
+  loadCabinetsForUpload();
   loadReports();
 }
 
+// ── REPORTS ──
 async function loadReports() {
   try {
-    const query = selectedManagerId ? `?manager_id=${selectedManagerId}` : '';
-    reportsFromDB = await API.get(`/reports${query}`);
+    let q = selectedManagerId ? `?manager_id=${selectedManagerId}` : '?';
+    if (dateFrom) q += `&date_from=${dateFrom}`;
+    if (dateTo)   q += `&date_to=${dateTo}`;
+    reportsFromDB = await API.get(`/reports${q}`);
     renderReportsList();
     buildWeeksFromDB();
-  } catch(e) { console.error('Ошибка загрузки отчётов:', e); }
+  } catch(e) { console.error(e); }
 }
 
 function renderReportsList() {
   const el = document.getElementById('reports-list');
   if (!reportsFromDB.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `
-    <div class="reports-card">
-      <div class="reports-head">
-        <span>Загруженные отчёты (${reportsFromDB.length})</span>
-      </div>
-      <div style="overflow-x:auto">
-        <table class="reports-table">
-          <thead><tr>
-            <th>Период</th><th>Менеджер</th><th>Файл</th><th>Загружен</th>
-            ${user?.role==='admin'?'<th>Действия</th>':''}
-          </tr></thead>
-          <tbody>
-            ${reportsFromDB.map(r => `
-              <tr>
-                <td style="font-weight:500;color:var(--wb)">${fmtPeriod(r.period_start, r.period_end)}</td>
-                <td style="color:var(--t)">${r.manager_name}</td>
-                <td style="color:var(--g);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.filename||'—'}</td>
-                <td style="color:var(--g2);font-size:11px">${new Date(r.created_at).toLocaleDateString('ru')}</td>
-                ${user?.role==='admin'?`<td><button class="btn-del" onclick="deleteReport('${r.id}')">Удалить</button></td>`:''}
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>`;
+  el.innerHTML = `<div class="card" style="margin-bottom:4px"><div class="card-head">
+    <span class="card-title">Загруженные отчёты (${reportsFromDB.length})</span></div>
+    <div style="overflow-x:auto"><table class="rtable">
+      <thead><tr><th>Период</th><th>Менеджер</th><th>Кабинет</th><th>Файл</th><th>Загружен</th>
+      ${user?.role==='admin'?'<th></th>':''}</tr></thead>
+      <tbody>${reportsFromDB.map(r=>`<tr>
+        <td style="font-weight:600;color:var(--wb)">${fmtPeriod(r.period_start,r.period_end)}</td>
+        <td>${r.manager_name}</td>
+        <td>${r.cabinet_name?`<span class="cab-chip">${r.cabinet_name}</span>`:'—'}</td>
+        <td style="color:var(--g);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.filename||'—'}</td>
+        <td style="color:var(--g2);font-size:11px">${new Date(r.created_at).toLocaleDateString('ru')}</td>
+        ${user?.role==='admin'?`<td><button class="btn btn-danger btn-sm" onclick="deleteReport('${r.id}')">Удалить</button></td>`:''}
+      </tr>`).join('')}</tbody>
+    </table></div></div>`;
 }
 
 function buildWeeksFromDB() {
   if (!reportsFromDB.length) {
-    document.getElementById('wbar').style.display         = 'none';
-    document.getElementById('main-content').style.display = 'none';
-    document.getElementById('empty-state').style.display  = 'block';
+    document.getElementById('filter-bar').style.display    = 'none';
+    document.getElementById('main-content').style.display  = 'none';
+    document.getElementById('empty-state').style.display   = 'block';
     return;
   }
-
   S.weeks = reportsFromDB.map(r => ({
     label:   fmtPeriod(r.period_start, r.period_end),
-    summary: buildSummaryFromReport(r),
-    goods:   buildGoodsFromReport(r)
+    summary: buildSummary(r),
+    goods:   buildGoods(r)
   }));
-
   S.selW = S.weeks.map(w => w.label);
   rebuildAllArts();
-
-  document.getElementById('wbar').style.display         = 'flex';
+  document.getElementById('filter-bar').style.display   = 'flex';
   document.getElementById('main-content').style.display = 'block';
   document.getElementById('empty-state').style.display  = 'none';
-
+  renderPeriodsRow();
   renderAll();
 }
 
-function buildSummaryFromReport(r) {
+function renderPeriodsRow() {
+  const el = document.getElementById('periods-row');
+  el.innerHTML = '';
+  S.weeks.forEach((w,i) => {
+    const p = document.createElement('div');
+    p.className = 'period-pill' + (S.selW.includes(w.label)?' on':'');
+    p.innerHTML = w.label + ' <span class="px">✕</span>';
+    p.onclick = e => {
+      if(e.target.classList.contains('px')){
+        S.weeks.splice(i,1); S.selW=S.weeks.map(w=>w.label);
+        rebuildAllArts(); renderPeriodsRow(); renderAll(); return;
+      }
+      const idx=S.selW.indexOf(w.label);
+      idx>=0?S.selW.splice(idx,1):S.selW.push(w.label);
+      p.classList.toggle('on', S.selW.includes(w.label));
+      renderSummary(); renderCharts(); renderGoods();
+    };
+    el.appendChild(p);
+  });
+}
+
+function onDateFilter() {
+  dateFrom = document.getElementById('date-from').value || null;
+  dateTo   = document.getElementById('date-to').value   || null;
+  loadReports();
+}
+function resetDateFilter() {
+  dateFrom = dateTo = null;
+  document.getElementById('date-from').value = '';
+  document.getElementById('date-to').value   = '';
+  loadReports();
+}
+
+function buildSummary(r) {
   const raw = r.raw_data?.summary || {};
   return {
-    'Показы':                   r.impressions   ?? raw['Показы'],
-    'CTR':                      r.ctr           ?? raw['CTR'],
-    'Переходы в карточку':      r.clicks        ?? raw['Переходы в карточку'],
-    'Положили в корзину':       r.added_to_cart ?? raw['Положили в корзину'],
-    'Заказали, шт':             r.ordered_qty   ?? raw['Заказали, шт'],
-    'Выкупили, шт':             r.bought_qty    ?? raw['Выкупили, шт'],
-    'Отменили, шт':             r.cancelled_qty ?? raw['Отменили, шт'],
-    'Конверсия в корзину, %':   r.conv_to_cart  ?? raw['Конверсия в корзину, %'],
-    'Конверсия в заказ, %':     r.conv_to_order ?? raw['Конверсия в заказ, %'],
-    'Процент выкупа':           r.buyout_rate   ?? raw['Процент выкупа'],
-    'Заказали на сумму, ⃀':    r.revenue       ?? raw['Заказали на сумму, ⃀'],
-    'Средняя цена, ⃀':         r.avg_price     ?? raw['Средняя цена, ⃀'],
+    'Показы':                 r.impressions   ?? raw['Показы'],
+    'CTR':                    r.ctr           ?? raw['CTR'],
+    'Переходы в карточку':    r.clicks        ?? raw['Переходы в карточку'],
+    'Положили в корзину':     r.added_to_cart ?? raw['Положили в корзину'],
+    'Заказали, шт':           r.ordered_qty   ?? raw['Заказали, шт'],
+    'Выкупили, шт':           r.bought_qty    ?? raw['Выкупили, шт'],
+    'Отменили, шт':           r.cancelled_qty ?? raw['Отменили, шт'],
+    'Конверсия в корзину, %': r.conv_to_cart  ?? raw['Конверсия в корзину, %'],
+    'Конверсия в заказ, %':   r.conv_to_order ?? raw['Конверсия в заказ, %'],
+    'Процент выкупа':         r.buyout_rate   ?? raw['Процент выкупа'],
+    'Заказали на сумму, ⃀':  r.revenue       ?? raw['Заказали на сумму, ⃀'],
+    'Средняя цена, ⃀':       r.avg_price     ?? raw['Средняя цена, ⃀'],
     ...raw
   };
 }
-
-function buildGoodsFromReport(r) {
+function buildGoods(r) {
   const goods = r.raw_data?.goods;
-  if (!goods || !goods.length) return { h: [], rows: [] };
+  if (!goods?.length) return {h:[],rows:[]};
   const h = Object.keys(goods[0]);
-  const rows = goods.map(g => h.map(k => g[k]));
-  return { h, rows };
+  return {h, rows: goods.map(g => h.map(k => g[k]))};
 }
 
 async function uploadReport() {
   const input = document.getElementById('upload-input');
   const file  = input.files[0];
   if (!file) return;
-
-  const mgrId = user?.role === 'admin'
-    ? document.getElementById('upload-mgr-select').value
-    : user.manager_id;
-
-  if (user?.role === 'admin' && !mgrId) {
-    document.getElementById('upload-status').textContent = 'Выберите менеджера';
-    document.getElementById('upload-status').className   = 'upload-status err';
-    return;
+  const mgrId = user?.role==='admin' ? document.getElementById('upload-mgr').value : user.manager_id;
+  const cabId = document.getElementById('upload-cab').value;
+  if (user?.role==='admin' && !mgrId) {
+    setStatus('Выберите менеджера','err'); return;
   }
-
-  const statusEl = document.getElementById('upload-status');
-  statusEl.textContent = 'Загрузка...'; statusEl.className = 'upload-status';
-
+  setStatus('Загрузка...','');
   const fd = new FormData();
   fd.append('file', file);
   fd.append('manager_id', mgrId);
-
+  if (cabId) fd.append('cabinet_id', cabId);
   try {
     const res = await API.upload('/reports', fd);
-    statusEl.textContent = `✓ ${fmtDate(res.period_start)} — ${fmtDate(res.period_end)}`;
-    statusEl.className   = 'upload-status ok';
+    setStatus(`✓ ${fmtDate(res.period_start)} — ${fmtDate(res.period_end)}`,'ok');
     input.value = '';
     loadReports();
-  } catch(e) {
-    statusEl.textContent = '✗ ' + e.message;
-    statusEl.className   = 'upload-status err';
-  }
+  } catch(e) { setStatus('✗ '+e.message,'err'); }
+}
+function setStatus(txt,cls){
+  const el=document.getElementById('upload-status');
+  el.textContent=txt; el.className='upload-status'+( cls?' '+cls:'');
 }
 
 async function deleteReport(id) {
-  if (!confirm('Удалить этот отчёт?')) return;
-  try {
-    await API.delete(`/reports/${id}`);
-    loadReports();
-  } catch(e) { alert('Ошибка: ' + e.message); }
+  if (!confirm('Удалить отчёт?')) return;
+  try { await API.delete('/reports/'+id); loadReports(); }
+  catch(e) { alert(e.message); }
 }
 
-loadManagers();
-loadReports();
+// ── CABINETS ──
+async function loadCabinets() {
+  try {
+    const q = selectedManagerId ? `?manager_id=${selectedManagerId}` : '';
+    allCabinets = await API.get('/cabinets'+q);
+    const el = document.getElementById('cab-grid');
+    if (!allCabinets.length) { el.innerHTML='<div class="empty">Нет кабинетов</div>'; return; }
+    el.innerHTML = allCabinets.map(c => `
+      <div class="cab-card">
+        <div class="cab-info">
+          <div class="cab-name">${c.name}</div>
+          <div class="cab-meta">${c.manager_name || '—'}</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteCabinet('${c.id}')">Удалить</button>
+      </div>`).join('');
+  } catch(e) { console.error(e); }
+}
+
+function openCabModal() { document.getElementById('cab-modal').classList.add('show'); }
+function closeCabModal() { document.getElementById('cab-modal').classList.remove('show'); document.getElementById('cab-name').value=''; }
+
+async function saveCabinet() {
+  const name  = document.getElementById('cab-name').value.trim();
+  const mgrId = user?.role==='admin' ? document.getElementById('cab-mgr-select').value : user.manager_id;
+  const errEl = document.getElementById('cab-err');
+  if (!name) { errEl.textContent='Введите название'; errEl.classList.add('show'); return; }
+  errEl.classList.remove('show');
+  try {
+    await API.post('/cabinets', {name, manager_id: mgrId});
+    closeCabModal();
+    loadCabinetsForUpload();
+    if (document.getElementById('page-cabinets').classList.contains('active')) loadCabinets();
+  } catch(e) { errEl.textContent=e.message; errEl.classList.add('show'); }
+}
+
+async function deleteCabinet(id) {
+  if (!confirm('Удалить кабинет?')) return;
+  try { await API.delete('/cabinets/'+id); loadCabinets(); loadCabinetsForUpload(); }
+  catch(e) { alert(e.message); }
+}
+
+// ── DAILY REPORTS ──
+let editingDailyId = null;
+
+async function loadDailyReports() {
+  try {
+    const mgrId = document.getElementById('daily-mgr-filter').value || '';
+    const from  = document.getElementById('daily-from').value || '';
+    const to    = document.getElementById('daily-to').value   || '';
+    let q = '?limit=50';
+    if (mgrId) q += `&manager_id=${mgrId}`;
+    if (from)  q += `&date_from=${from}`;
+    if (to)    q += `&date_to=${to}`;
+    const reports = await API.get('/daily'+q);
+    renderDailyGrid(reports);
+  } catch(e) { console.error(e); }
+}
+
+function renderDailyGrid(reports) {
+  const el = document.getElementById('daily-grid');
+  if (!reports.length) { el.innerHTML='<div class="empty">Нет отчётов за выбранный период</div>'; return; }
+  el.innerHTML = reports.map(r => {
+    const tasks = r.tasks || [];
+    const tasksHtml = tasks.length
+      ? tasks.map((t,i) => `
+          <div class="task-row">
+            <span class="task-num">${i+1}</span>
+            <span class="task-name">${t.name||'—'}</span>
+            <span class="task-art">${t.article||''}</span>
+            <span class="task-metric">${t.metric_start||''}</span>
+            <span class="task-fact ${t.fact?'done':'pending'}">${t.fact||'—'}</span>
+          </div>`).join('')
+      : '<div style="padding:10px;font-size:12px;color:var(--g2)">Нет задач</div>';
+
+    return `<div class="daily-card">
+      <div class="daily-card-head">
+        <div>
+          <div class="daily-date">${fmtDateFull(r.report_date)}</div>
+          <div class="daily-mgr">${r.manager_name}</div>
+        </div>
+        <div class="daily-actions">
+          <button class="btn btn-ghost btn-sm" onclick='editDaily(${JSON.stringify(r)})'>✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteDaily('${r.id}')">✕</button>
+        </div>
+      </div>
+      <div class="daily-tasks">${tasksHtml}</div>
+      ${r.notes ? `<div class="daily-notes">${r.notes}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openDailyModal() {
+  editingDailyId = null;
+  document.getElementById('daily-modal-title').textContent = 'Новый отчёт';
+  document.getElementById('dr-date').value   = new Date().toISOString().slice(0,10);
+  document.getElementById('dr-notes').value  = '';
+  document.getElementById('task-rows').innerHTML = '';
+  document.getElementById('dr-err').classList.remove('show');
+  addTaskRow(); addTaskRow(); addTaskRow();
+  document.getElementById('daily-modal').classList.add('show');
+}
+
+function editDaily(r) {
+  editingDailyId = r.id;
+  document.getElementById('daily-modal-title').textContent = 'Редактировать отчёт';
+  document.getElementById('dr-date').value   = r.report_date;
+  document.getElementById('dr-notes').value  = r.notes || '';
+  document.getElementById('task-rows').innerHTML = '';
+  (r.tasks||[]).forEach(t => addTaskRow(t));
+  if (!(r.tasks||[]).length) addTaskRow();
+  document.getElementById('daily-modal').classList.add('show');
+}
+
+function closeDailyModal() { document.getElementById('daily-modal').classList.remove('show'); }
+
+function addTaskRow(task={}) {
+  const el = document.getElementById('task-rows');
+  const row = document.createElement('div');
+  row.className = 'task-editor-row';
+  row.innerHTML = `
+    <input type="text" placeholder="Задача" value="${task.name||''}">
+    <input type="text" placeholder="Артикул/Кабинет" value="${task.article||''}">
+    <input type="text" placeholder="Метрика старта" value="${task.metric_start||''}">
+    <input type="text" placeholder="Факт выполнения" value="${task.fact||''}">
+    <button class="task-del-btn" onclick="this.closest('.task-editor-row').remove()">✕</button>`;
+  el.appendChild(row);
+}
+
+async function saveDailyReport() {
+  const date   = document.getElementById('dr-date').value;
+  const notes  = document.getElementById('dr-notes').value;
+  const mgrId  = user?.role==='admin' ? document.getElementById('dr-mgr').value : user.manager_id;
+  const errEl  = document.getElementById('dr-err');
+  errEl.classList.remove('show');
+
+  const tasks = [...document.querySelectorAll('.task-editor-row')].map(row => {
+    const inputs = row.querySelectorAll('input');
+    return {
+      name:         inputs[0].value.trim(),
+      article:      inputs[1].value.trim(),
+      metric_start: inputs[2].value.trim(),
+      fact:         inputs[3].value.trim()
+    };
+  }).filter(t => t.name);
+
+  try {
+    if (editingDailyId) {
+      await API.put('/daily/'+editingDailyId, {tasks, notes});
+    } else {
+      await API.post('/daily', {tasks, notes, report_date: date, manager_id: mgrId});
+    }
+    closeDailyModal();
+    loadDailyReports();
+  } catch(e) { errEl.textContent=e.message; errEl.classList.add('show'); }
+}
+
+async function deleteDaily(id) {
+  if (!confirm('Удалить отчёт?')) return;
+  try { await API.delete('/daily/'+id); loadDailyReports(); }
+  catch(e) { alert(e.message); }
+}
+
+// Закрытие модалок по клику вне
+['cab-modal','daily-modal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
+  });
+});
+
+init();
 </script>
 </body>
 </html>
