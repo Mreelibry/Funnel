@@ -330,6 +330,9 @@
       <select id="daily-mgr-filter" style="display:none" onchange="loadDailyReports()">
         <option value="">Все менеджеры</option>
       </select>
+      <select id="daily-cab-filter" onchange="loadDailyReports()">
+        <option value="">Все кабинеты</option>
+      </select>
       <div class="date-range">
         <input type="date" id="daily-from">
         <span>—</span>
@@ -474,6 +477,12 @@ async function loadManagers() {
         s.innerHTML += `<option value="${m.id}">${m.name}</option>`;
       });
     });
+    // Populate cabinet filter for daily
+    try {
+      const cabs = await API.get('/cabinets');
+      const dailyCabSel = document.getElementById('daily-cab-filter');
+      cabs.forEach(c => { dailyCabSel.innerHTML += `<option value="${c.id}">${c.name} (${c.manager_name})</option>`; });
+    } catch(e) {}
     if (user?.role === 'manager' && user.manager_id) {
       selU.value = user.manager_id;
     }
@@ -573,13 +582,36 @@ function renderPeriodsRow() {
 function onDateFilter() {
   dateFrom = document.getElementById('date-from').value || null;
   dateTo   = document.getElementById('date-to').value   || null;
-  loadReports();
+  applyLocalDateFilter();
 }
 function resetDateFilter() {
   dateFrom = dateTo = null;
   document.getElementById('date-from').value = '';
   document.getElementById('date-to').value   = '';
-  loadReports();
+  applyLocalDateFilter();
+}
+// Локальный фильтр — не перезапрашивает сервер, фильтрует уже загруженные отчёты
+function applyLocalDateFilter() {
+  let filtered = reportsFromDB;
+  if (dateFrom) filtered = filtered.filter(r => r.period_end   >= dateFrom);
+  if (dateTo)   filtered = filtered.filter(r => r.period_start <= dateTo);
+  if (!filtered.length) {
+    // Показываем пустую аналитику, но НЕ экран "загрузите первый отчёт"
+    S.weeks = []; S.selW = [];
+    rebuildAllArts();
+    document.getElementById('filter-bar').style.display   = 'flex';
+    document.getElementById('main-content').style.display = 'block';
+    document.getElementById('empty-state').style.display  = 'none';
+    renderPeriodsRow(); renderAll(); return;
+  }
+  S.weeks = filtered.map(r => ({
+    label:   fmtPeriod(r.period_start, r.period_end),
+    summary: buildSummary(r),
+    goods:   buildGoods(r)
+  }));
+  S.selW = S.weeks.map(w => w.label);
+  rebuildAllArts();
+  renderPeriodsRow(); renderAll();
 }
 
 function buildSummary(r) {
@@ -701,17 +733,26 @@ function renderDailyGrid(reports) {
   const el = document.getElementById('daily-grid');
   if (!reports.length) { el.innerHTML='<div class="empty">Нет отчётов за выбранный период</div>'; return; }
   el.innerHTML = reports.map(r => {
-    const tasks = r.tasks || [];
-    const tasksHtml = tasks.length
-      ? tasks.map((t,i) => `
-          <div class="task-row">
-            <span class="task-num">${i+1}</span>
-            <span class="task-name">${t.name||'—'}</span>
-            <span class="task-art">${t.article||''}</span>
-            <span class="task-metric">${t.metric_start||''}</span>
-            <span class="task-fact ${t.fact?'done':'pending'}">${t.fact||'—'}</span>
-          </div>`).join('')
-      : '<div style="padding:10px;font-size:12px;color:var(--g2)">Нет задач</div>';
+    const tasks   = r.tasks || [];
+    const LIMIT   = 10;
+    const visible = tasks.slice(0, LIMIT);
+    const hidden  = tasks.slice(LIMIT);
+
+    function taskRow(t, i) {
+      return `<div class="task-row">
+        <span class="task-num">${i+1}</span>
+        <span class="task-name">${t.name||'—'}</span>
+        <span class="task-art">${t.article||''}</span>
+        <span class="task-metric">${t.metric_start||''}</span>
+        <span class="task-fact ${t.fact?'done':'pending'}">${t.fact||'—'}</span>
+      </div>`;
+    }
+
+    const visHtml  = visible.length ? visible.map(taskRow).join('') : '<div style="padding:10px;font-size:12px;color:var(--g2)">Нет задач</div>';
+    const hidHtml  = hidden.length  ? `<div class="tasks-hidden" id="th-${r.id}" style="display:none">${hidden.map((t,i)=>taskRow(t,LIMIT+i)).join('')}</div>
+      <div style="padding:6px 14px;border-top:0.5px solid var(--b)">
+        <button class="btn btn-ghost btn-sm" onclick="expandTasks('${r.id}',this)">＋${hidden.length} задач — показать все</button>
+      </div>` : '';
 
     return `<div class="daily-card">
       <div class="daily-card-head">
@@ -720,14 +761,25 @@ function renderDailyGrid(reports) {
           <div class="daily-mgr">${r.manager_name}</div>
         </div>
         <div class="daily-actions">
-          <button class="btn btn-ghost btn-sm" onclick='editDaily(${JSON.stringify(r)})'>✏️</button>
+          <button class="btn btn-ghost btn-sm" title="Развернуть все" onclick="expandTasks('${r.id}',this)">↕</button>
+          <button class="btn btn-ghost btn-sm" onclick='editDaily(${JSON.stringify(r).replace(/'/g,"&#39;")})'>✏️</button>
           <button class="btn btn-danger btn-sm" onclick="deleteDaily('${r.id}')">✕</button>
         </div>
       </div>
-      <div class="daily-tasks">${tasksHtml}</div>
+      <div class="daily-tasks">${visHtml}</div>
+      ${hidHtml}
       ${r.notes ? `<div class="daily-notes">${r.notes}</div>` : ''}
     </div>`;
   }).join('');
+}
+
+function expandTasks(id, btn) {
+  const el = document.getElementById('th-'+id);
+  if (!el) return;
+  const expanded = el.style.display !== 'none';
+  el.style.display = expanded ? 'none' : 'block';
+  if (btn.textContent === '↕') return;
+  btn.textContent = expanded ? '+' + btn.textContent.match(/\d+/)[0] + ' задач — показать все' : 'Свернуть';
 }
 
 function openDailyModal() {
