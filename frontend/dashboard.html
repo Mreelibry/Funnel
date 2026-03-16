@@ -918,6 +918,13 @@ async function deleteDaily(id) {
   });
 });
 
+// ── Переопределяем renderWeeks из app.js — в новом дашборде нет #wrow ──
+// Недели отображаются через renderPeriodsRow(), поэтому renderWeeks = no-op
+renderWeeks = function() {
+  // В новом дашборде недели рендерятся через renderPeriodsRow()
+  // Этот override предотвращает ошибку "Cannot set properties of null"
+};
+
 init();
 </script>
 </body>
