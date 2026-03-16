@@ -264,6 +264,9 @@
   <div class="filter-bar" id="filter-bar" style="display:none">
     <span class="filter-label">Период:</span>
     <div class="periods-row" id="periods-row"></div>
+    <select id="funnel-cab-filter" style="font-size:11px;padding:4px 8px" onchange="onCabinetFilter()">
+      <option value="">Все кабинеты</option>
+    </select>
     <div class="date-range">
       <input type="date" id="date-from" onchange="onDateFilter()">
       <span>—</span>
@@ -387,8 +390,8 @@
 
     <div class="slabel" style="margin-bottom:6px">Задачи</div>
     <div class="task-editor">
-      <div class="task-editor-head">
-        <span>Задача</span><span>Артикул/Кабинет</span><span>Метрика старта</span><span>Факт</span><span></span>
+      <div class="task-editor-head" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr 80px 28px">
+        <span>Задача</span><span>Артикул/Кабинет</span><span>Метрика старта</span><span>Плановая</span><span>Факт</span><span>Время</span><span></span>
       </div>
       <div id="task-rows"></div>
     </div>
@@ -518,6 +521,34 @@ async function loadReports() {
   } catch(e) { console.error(e); }
 }
 
+function onCabinetFilter() {
+  const cabId = document.getElementById('funnel-cab-filter').value;
+  let filtered = reportsFromDB;
+  if (cabId) filtered = filtered.filter(r => r.cabinet_id === cabId);
+  if (!filtered.length) {
+    S.weeks = []; S.selW = [];
+    rebuildAllArts(); renderPeriodsRow(); renderAll(); return;
+  }
+  S.weeks = filtered.map(r => ({
+    label: fmtPeriod(r.period_start, r.period_end),
+    summary: buildSummary(r), goods: buildGoods(r)
+  }));
+  S.selW = S.weeks.map(w => w.label);
+  rebuildAllArts(); renderPeriodsRow(); renderAll();
+}
+
+function populateCabinetFilter() {
+  const sel = document.getElementById('funnel-cab-filter');
+  const seen = new Set();
+  sel.innerHTML = '<option value="">Все кабинеты</option>';
+  reportsFromDB.forEach(r => {
+    if (r.cabinet_id && !seen.has(r.cabinet_id)) {
+      seen.add(r.cabinet_id);
+      sel.innerHTML += `<option value="${r.cabinet_id}">${r.cabinet_name||'Кабинет'}</option>`;
+    }
+  });
+}
+
 function renderReportsList() {
   const el = document.getElementById('reports-list');
   if (!reportsFromDB.length) { el.innerHTML = ''; return; }
@@ -529,8 +560,8 @@ function renderReportsList() {
       <tbody>${reportsFromDB.map(r=>`<tr>
         <td style="font-weight:600;color:var(--wb)">${fmtPeriod(r.period_start,r.period_end)}</td>
         <td>${r.manager_name}</td>
-        <td>${r.cabinet_name?`<span class="cab-chip">${r.cabinet_name}</span>`:'—'}</td>
-        <td style="color:var(--g);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.filename||'—'}</td>
+        <td>${(r.cabinet_name||r.cabinet_id)?`<span class="cab-chip">${r.cabinet_name||'Кабинет'}</span>`:'—'}</td>
+        <td style="color:var(--g);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.filename||''}">${r.filename?r.filename.slice(0,40)+(r.filename.length>40?'…':''):'—'}</td>
         <td style="color:var(--g2);font-size:11px">${new Date(r.created_at).toLocaleDateString('ru')}</td>
         ${user?.role==='admin'?`<td><button class="btn btn-danger btn-sm" onclick="deleteReport('${r.id}')">Удалить</button></td>`:''}
       </tr>`).join('')}</tbody>
@@ -554,6 +585,7 @@ function buildWeeksFromDB() {
   document.getElementById('filter-bar').style.display   = 'flex';
   document.getElementById('main-content').style.display = 'block';
   document.getElementById('empty-state').style.display  = 'none';
+  populateCabinetFilter();
   renderPeriodsRow();
   renderAll();
 }
@@ -592,26 +624,36 @@ function resetDateFilter() {
 }
 // Локальный фильтр — не перезапрашивает сервер, фильтрует уже загруженные отчёты
 function applyLocalDateFilter() {
-  let filtered = reportsFromDB;
-  if (dateFrom) filtered = filtered.filter(r => r.period_end   >= dateFrom);
-  if (dateTo)   filtered = filtered.filter(r => r.period_start <= dateTo);
+  // Если ничего не выбрано — показываем все
+  if (!dateFrom && !dateTo) {
+    S.weeks = reportsFromDB.map(r => ({
+      label: fmtPeriod(r.period_start, r.period_end),
+      summary: buildSummary(r), goods: buildGoods(r)
+    }));
+    S.selW = S.weeks.map(w => w.label);
+    rebuildAllArts(); renderPeriodsRow(); renderAll(); return;
+  }
+  // Фильтруем: показываем недели которые ПЕРЕСЕКАЮТСЯ с выбранным диапазоном
+  let filtered = reportsFromDB.filter(r => {
+    const start = r.period_start, end = r.period_end;
+    if (dateFrom && dateTo) return end >= dateFrom && start <= dateTo;
+    if (dateFrom) return end >= dateFrom;
+    if (dateTo)   return start <= dateTo;
+    return true;
+  });
+  document.getElementById('filter-bar').style.display   = 'flex';
+  document.getElementById('main-content').style.display = 'block';
+  document.getElementById('empty-state').style.display  = 'none';
   if (!filtered.length) {
-    // Показываем пустую аналитику, но НЕ экран "загрузите первый отчёт"
     S.weeks = []; S.selW = [];
-    rebuildAllArts();
-    document.getElementById('filter-bar').style.display   = 'flex';
-    document.getElementById('main-content').style.display = 'block';
-    document.getElementById('empty-state').style.display  = 'none';
-    renderPeriodsRow(); renderAll(); return;
+    rebuildAllArts(); renderPeriodsRow(); renderAll(); return;
   }
   S.weeks = filtered.map(r => ({
-    label:   fmtPeriod(r.period_start, r.period_end),
-    summary: buildSummary(r),
-    goods:   buildGoods(r)
+    label: fmtPeriod(r.period_start, r.period_end),
+    summary: buildSummary(r), goods: buildGoods(r)
   }));
   S.selW = S.weeks.map(w => w.label);
-  rebuildAllArts();
-  renderPeriodsRow(); renderAll();
+  rebuildAllArts(); renderPeriodsRow(); renderAll();
 }
 
 function buildSummary(r) {
@@ -744,11 +786,22 @@ function renderDailyGrid(reports) {
         <span class="task-name">${t.name||'—'}</span>
         <span class="task-art">${t.article||''}</span>
         <span class="task-metric">${t.metric_start||''}</span>
+        <span class="task-plan" style="font-size:11px;color:var(--g);min-width:50px">${t.metric_plan||''}</span>
         <span class="task-fact ${t.fact?'done':'pending'}">${t.fact||'—'}</span>
+        <span class="task-time" style="font-size:10px;color:var(--g2);min-width:60px">${t.time_spent||''}</span>
       </div>`;
     }
+    const colHeaders = tasks.length ? `<div class="task-row" style="border-bottom:0.5px solid var(--b2);padding-bottom:4px;margin-bottom:2px">
+      <span class="task-num" style="color:var(--g2);font-size:9px">#</span>
+      <span class="task-name" style="color:var(--g2);font-size:9px;text-transform:uppercase">Задача</span>
+      <span class="task-art" style="color:var(--g2);font-size:9px;text-transform:uppercase">Арт./Кабинет</span>
+      <span class="task-metric" style="color:var(--g2);font-size:9px;text-transform:uppercase">Метрика</span>
+      <span style="color:var(--g2);font-size:9px;text-transform:uppercase;min-width:50px">Плановая</span>
+      <span style="color:var(--g2);font-size:9px;text-transform:uppercase;min-width:60px">Факт</span>
+      <span style="color:var(--g2);font-size:9px;text-transform:uppercase;min-width:60px">Время</span>
+    </div>` : '';
 
-    const visHtml  = visible.length ? visible.map(taskRow).join('') : '<div style="padding:10px;font-size:12px;color:var(--g2)">Нет задач</div>';
+    const visHtml  = visible.length ? colHeaders + visible.map(taskRow).join('') : '<div style="padding:10px;font-size:12px;color:var(--g2)">Нет задач</div>';
     const hidHtml  = hidden.length  ? `<div class="tasks-hidden" id="th-${r.id}" style="display:none">${hidden.map((t,i)=>taskRow(t,LIMIT+i)).join('')}</div>
       <div style="padding:6px 14px;border-top:0.5px solid var(--b)">
         <button class="btn btn-ghost btn-sm" onclick="expandTasks('${r.id}',this)">＋${hidden.length} задач — показать все</button>
@@ -810,11 +863,14 @@ function addTaskRow(task={}) {
   const el = document.getElementById('task-rows');
   const row = document.createElement('div');
   row.className = 'task-editor-row';
+  row.style.gridTemplateColumns = '1fr 1fr 1fr 1fr 1fr 80px 28px';
   row.innerHTML = `
     <input type="text" placeholder="Задача" value="${task.name||''}">
     <input type="text" placeholder="Артикул/Кабинет" value="${task.article||''}">
     <input type="text" placeholder="Метрика старта" value="${task.metric_start||''}">
-    <input type="text" placeholder="Факт выполнения" value="${task.fact||''}">
+    <input type="text" placeholder="Плановая метрика" value="${task.metric_plan||''}">
+    <input type="text" placeholder="Факт" value="${task.fact||''}">
+    <input type="text" placeholder="10:00-11:00" value="${task.time_spent||''}">
     <button class="task-del-btn" onclick="this.closest('.task-editor-row').remove()">✕</button>`;
   el.appendChild(row);
 }
@@ -832,7 +888,9 @@ async function saveDailyReport() {
       name:         inputs[0].value.trim(),
       article:      inputs[1].value.trim(),
       metric_start: inputs[2].value.trim(),
-      fact:         inputs[3].value.trim()
+      metric_plan:  inputs[3].value.trim(),
+      fact:         inputs[4].value.trim(),
+      time_spent:   inputs[5].value.trim()
     };
   }).filter(t => t.name);
 
