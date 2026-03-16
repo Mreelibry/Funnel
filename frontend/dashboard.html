@@ -1027,10 +1027,10 @@ function renderReportsList() {
       <tbody>${reportsFromDB.map(r=>`<tr>
         <td style="font-weight:600;color:var(--wb)">${fmtPeriod(r.period_start,r.period_end)}</td>
         <td>${r.manager_name}</td>
-        <td>${(r.cabinet_name||r.cabinet_id)?`<span class="cab-chip">${r.cabinet_name||'Кабинет'}</span>`:'—'}</td>
+        <td>${(r.cabinet_name||r.cabinet_id)?('<span class="cab-chip">'+(r.cabinet_name||'Кабинет')+'</span>'):'-'}</td>
         <td style="color:var(--g);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.filename||''}">${r.filename?r.filename.slice(0,40)+(r.filename.length>40?'…':''):'—'}</td>
         <td style="color:var(--g2);font-size:11px">${new Date(r.created_at).toLocaleDateString('ru')}</td>
-        ${user?.role==='admin'?`<td><button class="btn btn-danger btn-sm" onclick="deleteReport('${r.id}')">Удалить</button></td>`:''}
+        ${user?.role==='admin'?('<td><button class="btn btn-danger btn-sm" onclick="deleteReport(\'' + r.id + '\')">Удалить</button></td>'):''}
       </tr>`).join('')}</tbody>
     </table></div></div>`;
 }
