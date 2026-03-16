@@ -60,9 +60,12 @@
 
     /* PERIOD PILLS */
     .periods-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
-    .period-pill{border:0.5px solid var(--b2);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--g);cursor:pointer;background:var(--card2);transition:all .15s;display:flex;align-items:center;gap:4px;user-select:none;white-space:nowrap}
+    .period-pill{border:0.5px solid var(--b2);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--g);cursor:grab;background:var(--card2);transition:background .15s,border-color .15s,opacity .15s;display:flex;align-items:center;gap:4px;user-select:none;white-space:nowrap}
+    .period-pill:active{cursor:grabbing}
     .period-pill.on{background:var(--wb);color:#fff;border-color:var(--wb)}
-    .period-pill .px{font-size:10px;opacity:.7}
+    .period-pill .px{font-size:10px;opacity:.7;cursor:pointer}
+    .period-pill.dragging{opacity:.35}
+    .period-pill.drag-over{border-color:var(--wb);box-shadow:2px 0 0 var(--wb)}
 
     /* UPLOAD SECTION */
     .upload-section{background:var(--card);border-radius:14px;border:0.5px solid var(--b);padding:14px 16px;margin-bottom:14px}
@@ -593,23 +596,62 @@ function buildWeeksFromDB() {
   renderAll();
 }
 
+let periodDragSrc = null;
+
 function renderPeriodsRow() {
   const el = document.getElementById('periods-row');
   el.innerHTML = '';
   S.weeks.forEach((w,i) => {
     const p = document.createElement('div');
     p.className = 'period-pill' + (S.selW.includes(w.label)?' on':'');
-    p.innerHTML = w.label + ' <span class="px">✕</span>';
+    p.draggable = true;
+    p.dataset.idx = i;
+    p.innerHTML = w.label + ' <span class="px" title="Удалить">✕</span>';
+
+    // Click: toggle selection (but not if clicked on ✕)
     p.onclick = e => {
       if(e.target.classList.contains('px')){
-        S.weeks.splice(i,1); S.selW=S.weeks.map(w=>w.label);
+        S.weeks.splice(i,1);
+        S.selW = S.weeks.map(w=>w.label);
         rebuildAllArts(); renderPeriodsRow(); renderAll(); return;
       }
-      const idx=S.selW.indexOf(w.label);
-      idx>=0?S.selW.splice(idx,1):S.selW.push(w.label);
+      const idx = S.selW.indexOf(w.label);
+      idx >= 0 ? S.selW.splice(idx,1) : S.selW.push(w.label);
       p.classList.toggle('on', S.selW.includes(w.label));
       renderSummary(); renderCharts(); renderGoods();
     };
+
+    // Drag to reorder
+    p.addEventListener('dragstart', e => {
+      periodDragSrc = i;
+      p.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    p.addEventListener('dragend', () => {
+      p.classList.remove('dragging');
+      el.querySelectorAll('.period-pill').forEach(x => x.classList.remove('drag-over'));
+    });
+    p.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      p.classList.add('drag-over');
+    });
+    p.addEventListener('dragleave', () => p.classList.remove('drag-over'));
+    p.addEventListener('drop', e => {
+      e.preventDefault();
+      p.classList.remove('drag-over');
+      const destIdx = +p.dataset.idx;
+      if (periodDragSrc === null || periodDragSrc === destIdx) return;
+      // Reorder S.weeks
+      const moved = S.weeks.splice(periodDragSrc, 1)[0];
+      S.weeks.splice(destIdx, 0, moved);
+      // Keep selW in sync with new order
+      S.selW = S.weeks.filter(w => S.selW.includes(w.label)).map(w => w.label);
+      periodDragSrc = null;
+      rebuildAllArts(); renderPeriodsRow();
+      renderSummary(); renderCharts(); renderGoods();
+    });
+
     el.appendChild(p);
   });
 }
