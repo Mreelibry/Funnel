@@ -339,9 +339,6 @@
       <select id="daily-mgr-filter" style="display:none" onchange="loadDailyReports()">
         <option value="">Все менеджеры</option>
       </select>
-      <select id="daily-cab-filter" onchange="loadDailyReports()">
-        <option value="">Все кабинеты</option>
-      </select>
       <div class="date-range">
         <input type="date" id="daily-from">
         <span>—</span>
@@ -380,6 +377,42 @@
       <button class="btn btn-ghost" onclick="closeCabModal()">Отмена</button>
       <button class="btn btn-primary" onclick="saveCabinet()">Создать</button>
     </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Полный просмотр отчёта ═══ -->
+<div class="overlay" id="daily-view-modal" style="align-items:flex-start;padding:20px;overflow-y:auto">
+  <div class="modal" style="max-width:800px;width:100%;margin:auto">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:18px;font-weight:700;color:var(--t)" id="dv-date"></div>
+        <div style="font-size:13px;color:var(--wb);font-weight:500;margin-top:2px" id="dv-mgr"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('daily-view-modal').classList.remove('show')">✕ Закрыть</button>
+    </div>
+
+    <!-- Progress -->
+    <div id="dv-progress" style="margin-bottom:16px"></div>
+
+    <!-- Full tasks table -->
+    <div style="overflow-x:auto;border-radius:10px;border:0.5px solid var(--b);margin-bottom:14px">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px">
+        <thead>
+          <tr style="background:var(--card2)">
+            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b);width:28px">#</th>
+            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b)">Задача</th>
+            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b);min-width:90px">Арт./Кабинет</th>
+            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b);min-width:80px">Метрика</th>
+            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b);min-width:80px">Плановая</th>
+            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b);min-width:70px">Факт</th>
+            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b);min-width:80px">Время</th>
+          </tr>
+        </thead>
+        <tbody id="dv-tasks"></tbody>
+      </table>
+    </div>
+
+    <div id="dv-notes" style="display:none;background:var(--card2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--g);font-style:italic;margin-bottom:14px"></div>
   </div>
 </div>
 
@@ -486,12 +519,7 @@ async function loadManagers() {
         s.innerHTML += `<option value="${m.id}">${m.name}</option>`;
       });
     });
-    // Populate cabinet filter for daily
-    try {
-      const cabs = await API.get('/cabinets');
-      const dailyCabSel = document.getElementById('daily-cab-filter');
-      cabs.forEach(c => { dailyCabSel.innerHTML += `<option value="${c.id}">${c.name} (${c.manager_name})</option>`; });
-    } catch(e) {}
+    // cabinet filter removed from daily (handled by top nav filter)
     if (user?.role === 'manager' && user.manager_id) {
       selU.value = user.manager_id;
     }
@@ -815,53 +843,25 @@ async function loadDailyReports() {
 
 function renderDailyGrid(reports) {
   const el = document.getElementById('daily-grid');
-  if (!reports.length) { el.innerHTML='<div class="empty">Нет отчётов за выбранный период</div>'; return; }
+  if (!reports.length) {
+    el.innerHTML = '<div class="empty">Нет отчётов за выбранный период</div>';
+    return;
+  }
+
   el.innerHTML = reports.map(r => {
-    const tasks  = r.tasks || [];
-    const LIMIT  = 10;
-    const hasMore = tasks.length > LIMIT;
+    const tasks   = r.tasks || [];
+    const done    = tasks.filter(t => t.fact && t.fact.trim()).length;
+    const total   = tasks.filter(t => t.name && t.name.trim()).length;
+    const pct     = total ? Math.round(done/total*100) : 0;
 
-    function taskRow(t, i) {
-      return `<tr>
-        <td class="t-num">${i+1}</td>
-        <td class="t-name">${t.name||'—'}</td>
-        <td class="t-art">${t.article||''}</td>
-        <td class="t-metric">${t.metric_start||''}</td>
-        <td class="t-plan">${t.metric_plan||''}</td>
-        <td class="t-fact ${t.fact?'done':'pending'}">${t.fact||'—'}</td>
-        <td style="color:var(--g2);font-size:10px">${t.time_spent||''}</td>
-      </tr>`;
-    }
+    // Compact preview — first 5 tasks, just name + fact
+    const previewRows = tasks.slice(0,5).filter(t=>t.name).map((t,i) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.04)">
+        <span style="font-size:12px;color:var(--t);font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px">${i+1}. ${t.name}</span>
+        <span style="font-size:11px;font-weight:600;flex-shrink:0;${t.fact?'color:var(--green)':'color:var(--amber)'}">${t.fact||'—'}</span>
+      </div>`).join('');
 
-    const thead = tasks.length ? `<thead><tr>
-      <th class="t-num">#</th>
-      <th class="t-name">Задача</th>
-      <th class="t-art">Арт./Кабинет</th>
-      <th class="t-metric">Метрика</th>
-      <th class="t-plan">Плановая</th>
-      <th class="t-fact">Факт</th>
-      <th>Время</th>
-    </tr></thead>` : '';
-
-    const visRows  = tasks.slice(0, LIMIT).map(taskRow).join('');
-    const hidRows  = hasMore ? tasks.slice(LIMIT).map((t,i) => taskRow(t, LIMIT+i)).join('') : '';
-
-    const tableHtml = tasks.length
-      ? `<div class="daily-tasks"><table class="task-table">
-          ${thead}
-          <tbody>${visRows}</tbody>
-          ${hasMore ? `<tbody id="th-${r.id}" style="display:none">${hidRows}</tbody>` : ''}
-        </table></div>`
-      : '<div style="padding:12px 14px;font-size:12px;color:var(--g2)">Нет задач</div>';
-
-    const expandBtn = hasMore
-      ? `<div class="daily-expand">
-          <button class="btn btn-ghost btn-sm" id="exp-btn-${r.id}" onclick="expandTasks('${r.id}')">
-            ＋${tasks.length - LIMIT} задач — развернуть
-          </button>
-          <span style="font-size:10px;color:var(--g2)">${tasks.length} задач всего</span>
-        </div>`
-      : (tasks.length ? `<div style="padding:4px 14px 8px;font-size:10px;color:var(--g2)">${tasks.length} задач</div>` : '');
+    const moreCount = tasks.filter(t=>t.name).length - 5;
 
     return `<div class="daily-card">
       <div class="daily-card-head">
@@ -874,13 +874,37 @@ function renderDailyGrid(reports) {
           <button class="btn btn-danger btn-sm" onclick="deleteDaily('${r.id}')">✕</button>
         </div>
       </div>
-      ${tableHtml}
-      ${expandBtn}
+
+      <!-- Progress bar -->
+      <div style="padding:8px 14px 0">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--g2);margin-bottom:4px">
+          <span>Выполнено: ${done}/${total} задач</span>
+          <span style="color:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)';}">${pct}%</span>
+        </div>
+        <div style="height:3px;background:var(--card2);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'};border-radius:2px;transition:width .3s"></div>
+        </div>
+      </div>
+
+      <!-- Compact task preview -->
+      <div style="padding:8px 14px">
+        ${previewRows || '<div style="font-size:12px;color:var(--g2);padding:4px 0">Нет задач</div>'}
+        ${moreCount > 0 ? `<div style="font-size:11px;color:var(--g2);padding-top:5px">+${moreCount} задач...</div>` : ''}
+      </div>
+
       ${r.notes ? `<div class="daily-notes">${r.notes}</div>` : ''}
+
+      <!-- Expand button -->
+      <div style="padding:8px 14px;border-top:0.5px solid var(--b)">
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick='openDailyView(${JSON.stringify(r).replace(/'/g,"&#39;")})'>
+          Развернуть полностью
+        </button>
+      </div>
     </div>`;
   }).join('');
 }
 
+function expandTasks(id) {
 function expandTasks(id) {
   const tbody = document.getElementById('th-'+id);
   const btn   = document.getElementById('exp-btn-'+id);
@@ -968,11 +992,51 @@ async function deleteDaily(id) {
 }
 
 // Закрытие модалок по клику вне
-['cab-modal','daily-modal'].forEach(id => {
+['cab-modal','daily-modal','daily-view-modal'].forEach(id => {
   document.getElementById(id).addEventListener('click', e => {
     if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
   });
 });
+
+function openDailyView(r) {
+  const tasks = r.tasks || [];
+  const done  = tasks.filter(t=>t.fact&&t.fact.trim()).length;
+  const total = tasks.filter(t=>t.name&&t.name.trim()).length;
+  const pct   = total ? Math.round(done/total*100) : 0;
+
+  document.getElementById('dv-date').textContent = fmtDateFull(r.report_date);
+  document.getElementById('dv-mgr').textContent  = r.manager_name;
+
+  // Progress
+  document.getElementById('dv-progress').innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--g2);margin-bottom:5px">
+      <span>Выполнено: <strong style="color:var(--t)">${done}</strong> из <strong style="color:var(--t)">${total}</strong> задач</span>
+      <span style="color:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'};font-weight:700">${pct}%</span>
+    </div>
+    <div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'};border-radius:2px"></div>
+    </div>`;
+
+  // Tasks table
+  const tbody = document.getElementById('dv-tasks');
+  tbody.innerHTML = tasks.filter(t=>t.name).map((t,i) => `
+    <tr style="${i%2===0?'':'background:rgba(255,255,255,.02)'}">
+      <td style="padding:7px 10px;color:var(--g2);font-size:11px;border-bottom:0.5px solid rgba(255,255,255,.04)">${i+1}</td>
+      <td style="padding:7px 10px;font-weight:500;color:var(--t);border-bottom:0.5px solid rgba(255,255,255,.04)">${t.name}</td>
+      <td style="padding:7px 10px;color:var(--g2);border-bottom:0.5px solid rgba(255,255,255,.04)">${t.article||''}</td>
+      <td style="padding:7px 10px;color:var(--g);border-bottom:0.5px solid rgba(255,255,255,.04)">${t.metric_start||''}</td>
+      <td style="padding:7px 10px;color:var(--g);border-bottom:0.5px solid rgba(255,255,255,.04)">${t.metric_plan||''}</td>
+      <td style="padding:7px 10px;font-weight:600;${t.fact?'color:var(--green)':'color:var(--amber)'};border-bottom:0.5px solid rgba(255,255,255,.04)">${t.fact||'—'}</td>
+      <td style="padding:7px 10px;color:var(--g2);font-size:11px;border-bottom:0.5px solid rgba(255,255,255,.04)">${t.time_spent||''}</td>
+    </tr>`).join('') || '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--g2)">Нет задач</td></tr>';
+
+  // Notes
+  const notesEl = document.getElementById('dv-notes');
+  if (r.notes) { notesEl.textContent = r.notes; notesEl.style.display = 'block'; }
+  else notesEl.style.display = 'none';
+
+  document.getElementById('daily-view-modal').classList.add('show');
+}
 
 // ── Переопределяем renderWeeks из app.js — в новом дашборде нет #wrow ──
 // Недели отображаются через renderPeriodsRow(), поэтому renderWeeks = no-op
