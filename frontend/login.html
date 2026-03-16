@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Вход — WB Аналитика</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--wb:#7C3AED;--wb2:rgba(124,58,237,0.09);--err:#DC2626}
+    body{font-family:'Onest',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f5f4f8}
+    .card{background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 8px 40px rgba(0,0,0,0.1)}
+    .logo{width:52px;height:52px;border-radius:14px;background:var(--wb);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;margin:0 auto 16px}
+    h1{font-size:22px;font-weight:700;text-align:center;color:#111;margin-bottom:6px}
+    .sub{font-size:13px;color:#888;text-align:center;margin-bottom:28px}
+    .field{margin-bottom:16px}
+    label{display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+    input{width:100%;border:1.5px solid #e0dde8;border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:#111;transition:border-color .15s;background:#fafafa}
+    input:focus{outline:none;border-color:var(--wb);background:#fff}
+    .btn{width:100%;background:var(--wb);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .15s;margin-top:8px}
+    .btn:hover{opacity:.88}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .error{background:#fef2f2;border:1px solid #fecaca;color:var(--err);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
+    .error.show{display:block}
+    .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;margin-right:8px;vertical-align:middle}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">WB</div>
+  <h1>Добро пожаловать</h1>
+  <p class="sub">Аналитика воронки продаж</p>
+
+  <div class="error" id="error-msg"></div>
+
+  <form id="login-form">
+    <div class="field">
+      <label>Логин</label>
+      <input type="text" id="username" placeholder="Введите логин" autocomplete="username" required>
+    </div>
+    <div class="field">
+      <label>Пароль</label>
+      <input type="password" id="password" placeholder="Введите пароль" autocomplete="current-password" required>
+    </div>
+    <button class="btn" type="submit" id="submit-btn">Войти</button>
+  </form>
+</div>
+
+<script>
+  const API = window.location.hostname === 'localhost'
+    ? 'http://localhost:3000/api'
+    : 'https://YOUR_RAILWAY_URL.railway.app/api'; // ← замените после деплоя
+
+  // Если уже авторизован — редирект
+  const token = localStorage.getItem('wb_token');
+  if (token) {
+    const user = JSON.parse(localStorage.getItem('wb_user') || '{}');
+    window.location.href = user.role === 'admin' ? 'admin.html' : 'dashboard.html';
+  }
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const err = document.getElementById('error-msg');
+    err.classList.remove('show');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Вход...';
+
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    try {
+      const res  = await fetch(`${API}/auth/login`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        err.textContent = data.error || 'Ошибка входа';
+        err.classList.add('show');
+        return;
+      }
+
+      localStorage.setItem('wb_token', data.token);
+      localStorage.setItem('wb_user',  JSON.stringify(data.user));
+
+      window.location.href = data.user.role === 'admin' ? 'admin.html' : 'dashboard.html';
+    } catch (e) {
+      err.textContent = 'Сервер недоступен. Проверьте подключение.';
+      err.classList.add('show');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Войти';
+    }
+  });
+</script>
+</body>
+</html>
