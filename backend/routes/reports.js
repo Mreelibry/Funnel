@@ -8,8 +8,8 @@ const router  = express.Router();
 const upload  = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 // ── Парсинг Excel файла WB ──
-function parseWBReport(buffer, filename) {
-  const wb   = XLSX.read(buffer, { type: 'buffer' });
+function parseWBReport(buffer) {
+  const wb     = XLSX.read(buffer, { type: 'buffer' });
   const result = { summary: null, goods: [], period_start: null, period_end: null };
 
   // Период из листа "Общая информация"
@@ -67,8 +67,7 @@ function parseWBReport(buffer, filename) {
   return result;
 }
 
-// ── GET /api/reports ──
-// Admin → все или по manager_id; Manager → только свои
+// ── GET /api/reports — включаем raw_data чтобы фронт мог строить таблицу ──
 router.get('/', authenticate, async (req, res) => {
   try {
     const { manager_id, date_from, date_to } = req.query;
@@ -77,7 +76,6 @@ router.get('/', authenticate, async (req, res) => {
     let   idx = 1;
 
     if (req.user.role !== 'admin') {
-      // Менеджер видит только свои отчёты
       conditions.push(`r.manager_id = $${idx++}`);
       values.push(req.user.manager_id);
     } else if (manager_id) {
@@ -96,7 +94,8 @@ router.get('/', authenticate, async (req, res) => {
               r.impressions, r.clicks, r.ctr, r.added_to_cart,
               r.ordered_qty, r.bought_qty, r.cancelled_qty,
               r.conv_to_cart, r.conv_to_order, r.buyout_rate,
-              r.revenue, r.avg_price, r.created_at
+              r.revenue, r.avg_price, r.created_at,
+              r.raw_data
        FROM reports r
        JOIN managers m ON m.id = r.manager_id
        ${where}
@@ -110,7 +109,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-// ── GET /api/reports/:id ── детальный отчёт с raw_data
+// ── GET /api/reports/:id ──
 router.get('/:id', authenticate, async (req, res) => {
   try {
     const result = await db.query(
@@ -121,28 +120,23 @@ router.get('/:id', authenticate, async (req, res) => {
     );
     const report = result.rows[0];
     if (!report) return res.status(404).json({ error: 'Отчёт не найден' });
-
-    // Менеджер не может смотреть чужие отчёты
     if (req.user.role !== 'admin' && report.manager_id !== req.user.manager_id) {
       return res.status(403).json({ error: 'Доступ запрещён' });
     }
-
     res.json(report);
   } catch (err) {
     res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
-// ── POST /api/reports — загрузить Excel отчёт ──
+// ── POST /api/reports — загрузить Excel ──
 router.post('/', authenticate, upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'Файл не загружен' });
   }
 
-  // Определяем manager_id
   let managerId = req.body.manager_id;
   if (req.user.role !== 'admin') {
-    // Менеджер может загружать только для себя
     managerId = req.user.manager_id;
   }
   if (!managerId) {
@@ -150,11 +144,22 @@ router.post('/', authenticate, upload.single('file'), async (req, res) => {
   }
 
   try {
-    // Парсим файл
-    const parsed = parseWBReport(req.file.buffer, req.file.originalname);
-    const s = parsed.summary || {};
+    const parsed = parseWBReport(req.file.buffer);
+    const s      = parsed.summary || {};
+    const v      = (key) => parseFloat(s[key]) || 0;
 
-    const v = (key, fallback = 0) => parseFloat(s[key]) || fallback;
+    // Имя файла — декодируем из latin1 в utf8 если нужно
+    let filename = req.file.originalname;
+    try {
+      // Multer иногда получает имя в latin1, декодируем
+      filename = Buffer.from(filename, 'latin1').toString('utf8');
+      // Проверяем — если после декодирования нет кириллицы, оставляем оригинал
+      if (!/[а-яА-ЯёЁ]/.test(filename) && /[а-яА-ЯёЁ]/.test(req.file.originalname)) {
+        filename = req.file.originalname;
+      }
+    } catch(e) {
+      filename = req.file.originalname;
+    }
 
     await db.query(
       `INSERT INTO reports
@@ -163,13 +168,12 @@ router.post('/', authenticate, upload.single('file'), async (req, res) => {
          ordered_qty, bought_qty, cancelled_qty,
          conv_to_cart, conv_to_order, buyout_rate,
          revenue, avg_price, raw_data)
-       VALUES
-        ($1,$2,$3,$4, $5,$6,$7,$8, $9,$10,$11, $12,$13,$14, $15,$16,$17)`,
+       VALUES ($1,$2,$3,$4, $5,$6,$7,$8, $9,$10,$11, $12,$13,$14, $15,$16,$17)`,
       [
         managerId,
-        parsed.period_start || new Date().toISOString().slice(0, 10),
-        parsed.period_end   || new Date().toISOString().slice(0, 10),
-        req.file.originalname,
+        parsed.period_start || new Date().toISOString().slice(0,10),
+        parsed.period_end   || new Date().toISOString().slice(0,10),
+        filename,
         v('Показы'),
         v('Переходы в карточку'),
         v('CTR'),
@@ -187,18 +191,22 @@ router.post('/', authenticate, upload.single('file'), async (req, res) => {
     );
 
     await db.query(
-      'INSERT INTO logs (user_id, action, details) VALUES ($1, $2, $3)',
-      [req.user.id, 'upload_report', `Загружен отчёт ${req.file.originalname} для менеджера ${managerId}`]
+      'INSERT INTO logs (user_id, action, details) VALUES ($1,$2,$3)',
+      [req.user.id, 'upload_report', `Загружен ${filename}`]
     );
 
-    res.status(201).json({ success: true, period_start: parsed.period_start, period_end: parsed.period_end });
+    res.status(201).json({
+      success:      true,
+      period_start: parsed.period_start,
+      period_end:   parsed.period_end
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Ошибка при обработке файла' });
   }
 });
 
-// ── DELETE /api/reports/:id (только admin) ──
+// ── DELETE /api/reports/:id ──
 router.delete('/:id', authenticate, async (req, res) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Доступ запрещён' });
