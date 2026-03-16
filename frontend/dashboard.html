@@ -5,37 +5,148 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Дашборд — WB Аналитика</title>
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
   <style>
-    /* Дополнения для авторизованного дашборда */
-    nav{background:#fff;border-bottom:1px solid rgba(0,0,0,.08);padding:0 16px;display:flex;align-items:center;gap:10px;height:50px;position:sticky;top:0;z-index:50}
-    .nav-logo{width:28px;height:28px;border-radius:7px;background:#7C3AED;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;flex-shrink:0}
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --wb:#8B5CF6;--wb2:rgba(139,92,246,0.1);--wb3:rgba(139,92,246,0.2);
+      --green:#22C55E;--red:#EF4444;
+      --t:#F1F0F5;--g:#9CA3AF;--g2:#6B7280;
+      --bg:#1A1825;--card:#231F35;--card2:#2D2845;
+      --b:rgba(255,255,255,0.08);--b2:rgba(255,255,255,0.14)
+    }
+    body{font-family:'Onest',sans-serif;background:var(--bg);color:var(--t);min-height:100vh}
+
+    /* NAV */
+    nav{background:var(--card);border-bottom:1px solid var(--b);padding:0 16px;display:flex;align-items:center;gap:10px;height:50px;position:sticky;top:0;z-index:50}
+    .nav-logo{width:28px;height:28px;border-radius:7px;background:var(--wb);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;flex-shrink:0}
     .nav-title{font-size:14px;font-weight:700;color:var(--t)}
     .nav-links{display:flex;gap:2px;margin-left:8px}
     .nav-link{padding:4px 11px;border-radius:8px;font-size:12px;color:var(--g);text-decoration:none;transition:background .15s}
-    .nav-link:hover,.nav-link.active{background:#7C3AED15;color:#7C3AED;font-weight:500}
+    .nav-link:hover,.nav-link.active{background:var(--wb2);color:var(--wb);font-weight:500}
     .nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
     .nav-username{font-size:12px;color:var(--g)}
-    .btn-logout{border:none;background:none;cursor:pointer;font-size:12px;color:#DC2626;font-family:inherit}
+    .btn-logout{border:none;background:none;cursor:pointer;font-size:12px;color:var(--red);font-family:inherit}
 
-    /* Manager selector */
-    .mgr-select{border:0.5px solid rgba(0,0,0,.15);border-radius:8px;padding:4px 10px;font-size:12px;font-family:inherit;color:var(--t);background:var(--bg);min-width:140px}
+    /* SELECTS */
+    select{border:0.5px solid var(--b2);border-radius:8px;padding:5px 10px;font-size:12px;font-family:inherit;color:var(--t);background:var(--card2);min-width:140px}
+    select:focus{outline:none;border-color:var(--wb)}
+    select option{background:var(--card2)}
 
-    /* Upload section */
-    .upload-section{background:#fff;border-radius:14px;border:0.5px solid rgba(0,0,0,.08);padding:16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-    .upload-section h3{font-size:13px;font-weight:600;margin-bottom:2px}
+    /* MAIN */
+    #app{padding:14px 16px;max-width:1400px;margin:0 auto}
+
+    /* UPLOAD */
+    .upload-section{background:var(--card);border-radius:14px;border:0.5px solid var(--b);padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .upload-section h3{font-size:13px;font-weight:600;color:var(--t);margin-bottom:2px}
     .upload-section p{font-size:11px;color:var(--g)}
     .upload-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .btn-upload{display:inline-flex;align-items:center;gap:6px;background:#7C3AED;color:#fff;border:none;padding:8px 16px;border-radius:9px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;position:relative}
+    .btn-upload{display:inline-flex;align-items:center;gap:6px;background:var(--wb);color:#fff;border:none;padding:8px 16px;border-radius:9px;font-size:13px;font-family:inherit;font-weight:600;cursor:pointer;position:relative;transition:opacity .15s}
+    .btn-upload:hover{opacity:.87}
     .btn-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}
     .upload-status{font-size:12px;color:var(--g)}
-    .upload-status.ok{color:#16A34A}
-    .upload-status.err{color:#DC2626}
+    .upload-status.ok{color:var(--green)}
+    .upload-status.err{color:var(--red)}
+
+    /* REPORTS TABLE */
+    .reports-card{background:var(--card);border-radius:12px;border:0.5px solid var(--b);overflow:hidden;margin-bottom:14px}
+    .reports-head{padding:10px 16px;border-bottom:0.5px solid var(--b);font-size:12px;font-weight:600;color:var(--g);display:flex;justify-content:space-between;align-items:center}
+    .reports-table{width:100%;border-collapse:collapse;font-size:12px}
+    .reports-table th{background:var(--card2);padding:7px 14px;text-align:left;font-weight:600;font-size:11px;color:var(--g);border-bottom:0.5px solid var(--b)}
+    .reports-table td{padding:8px 14px;border-bottom:0.5px solid var(--b);color:var(--t)}
+    .reports-table tr:last-child td{border-bottom:none}
+    .reports-table tr:hover td{background:var(--wb2)}
+    .btn-del{border:none;background:rgba(239,68,68,.15);color:var(--red);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit}
+    .btn-del:hover{background:rgba(239,68,68,.25)}
+
+    /* WEEK PILLS */
+    .wbar{display:flex;flex-wrap:wrap;gap:6px;padding:0 0 10px;align-items:center}
+    .wlabel{font-size:10px;font-weight:600;color:var(--g2);text-transform:uppercase;letter-spacing:.05em;margin-right:2px}
+    .wpill{border:0.5px solid var(--b2);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--g);cursor:pointer;background:var(--card2);transition:all .15s;display:flex;align-items:center;gap:4px;white-space:nowrap;user-select:none}
+    .wpill.on{background:var(--wb);color:#fff;border-color:var(--wb)}
+    .wpill .x{font-size:10px;opacity:.7}
+
+    /* TABS */
+    .tabs{display:flex;gap:1px;border-bottom:1px solid var(--b);margin-bottom:12px;overflow-x:auto}
+    .tab{padding:7px 16px;font-size:13px;font-family:inherit;border:none;background:none;color:var(--g);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:color .15s}
+    .tab.on{color:var(--wb);border-bottom-color:var(--wb);font-weight:600}
+    .tbody{padding:4px 0}
+    .slabel{font-size:10px;font-weight:600;color:var(--g2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+
+    /* CHIPS */
+    .chips-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+    .chip{border:1.5px solid var(--b2);border-radius:9px;padding:5px 13px;font-size:12px;font-weight:500;cursor:pointer;background:var(--card2);color:var(--g);transition:all .15s;user-select:none;font-family:inherit;line-height:1.4}
+    .chip:hover{border-color:var(--wb);color:var(--wb)}
+    .chip.on{background:var(--wb)!important;border-color:var(--wb)!important;color:#fff!important;font-weight:600}
+
+    /* SUMMARY */
+    .grp{margin-bottom:16px}
+    .srow{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:7px}
+    .sc{background:var(--card);border-radius:10px;padding:11px 13px;border:0.5px solid var(--b)}
+    .sc-lbl{font-size:10px;color:var(--g);margin-bottom:4px;line-height:1.3}
+    .sc-val{font-size:18px;font-weight:700;color:var(--t);line-height:1}
+    .sc-sub{font-size:10px;color:var(--g2);margin-top:3px}
+    .sc-delta{font-size:11px;margin-top:3px;font-weight:600}
+    .pos{color:var(--green)}.neg{color:var(--red)}.neu{color:var(--g)}
+
+    /* CHARTS */
+    .cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+    .cc{background:var(--card);border:0.5px solid var(--b);border-radius:12px;padding:14px}
+    .cc-t{font-size:12px;font-weight:600;color:var(--t);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
+    .cc-leg{display:flex;gap:10px;font-size:10px;color:var(--g)}
+    .cc-leg span{display:flex;align-items:center;gap:4px}
+    .ch-w{position:relative;height:130px}
+
+    /* GOODS */
+    .goods-layout{display:flex;gap:12px;align-items:flex-start}
+    .filter-panel{width:210px;flex-shrink:0;background:var(--card);border-radius:12px;border:0.5px solid var(--b);overflow:hidden}
+    .fp-header{padding:9px 12px;border-bottom:0.5px solid var(--b);display:flex;align-items:center;justify-content:space-between}
+    .fp-title{font-size:12px;font-weight:700;color:var(--t);display:flex;align-items:center;gap:7px}
+    .fp-badge{background:var(--wb);color:#fff;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700}
+    .fp-clear{font-size:11px;color:var(--wb);background:none;border:none;cursor:pointer;font-family:inherit}
+    .fp-search{padding:7px 10px;border-bottom:0.5px solid var(--b);position:relative}
+    .fp-search input{width:100%;border:0.5px solid var(--b2);border-radius:8px;padding:5px 28px 5px 10px;font-size:11px;font-family:inherit;background:var(--card2);color:var(--t)}
+    .fp-search input:focus{outline:none;border-color:var(--wb)}
+    .fp-ico{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--g2);pointer-events:none}
+    .fp-selall{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:0.5px solid var(--b);cursor:pointer;font-size:11px;font-weight:500;color:var(--g);user-select:none;transition:background .12s}
+    .fp-selall:hover{background:var(--wb2)}
+    .fp-list{max-height:320px;overflow-y:auto}
+    .fp-list::-webkit-scrollbar{width:3px}
+    .fp-list::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
+    .fp-item{display:flex;align-items:center;gap:9px;padding:7px 12px;cursor:pointer;transition:background .1s;user-select:none}
+    .fp-item:hover{background:var(--wb2)}
+    .fp-cb{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--b2);flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--card2);transition:all .1s}
+    .fp-cb.on{background:var(--wb);border-color:var(--wb)}
+    .fp-cb-tick{color:#fff;font-size:9px;font-weight:700;display:none}
+    .fp-cb.on .fp-cb-tick{display:block}
+    .fp-art{font-size:11px;font-weight:500;color:var(--t);line-height:1.3}
+    .fp-wb{font-size:10px;color:var(--g2)}
+    .goods-right{flex:1;min-width:0}
+    .twrap{overflow-x:auto;border-radius:10px;border:0.5px solid var(--b)}
+    table{width:100%;border-collapse:collapse;font-size:11px;min-width:400px}
+    thead th{background:var(--card2);padding:7px 10px;text-align:left;font-weight:600;color:var(--g);border-bottom:0.5px solid var(--b);white-space:nowrap;user-select:none;position:relative}
+    thead th.draggable{cursor:grab}
+    thead th.drag-over{background:var(--wb3);border-left:2px solid var(--wb)}
+    thead th.dragging{opacity:.35}
+    .sort-btn{cursor:pointer;margin-left:3px;font-size:10px;color:var(--g2);background:none;border:none;font-family:inherit;padding:0}
+    .sort-btn:hover{color:var(--wb)}
+    tbody td{padding:7px 10px;border-bottom:0.5px solid var(--b);color:var(--t);vertical-align:middle;white-space:nowrap}
+    tbody tr:last-child td{border-bottom:none}
+    tbody tr:hover td{background:var(--wb2)}
+    td.art-cell{font-weight:700;color:var(--wb);font-size:11px;vertical-align:top;padding-top:10px}
+    td.name-cell{vertical-align:top;padding-top:10px;max-width:140px;overflow:hidden;text-overflow:ellipsis;color:var(--g)}
+    .wk-lbl{display:inline-block;background:var(--card2);border:0.5px solid var(--b2);border-radius:6px;padding:2px 8px;font-size:10px;color:var(--g);font-weight:500;white-space:nowrap}
+    .tag{display:inline-flex;align-items:center;gap:1px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:4px;white-space:nowrap}
+    .tag.up{background:rgba(34,197,94,.15);color:var(--green)}
+    .tag.dn{background:rgba(239,68,68,.15);color:var(--red)}
+    .tag.zero{background:var(--card2);color:var(--g2);font-weight:500}
+    .sep-row td{background:var(--bg);height:3px;padding:0;border:none}
+    .empty{text-align:center;padding:28px;color:var(--g);font-size:13px}
+
+    @media(max-width:600px){.goods-layout{flex-direction:column}.filter-panel{width:100%}}
   </style>
 </head>
 <body>
 
-<!-- Nav -->
 <nav>
   <div class="nav-logo">WB</div>
   <div class="nav-title">Воронка продаж</div>
@@ -44,8 +155,7 @@
     <a class="nav-link" href="admin.html" id="admin-link" style="display:none">Управление</a>
   </div>
   <div class="nav-right">
-    <!-- Выбор менеджера (только для admin) -->
-    <select class="mgr-select" id="mgr-select" style="display:none" onchange="onManagerChange()">
+    <select id="mgr-select" style="display:none" onchange="onManagerChange()">
       <option value="">Все менеджеры</option>
     </select>
     <span class="nav-username" id="nav-username">—</span>
@@ -53,16 +163,15 @@
   </div>
 </nav>
 
-<div id="app" style="padding:12px 14px">
-
-  <!-- Upload section -->
+<div id="app">
+  <!-- Upload -->
   <div class="upload-section" id="upload-section">
     <div>
       <h3>Загрузить отчёт</h3>
       <p>Файл «Воронка продаж» из кабинета WB · Excel</p>
     </div>
     <div class="upload-right">
-      <select class="mgr-select" id="upload-mgr-select" style="display:none">
+      <select id="upload-mgr-select" style="display:none">
         <option value="">— выберите менеджера —</option>
       </select>
       <button class="btn-upload">
@@ -73,16 +182,16 @@
     </div>
   </div>
 
-  <!-- History of loaded reports -->
-  <div id="reports-list" style="margin-bottom:14px"></div>
+  <!-- Reports list -->
+  <div id="reports-list"></div>
 
-  <!-- Weeks selector (from DB reports) -->
+  <!-- Week selector -->
   <div class="wbar" id="wbar" style="display:none">
     <span class="wlabel">Периоды:</span>
     <div id="wrow"></div>
   </div>
 
-  <!-- Tabs & content (same as existing dashboard) -->
+  <!-- Dashboard content -->
   <div id="main-content" style="display:none">
     <div class="tabs">
       <button class="tab on" onclick="switchTab('summary',this)">Сводка</button>
@@ -95,11 +204,13 @@
       <div class="chips-row" id="chips-s"></div>
       <div id="scards"></div>
     </div>
+
     <div class="tbody" id="tab-charts" style="display:none">
       <div class="slabel">Метрики для графиков</div>
       <div class="chips-row" id="chips-c"></div>
       <div class="cgrid" id="cgrid"></div>
     </div>
+
     <div class="tbody" id="tab-goods" style="display:none">
       <div class="slabel">Столбцы</div>
       <div class="chips-row" id="chips-g"></div>
@@ -124,18 +235,14 @@
     </div>
   </div>
 
-  <div class="empty" id="empty-state">
-    Загрузите первый отчёт чтобы начать
-  </div>
+  <div class="empty" id="empty-state">Загрузите первый отчёт чтобы начать</div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="api.js"></script>
 <script src="app.js"></script>
 <script>
-// ── Инициализация авторизованного дашборда ──
 requireAuth();
-
 const user = getUser();
 document.getElementById('nav-username').textContent = user?.username || '—';
 
@@ -148,7 +255,19 @@ if (user?.role === 'admin') {
 let selectedManagerId = user?.role === 'manager' ? user.manager_id : null;
 let reportsFromDB = [];
 
-// Загружаем менеджеров в селект
+// Форматирование даты из ISO в читаемый вид
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  return dd+'.'+mm;
+}
+
+function fmtPeriod(start, end) {
+  return fmtDate(start) + ' — ' + fmtDate(end);
+}
+
 async function loadManagers() {
   try {
     const managers = await API.get('/managers');
@@ -158,7 +277,6 @@ async function loadManagers() {
       sel.innerHTML  += `<option value="${m.id}">${m.name}</option>`;
       sel2.innerHTML += `<option value="${m.id}">${m.name}</option>`;
     });
-    // Менеджер — автоматически выбираем себя
     if (user?.role === 'manager' && user.manager_id) {
       sel2.value = user.manager_id;
     }
@@ -170,10 +288,9 @@ function onManagerChange() {
   loadReports();
 }
 
-// Загружаем отчёты из БД
 async function loadReports() {
   try {
-    const query  = selectedManagerId ? `?manager_id=${selectedManagerId}` : '';
+    const query = selectedManagerId ? `?manager_id=${selectedManagerId}` : '';
     reportsFromDB = await API.get(`/reports${query}`);
     renderReportsList();
     buildWeeksFromDB();
@@ -184,27 +301,24 @@ function renderReportsList() {
   const el = document.getElementById('reports-list');
   if (!reportsFromDB.length) { el.innerHTML = ''; return; }
   el.innerHTML = `
-    <div style="background:#fff;border-radius:12px;border:0.5px solid rgba(0,0,0,.08);overflow:hidden">
-      <div style="padding:10px 16px;border-bottom:0.5px solid rgba(0,0,0,.06);font-size:12px;font-weight:600;color:#666;display:flex;justify-content:space-between;align-items:center">
+    <div class="reports-card">
+      <div class="reports-head">
         <span>Загруженные отчёты (${reportsFromDB.length})</span>
       </div>
       <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead><tr style="background:#f5f4f8">
-            <th style="padding:7px 14px;text-align:left;color:#888;font-weight:600">Период</th>
-            <th style="padding:7px 14px;text-align:left;color:#888;font-weight:600">Менеджер</th>
-            <th style="padding:7px 14px;text-align:left;color:#888;font-weight:600">Файл</th>
-            <th style="padding:7px 14px;text-align:left;color:#888;font-weight:600">Загружен</th>
-            ${user?.role === 'admin' ? '<th style="padding:7px 14px;text-align:left;color:#888;font-weight:600">Действия</th>' : ''}
+        <table class="reports-table">
+          <thead><tr>
+            <th>Период</th><th>Менеджер</th><th>Файл</th><th>Загружен</th>
+            ${user?.role==='admin'?'<th>Действия</th>':''}
           </tr></thead>
           <tbody>
             ${reportsFromDB.map(r => `
-              <tr style="border-top:0.5px solid rgba(0,0,0,.05)">
-                <td style="padding:8px 14px;font-weight:500">${r.period_start} — ${r.period_end}</td>
-                <td style="padding:8px 14px;color:#7C3AED;font-weight:500">${r.manager_name}</td>
-                <td style="padding:8px 14px;color:#888">${r.filename || '—'}</td>
-                <td style="padding:8px 14px;color:#888">${new Date(r.created_at).toLocaleDateString('ru')}</td>
-                ${user?.role === 'admin' ? `<td style="padding:8px 14px"><button onclick="deleteReport('${r.id}')" style="border:none;background:rgba(220,38,38,.1);color:#DC2626;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit">Удалить</button></td>` : ''}
+              <tr>
+                <td style="font-weight:500;color:var(--wb)">${fmtPeriod(r.period_start, r.period_end)}</td>
+                <td style="color:var(--t)">${r.manager_name}</td>
+                <td style="color:var(--g);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.filename||'—'}</td>
+                <td style="color:var(--g2);font-size:11px">${new Date(r.created_at).toLocaleDateString('ru')}</td>
+                ${user?.role==='admin'?`<td><button class="btn-del" onclick="deleteReport('${r.id}')">Удалить</button></td>`:''}
               </tr>
             `).join('')}
           </tbody>
@@ -214,18 +328,17 @@ function renderReportsList() {
 }
 
 function buildWeeksFromDB() {
-  // Конвертируем отчёты из БД в формат S.weeks для существующего дашборда
   if (!reportsFromDB.length) {
-    document.getElementById('wbar').style.display        = 'none';
+    document.getElementById('wbar').style.display         = 'none';
     document.getElementById('main-content').style.display = 'none';
     document.getElementById('empty-state').style.display  = 'block';
     return;
   }
 
   S.weeks = reportsFromDB.map(r => ({
-    label: `${r.period_start?.slice(5).replace('-','.')} — ${r.period_end?.slice(5).replace('-','.')}`,
+    label:   fmtPeriod(r.period_start, r.period_end),
     summary: buildSummaryFromReport(r),
-    goods:   r.raw_data?.goods ? { h: Object.keys(r.raw_data.goods[0] || {}), rows: r.raw_data.goods.map(g => Object.values(g)) } : { h:[], rows:[] }
+    goods:   buildGoodsFromReport(r)
   }));
 
   S.selW = S.weeks.map(w => w.label);
@@ -239,21 +352,30 @@ function buildWeeksFromDB() {
 }
 
 function buildSummaryFromReport(r) {
+  const raw = r.raw_data?.summary || {};
   return {
-    'Показы':                       r.impressions,
-    'CTR':                          r.ctr,
-    'Переходы в карточку':          r.clicks,
-    'Положили в корзину':           r.added_to_cart,
-    'Заказали, шт':                 r.ordered_qty,
-    'Выкупили, шт':                 r.bought_qty,
-    'Отменили, шт':                 r.cancelled_qty,
-    'Конверсия в корзину, %':       r.conv_to_cart,
-    'Конверсия в заказ, %':         r.conv_to_order,
-    'Процент выкупа':               r.buyout_rate,
-    'Заказали на сумму, ⃀':        r.revenue,
-    'Средняя цена, ⃀':             r.avg_price,
-    ...(r.raw_data?.summary || {})
+    'Показы':                   r.impressions   ?? raw['Показы'],
+    'CTR':                      r.ctr           ?? raw['CTR'],
+    'Переходы в карточку':      r.clicks        ?? raw['Переходы в карточку'],
+    'Положили в корзину':       r.added_to_cart ?? raw['Положили в корзину'],
+    'Заказали, шт':             r.ordered_qty   ?? raw['Заказали, шт'],
+    'Выкупили, шт':             r.bought_qty    ?? raw['Выкупили, шт'],
+    'Отменили, шт':             r.cancelled_qty ?? raw['Отменили, шт'],
+    'Конверсия в корзину, %':   r.conv_to_cart  ?? raw['Конверсия в корзину, %'],
+    'Конверсия в заказ, %':     r.conv_to_order ?? raw['Конверсия в заказ, %'],
+    'Процент выкупа':           r.buyout_rate   ?? raw['Процент выкупа'],
+    'Заказали на сумму, ⃀':    r.revenue       ?? raw['Заказали на сумму, ⃀'],
+    'Средняя цена, ⃀':         r.avg_price     ?? raw['Средняя цена, ⃀'],
+    ...raw
   };
+}
+
+function buildGoodsFromReport(r) {
+  const goods = r.raw_data?.goods;
+  if (!goods || !goods.length) return { h: [], rows: [] };
+  const h = Object.keys(goods[0]);
+  const rows = goods.map(g => h.map(k => g[k]));
+  return { h, rows };
 }
 
 async function uploadReport() {
@@ -266,8 +388,8 @@ async function uploadReport() {
     : user.manager_id;
 
   if (user?.role === 'admin' && !mgrId) {
-    document.getElementById('upload-status').textContent  = 'Выберите менеджера';
-    document.getElementById('upload-status').className    = 'upload-status err';
+    document.getElementById('upload-status').textContent = 'Выберите менеджера';
+    document.getElementById('upload-status').className   = 'upload-status err';
     return;
   }
 
@@ -280,7 +402,7 @@ async function uploadReport() {
 
   try {
     const res = await API.upload('/reports', fd);
-    statusEl.textContent = `✓ Загружен: ${res.period_start} — ${res.period_end}`;
+    statusEl.textContent = `✓ ${fmtDate(res.period_start)} — ${fmtDate(res.period_end)}`;
     statusEl.className   = 'upload-status ok';
     input.value = '';
     loadReports();
@@ -298,7 +420,6 @@ async function deleteReport(id) {
   } catch(e) { alert('Ошибка: ' + e.message); }
 }
 
-// Инициализация
 loadManagers();
 loadReports();
 </script>
