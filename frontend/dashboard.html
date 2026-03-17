@@ -336,9 +336,6 @@
       <div style="font-size:12px;color:var(--g);margin-top:2px">Задачи и выполнение по дням</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <select id="daily-mgr-filter" style="display:none" onchange="loadDailyReports()">
-        <option value="">Все менеджеры</option>
-      </select>
       <div class="date-range">
         <input type="date" id="daily-from">
         <span>—</span>
@@ -874,7 +871,6 @@ if (user?.role === 'admin') {
   document.getElementById('nav-cabinets').style.display = 'block';
   document.getElementById('mgr-select').style.display = 'block';
   document.getElementById('upload-mgr').style.display = 'block';
-  document.getElementById('daily-mgr-filter').style.display = 'block';
   document.getElementById('cab-mgr-field').style.display = 'block';
   document.getElementById('dr-mgr-field').style.display = 'block';
 }
@@ -926,11 +922,10 @@ async function loadManagers() {
     allManagers = await API.get('/managers');
     const sel  = document.getElementById('mgr-select');
     const selU = document.getElementById('upload-mgr');
-    const selD = document.getElementById('daily-mgr-filter');
     const selC = document.getElementById('cab-mgr-select');
     const selDR= document.getElementById('dr-mgr');
     allManagers.forEach(m => {
-      [sel,selU,selD,selC,selDR].forEach(s => {
+      [sel,selU,selC,selDR].forEach(s => {
         s.innerHTML += `<option value="${m.id}">${m.name}</option>`;
       });
     });
@@ -956,6 +951,7 @@ function onManagerChange() {
   selectedManagerId = document.getElementById('mgr-select').value || null;
   loadCabinetsForUpload();
   loadReports();
+  loadDailyReports();
 }
 
 // ── REPORTS ──
@@ -1244,7 +1240,7 @@ let editingDailyId = null;
 
 async function loadDailyReports() {
   try {
-    const mgrId = document.getElementById('daily-mgr-filter').value || '';
+    const mgrId = selectedManagerId || '';
     const from  = document.getElementById('daily-from').value || '';
     const to    = document.getElementById('daily-to').value   || '';
     let q = '?limit=50';
