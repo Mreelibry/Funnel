@@ -60,12 +60,9 @@
 
     /* PERIOD PILLS */
     .periods-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
-    .period-pill{border:0.5px solid var(--b2);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--g);cursor:grab;background:var(--card2);transition:background .15s,border-color .15s,opacity .15s;display:flex;align-items:center;gap:4px;user-select:none;white-space:nowrap}
-    .period-pill:active{cursor:grabbing}
+    .period-pill{border:0.5px solid var(--b2);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--g);cursor:pointer;background:var(--card2);transition:all .15s;display:flex;align-items:center;gap:4px;user-select:none;white-space:nowrap}
     .period-pill.on{background:var(--wb);color:#fff;border-color:var(--wb)}
-    .period-pill .px{font-size:10px;opacity:.7;cursor:pointer}
-    .period-pill.dragging{opacity:.35}
-    .period-pill.drag-over{border-color:var(--wb);box-shadow:2px 0 0 var(--wb)}
+    .period-pill .px{font-size:10px;opacity:.7}
 
     /* UPLOAD SECTION */
     .upload-section{background:var(--card);border-radius:14px;border:0.5px solid var(--b);padding:14px 16px;margin-bottom:14px}
@@ -163,31 +160,24 @@
     .sep-row td{background:var(--bg);height:3px;padding:0;border:none}
 
     /* DAILY REPORTS */
-    .daily-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(520px,1fr));gap:12px}
-    .daily-card{background:var(--card);border-radius:14px;border:0.5px solid var(--b);overflow:hidden;transition:border-color .15s;min-width:0}
+    .daily-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+    .daily-card{background:var(--card);border-radius:14px;border:0.5px solid var(--b);overflow:hidden;transition:border-color .15s}
     .daily-card:hover{border-color:var(--b2)}
     .daily-card-head{padding:12px 14px;border-bottom:0.5px solid var(--b);display:flex;align-items:center;justify-content:space-between}
     .daily-date{font-size:13px;font-weight:600;color:var(--t)}
     .daily-mgr{font-size:11px;color:var(--wb);font-weight:500;margin-top:1px}
     .daily-actions{display:flex;gap:6px}
     .daily-tasks{padding:10px 14px}
-    .daily-tasks{padding:10px 14px 6px;overflow-x:auto}
-    .task-table{width:100%;border-collapse:collapse;font-size:11.5px;min-width:500px}
-    .task-table th{color:var(--g2);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;padding:0 8px 6px;text-align:left;border-bottom:0.5px solid var(--b2);white-space:nowrap}
-    .task-table td{padding:6px 8px;border-bottom:0.5px solid rgba(255,255,255,.04);vertical-align:top;color:var(--t)}
-    .task-table tr:last-child td{border-bottom:none}
-    .task-table tr:hover td{background:var(--wb2)}
-    .task-table .t-num{color:var(--g2);font-size:10px;width:24px}
-    .task-table .t-name{font-weight:500;min-width:120px}
-    .task-table .t-art{color:var(--g2);min-width:80px}
-    .task-table .t-metric{color:var(--g);min-width:70px}
-    .task-table .t-plan{color:var(--g);min-width:70px}
-    .task-table .t-fact{min-width:60px}
-    .task-table .t-time{color:var(--g2);font-size:10px;min-width:70px}
-    .t-fact.done{color:var(--green);font-weight:600}
-    .t-fact.pending{color:var(--amber)}
+    .task-row{display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--b);font-size:12px}
+    .task-row:last-child{border-bottom:none}
+    .task-num{color:var(--g2);font-size:10px;min-width:16px;padding-top:1px}
+    .task-name{flex:1;color:var(--t);font-weight:500}
+    .task-art{color:var(--g2);font-size:11px;min-width:80px}
+    .task-metric{color:var(--g);font-size:11px;min-width:60px}
+    .task-fact{font-size:11px;min-width:60px}
+    .task-fact.done{color:var(--green)}
+    .task-fact.pending{color:var(--amber)}
     .daily-notes{padding:8px 14px;font-size:12px;color:var(--g);border-top:0.5px solid var(--b);font-style:italic}
-    .daily-expand{padding:6px 14px;border-top:0.5px solid var(--b);display:flex;align-items:center;justify-content:space-between}
 
     /* MODAL */
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200;padding:16px}
@@ -271,14 +261,18 @@
   <div id="reports-list" style="margin-bottom:14px"></div>
 
   <!-- Filter bar -->
-  <div class="filter-bar" id="filter-bar" style="display:none;flex-wrap:wrap;gap:8px;align-items:center">
-    <span class="filter-label">Кабинет:</span>
+  <div class="filter-bar" id="filter-bar" style="display:none">
+    <span class="filter-label">Период:</span>
+    <div class="periods-row" id="periods-row"></div>
     <select id="funnel-cab-filter" style="font-size:11px;padding:4px 8px" onchange="onCabinetFilter()">
       <option value="">Все кабинеты</option>
     </select>
-    <span class="filter-label" style="margin-left:8px">Периоды:</span>
-    <div class="periods-row" id="periods-row" style="margin:0"></div>
-    <button class="btn btn-ghost btn-sm" onclick="resetAllFilters()">Сбросить всё</button>
+    <div class="date-range">
+      <input type="date" id="date-from" onchange="onDateFilter()">
+      <span>—</span>
+      <input type="date" id="date-to" onchange="onDateFilter()">
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="resetDateFilter()">Сбросить</button>
   </div>
 
   <!-- Dashboard -->
@@ -339,6 +333,9 @@
       <select id="daily-mgr-filter" style="display:none" onchange="loadDailyReports()">
         <option value="">Все менеджеры</option>
       </select>
+      <select id="daily-cab-filter" onchange="loadDailyReports()">
+        <option value="">Все кабинеты</option>
+      </select>
       <div class="date-range">
         <input type="date" id="daily-from">
         <span>—</span>
@@ -377,42 +374,6 @@
       <button class="btn btn-ghost" onclick="closeCabModal()">Отмена</button>
       <button class="btn btn-primary" onclick="saveCabinet()">Создать</button>
     </div>
-  </div>
-</div>
-
-<!-- ═══ MODAL: Полный просмотр отчёта ═══ -->
-<div class="overlay" id="daily-view-modal" style="align-items:flex-start;padding:20px;overflow-y:auto">
-  <div class="modal" style="max-width:800px;width:100%;margin:auto">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
-      <div>
-        <div style="font-size:18px;font-weight:700;color:var(--t)" id="dv-date"></div>
-        <div style="font-size:13px;color:var(--wb);font-weight:500;margin-top:2px" id="dv-mgr"></div>
-      </div>
-      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('daily-view-modal').classList.remove('show')">✕ Закрыть</button>
-    </div>
-
-    <!-- Progress -->
-    <div id="dv-progress" style="margin-bottom:16px"></div>
-
-    <!-- Full tasks table -->
-    <div style="overflow-x:auto;border-radius:10px;border:0.5px solid var(--b);margin-bottom:14px">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px">
-        <thead>
-          <tr style="background:var(--card2)">
-            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b);width:28px">#</th>
-            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b)">Задача</th>
-            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b);min-width:90px">Арт./Кабинет</th>
-            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b);min-width:80px">Метрика</th>
-            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b);min-width:80px">Плановая</th>
-            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b);min-width:70px">Факт</th>
-            <th style="padding:8px 10px;text-align:left;color:var(--g);font-size:10px;text-transform:uppercase;font-weight:600;border-bottom:0.5px solid var(--b);min-width:80px">Время</th>
-          </tr>
-        </thead>
-        <tbody id="dv-tasks"></tbody>
-      </table>
-    </div>
-
-    <div id="dv-notes" style="display:none;background:var(--card2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--g);font-style:italic;margin-bottom:14px"></div>
   </div>
 </div>
 
@@ -519,7 +480,12 @@ async function loadManagers() {
         s.innerHTML += `<option value="${m.id}">${m.name}</option>`;
       });
     });
-    // cabinet filter removed from daily (handled by top nav filter)
+    // Populate cabinet filter for daily
+    try {
+      const cabs = await API.get('/cabinets');
+      const dailyCabSel = document.getElementById('daily-cab-filter');
+      cabs.forEach(c => { dailyCabSel.innerHTML += `<option value="${c.id}">${c.name} (${c.manager_name})</option>`; });
+    } catch(e) {}
     if (user?.role === 'manager' && user.manager_id) {
       selU.value = user.manager_id;
     }
@@ -559,18 +525,11 @@ function onCabinetFilter() {
   const cabId = document.getElementById('funnel-cab-filter').value;
   let filtered = reportsFromDB;
   if (cabId) filtered = filtered.filter(r => r.cabinet_id === cabId);
-  // Rebuild weeks from filtered reports
+  if (!filtered.length) {
+    S.weeks = []; S.selW = [];
+    rebuildAllArts(); renderPeriodsRow(); renderAll(); return;
+  }
   S.weeks = filtered.map(r => ({
-    label: fmtPeriod(r.period_start, r.period_end),
-    summary: buildSummary(r), goods: buildGoods(r)
-  }));
-  S.selW = S.weeks.map(w => w.label);
-  rebuildAllArts(); renderPeriodsRow(); renderAll();
-}
-
-function resetAllFilters() {
-  document.getElementById('funnel-cab-filter').value = '';
-  S.weeks = reportsFromDB.map(r => ({
     label: fmtPeriod(r.period_start, r.period_end),
     summary: buildSummary(r), goods: buildGoods(r)
   }));
@@ -631,67 +590,38 @@ function buildWeeksFromDB() {
   renderAll();
 }
 
-let periodDragSrc = null;
-
 function renderPeriodsRow() {
   const el = document.getElementById('periods-row');
   el.innerHTML = '';
   S.weeks.forEach((w,i) => {
     const p = document.createElement('div');
     p.className = 'period-pill' + (S.selW.includes(w.label)?' on':'');
-    p.draggable = true;
-    p.dataset.idx = i;
-    p.innerHTML = w.label + ' <span class="px" title="Удалить">✕</span>';
-
-    // Click: toggle selection (but not if clicked on ✕)
+    p.innerHTML = w.label + ' <span class="px">✕</span>';
     p.onclick = e => {
       if(e.target.classList.contains('px')){
-        S.weeks.splice(i,1);
-        S.selW = S.weeks.map(w=>w.label);
+        S.weeks.splice(i,1); S.selW=S.weeks.map(w=>w.label);
         rebuildAllArts(); renderPeriodsRow(); renderAll(); return;
       }
-      const idx = S.selW.indexOf(w.label);
-      idx >= 0 ? S.selW.splice(idx,1) : S.selW.push(w.label);
+      const idx=S.selW.indexOf(w.label);
+      idx>=0?S.selW.splice(idx,1):S.selW.push(w.label);
       p.classList.toggle('on', S.selW.includes(w.label));
       renderSummary(); renderCharts(); renderGoods();
     };
-
-    // Drag to reorder
-    p.addEventListener('dragstart', e => {
-      periodDragSrc = i;
-      p.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-    });
-    p.addEventListener('dragend', () => {
-      p.classList.remove('dragging');
-      el.querySelectorAll('.period-pill').forEach(x => x.classList.remove('drag-over'));
-    });
-    p.addEventListener('dragover', e => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      p.classList.add('drag-over');
-    });
-    p.addEventListener('dragleave', () => p.classList.remove('drag-over'));
-    p.addEventListener('drop', e => {
-      e.preventDefault();
-      p.classList.remove('drag-over');
-      const destIdx = +p.dataset.idx;
-      if (periodDragSrc === null || periodDragSrc === destIdx) return;
-      // Reorder S.weeks
-      const moved = S.weeks.splice(periodDragSrc, 1)[0];
-      S.weeks.splice(destIdx, 0, moved);
-      // Keep selW in sync with new order
-      S.selW = S.weeks.filter(w => S.selW.includes(w.label)).map(w => w.label);
-      periodDragSrc = null;
-      rebuildAllArts(); renderPeriodsRow();
-      renderSummary(); renderCharts(); renderGoods();
-    });
-
     el.appendChild(p);
   });
 }
 
-// Date filter via period pills only - no free date input
+function onDateFilter() {
+  dateFrom = document.getElementById('date-from').value || null;
+  dateTo   = document.getElementById('date-to').value   || null;
+  applyLocalDateFilter();
+}
+function resetDateFilter() {
+  dateFrom = dateTo = null;
+  document.getElementById('date-from').value = '';
+  document.getElementById('date-to').value   = '';
+  applyLocalDateFilter();
+}
 // Локальный фильтр — не перезапрашивает сервер, фильтрует уже загруженные отчёты
 function applyLocalDateFilter() {
   // Если ничего не выбрано — показываем все
@@ -843,25 +773,39 @@ async function loadDailyReports() {
 
 function renderDailyGrid(reports) {
   const el = document.getElementById('daily-grid');
-  if (!reports.length) {
-    el.innerHTML = '<div class="empty">Нет отчётов за выбранный период</div>';
-    return;
-  }
-
+  if (!reports.length) { el.innerHTML='<div class="empty">Нет отчётов за выбранный период</div>'; return; }
   el.innerHTML = reports.map(r => {
     const tasks   = r.tasks || [];
-    const done    = tasks.filter(t => t.fact && t.fact.trim()).length;
-    const total   = tasks.filter(t => t.name && t.name.trim()).length;
-    const pct     = total ? Math.round(done/total*100) : 0;
+    const LIMIT   = 10;
+    const visible = tasks.slice(0, LIMIT);
+    const hidden  = tasks.slice(LIMIT);
 
-    // Compact preview — first 5 tasks, just name + fact
-    const previewRows = tasks.slice(0,5).filter(t=>t.name).map((t,i) => `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.04)">
-        <span style="font-size:12px;color:var(--t);font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px">${i+1}. ${t.name}</span>
-        <span style="font-size:11px;font-weight:600;flex-shrink:0;${t.fact?'color:var(--green)':'color:var(--amber)'}">${t.fact||'—'}</span>
-      </div>`).join('');
+    function taskRow(t, i) {
+      return `<div class="task-row">
+        <span class="task-num">${i+1}</span>
+        <span class="task-name">${t.name||'—'}</span>
+        <span class="task-art">${t.article||''}</span>
+        <span class="task-metric">${t.metric_start||''}</span>
+        <span class="task-plan" style="font-size:11px;color:var(--g);min-width:50px">${t.metric_plan||''}</span>
+        <span class="task-fact ${t.fact?'done':'pending'}">${t.fact||'—'}</span>
+        <span class="task-time" style="font-size:10px;color:var(--g2);min-width:60px">${t.time_spent||''}</span>
+      </div>`;
+    }
+    const colHeaders = tasks.length ? `<div class="task-row" style="border-bottom:0.5px solid var(--b2);padding-bottom:4px;margin-bottom:2px">
+      <span class="task-num" style="color:var(--g2);font-size:9px">#</span>
+      <span class="task-name" style="color:var(--g2);font-size:9px;text-transform:uppercase">Задача</span>
+      <span class="task-art" style="color:var(--g2);font-size:9px;text-transform:uppercase">Арт./Кабинет</span>
+      <span class="task-metric" style="color:var(--g2);font-size:9px;text-transform:uppercase">Метрика</span>
+      <span style="color:var(--g2);font-size:9px;text-transform:uppercase;min-width:50px">Плановая</span>
+      <span style="color:var(--g2);font-size:9px;text-transform:uppercase;min-width:60px">Факт</span>
+      <span style="color:var(--g2);font-size:9px;text-transform:uppercase;min-width:60px">Время</span>
+    </div>` : '';
 
-    const moreCount = tasks.filter(t=>t.name).length - 5;
+    const visHtml  = visible.length ? colHeaders + visible.map(taskRow).join('') : '<div style="padding:10px;font-size:12px;color:var(--g2)">Нет задач</div>';
+    const hidHtml  = hidden.length  ? `<div class="tasks-hidden" id="th-${r.id}" style="display:none">${hidden.map((t,i)=>taskRow(t,LIMIT+i)).join('')}</div>
+      <div style="padding:6px 14px;border-top:0.5px solid var(--b)">
+        <button class="btn btn-ghost btn-sm" onclick="expandTasks('${r.id}',this)">＋${hidden.length} задач — показать все</button>
+      </div>` : '';
 
     return `<div class="daily-card">
       <div class="daily-card-head">
@@ -870,49 +814,25 @@ function renderDailyGrid(reports) {
           <div class="daily-mgr">${r.manager_name}</div>
         </div>
         <div class="daily-actions">
+          <button class="btn btn-ghost btn-sm" title="Развернуть все" onclick="expandTasks('${r.id}',this)">↕</button>
           <button class="btn btn-ghost btn-sm" onclick='editDaily(${JSON.stringify(r).replace(/'/g,"&#39;")})'>✏️</button>
           <button class="btn btn-danger btn-sm" onclick="deleteDaily('${r.id}')">✕</button>
         </div>
       </div>
-
-      <!-- Progress bar -->
-      <div style="padding:8px 14px 0">
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--g2);margin-bottom:4px">
-          <span>Выполнено: ${done}/${total} задач</span>
-          <span style="color:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)';}">${pct}%</span>
-        </div>
-        <div style="height:3px;background:var(--card2);border-radius:2px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'};border-radius:2px;transition:width .3s"></div>
-        </div>
-      </div>
-
-      <!-- Compact task preview -->
-      <div style="padding:8px 14px">
-        ${previewRows || '<div style="font-size:12px;color:var(--g2);padding:4px 0">Нет задач</div>'}
-        ${moreCount > 0 ? `<div style="font-size:11px;color:var(--g2);padding-top:5px">+${moreCount} задач...</div>` : ''}
-      </div>
-
+      <div class="daily-tasks">${visHtml}</div>
+      ${hidHtml}
       ${r.notes ? `<div class="daily-notes">${r.notes}</div>` : ''}
-
-      <!-- Expand button -->
-      <div style="padding:8px 14px;border-top:0.5px solid var(--b)">
-        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick='openDailyView(${JSON.stringify(r).replace(/'/g,"&#39;")})'>
-          Развернуть полностью
-        </button>
-      </div>
     </div>`;
   }).join('');
 }
 
-function expandTasks(id) {
-function expandTasks(id) {
-  const tbody = document.getElementById('th-'+id);
-  const btn   = document.getElementById('exp-btn-'+id);
-  if (!tbody || !btn) return;
-  const expanded = tbody.style.display !== 'none';
-  tbody.style.display = expanded ? 'none' : '';
-  const count = tbody.querySelectorAll('tr').length;
-  btn.textContent = expanded ? `＋${count} задач — развернуть` : '↑ Свернуть';
+function expandTasks(id, btn) {
+  const el = document.getElementById('th-'+id);
+  if (!el) return;
+  const expanded = el.style.display !== 'none';
+  el.style.display = expanded ? 'none' : 'block';
+  if (btn.textContent === '↕') return;
+  btn.textContent = expanded ? '+' + btn.textContent.match(/\d+/)[0] + ' задач — показать все' : 'Свернуть';
 }
 
 function openDailyModal() {
@@ -992,70 +912,20 @@ async function deleteDaily(id) {
 }
 
 // Закрытие модалок по клику вне
-['cab-modal','daily-modal','daily-view-modal'].forEach(id => {
+['cab-modal','daily-modal'].forEach(id => {
   document.getElementById(id).addEventListener('click', e => {
     if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
   });
 });
 
-function openDailyView(r) {
-  const tasks = r.tasks || [];
-  const done  = tasks.filter(t=>t.fact&&t.fact.trim()).length;
-  const total = tasks.filter(t=>t.name&&t.name.trim()).length;
-  const pct   = total ? Math.round(done/total*100) : 0;
+// ── Переопределяем renderWeeks из app.js — в новом дашборде нет #wrow ──
+// Недели отображаются через renderPeriodsRow(), поэтому renderWeeks = no-op
+renderWeeks = function() {
+  // В новом дашборде недели рендерятся через renderPeriodsRow()
+  // Этот override предотвращает ошибку "Cannot set properties of null"
+};
 
-  document.getElementById('dv-date').textContent = fmtDateFull(r.report_date);
-  document.getElementById('dv-mgr').textContent  = r.manager_name;
-
-  // Progress
-  document.getElementById('dv-progress').innerHTML = `
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--g2);margin-bottom:5px">
-      <span>Выполнено: <strong style="color:var(--t)">${done}</strong> из <strong style="color:var(--t)">${total}</strong> задач</span>
-      <span style="color:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'};font-weight:700">${pct}%</span>
-    </div>
-    <div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden">
-      <div style="height:100%;width:${pct}%;background:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'};border-radius:2px"></div>
-    </div>`;
-
-  // Tasks table
-  const tbody = document.getElementById('dv-tasks');
-  tbody.innerHTML = tasks.filter(t=>t.name).map((t,i) => `
-    <tr style="${i%2===0?'':'background:rgba(255,255,255,.02)'}">
-      <td style="padding:7px 10px;color:var(--g2);font-size:11px;border-bottom:0.5px solid rgba(255,255,255,.04)">${i+1}</td>
-      <td style="padding:7px 10px;font-weight:500;color:var(--t);border-bottom:0.5px solid rgba(255,255,255,.04)">${t.name}</td>
-      <td style="padding:7px 10px;color:var(--g2);border-bottom:0.5px solid rgba(255,255,255,.04)">${t.article||''}</td>
-      <td style="padding:7px 10px;color:var(--g);border-bottom:0.5px solid rgba(255,255,255,.04)">${t.metric_start||''}</td>
-      <td style="padding:7px 10px;color:var(--g);border-bottom:0.5px solid rgba(255,255,255,.04)">${t.metric_plan||''}</td>
-      <td style="padding:7px 10px;font-weight:600;${t.fact?'color:var(--green)':'color:var(--amber)'};border-bottom:0.5px solid rgba(255,255,255,.04)">${t.fact||'—'}</td>
-      <td style="padding:7px 10px;color:var(--g2);font-size:11px;border-bottom:0.5px solid rgba(255,255,255,.04)">${t.time_spent||''}</td>
-    </tr>`).join('') || '<tr><td colspan="7" style="padding:16px;text-align:center;color:var(--g2)">Нет задач</td></tr>';
-
-  // Notes
-  const notesEl = document.getElementById('dv-notes');
-  if (r.notes) { notesEl.textContent = r.notes; notesEl.style.display = 'block'; }
-  else notesEl.style.display = 'none';
-
-  document.getElementById('daily-view-modal').classList.add('show');
-}
-
-// ── Переопределяем функции из app.js которые ищут несуществующие элементы ──
-renderWeeks = function() {};  // В новом дашборде недели — через renderPeriodsRow()
-
-// app.js пытается навесить обработчики на #fi-land, #fi-add, #dz-land
-// В новом дашборде эти элементы называются по-другому — патчим безопасно
-try {
-  // Перехватываем getElementById чтобы вернуть заглушку для несуществующих элементов
-  const _orig = document.getElementById.bind(document);
-  document.getElementById = function(id) {
-    const el = _orig(id);
-    if (!el && (id === 'fi-land' || id === 'fi-add' || id === 'dz-land' || id === 'wrow')) {
-      // Возвращаем безопасную заглушку
-      return { onchange: null, ondragover: null, ondragleave: null, ondrop: null,
-               innerHTML: '', classList: { add:()=>{}, remove:()=>{} } };
-    }
-    return el;
-  };
-} catch(e) {}
+  renderWeeks = function() {};
 
 init();
 </script>
