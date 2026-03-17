@@ -1289,7 +1289,7 @@ function renderDailyGrid(reports) {
           <div class="daily-mgr">${r.manager_name}</div>
         </div>
         <div class="daily-actions">
-          <button class="btn btn-ghost btn-sm" onclick='editDaily(${JSON.stringify(r).replace(/'/g,"&#39;")})'>✏️</button>
+          <button class="btn btn-ghost btn-sm" onclick='editDaily(${safeJson(r)})'>✏️</button>
           <button class="btn btn-danger btn-sm" onclick="deleteDaily('${r.id}')">✕</button>
         </div>
       </div>
@@ -1315,7 +1315,7 @@ function renderDailyGrid(reports) {
 
       <!-- Expand button -->
       <div style="padding:8px 14px;border-top:0.5px solid var(--b)">
-        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick='openDailyView(${JSON.stringify(r).replace(/'/g,"&#39;")})'>
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick='openDailyView(${safeJson(r)})'>
           Развернуть полностью
         </button>
       </div>
@@ -1455,6 +1455,12 @@ function openDailyView(r) {
   else notesEl.style.display = 'none';
 
   document.getElementById('daily-view-modal').classList.add('show');
+}
+
+
+// Helper to safely serialize object for onclick attribute
+function safeJson(obj) {
+  return JSON.stringify(obj).replace(/'/g, "&#39;").replace(/"/g, '&quot;');
 }
 
 // renderWeeks переопределена — в новом дашборде используется renderPeriodsRow()
