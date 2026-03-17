@@ -261,18 +261,14 @@
   <div id="reports-list" style="margin-bottom:14px"></div>
 
   <!-- Filter bar -->
-  <div class="filter-bar" id="filter-bar" style="display:none">
-    <span class="filter-label">Период:</span>
-    <div class="periods-row" id="periods-row"></div>
+  <div class="filter-bar" id="filter-bar" style="display:none;flex-wrap:wrap;gap:8px;align-items:center">
+    <span class="filter-label">Кабинет:</span>
     <select id="funnel-cab-filter" style="font-size:11px;padding:4px 8px" onchange="onCabinetFilter()">
       <option value="">Все кабинеты</option>
     </select>
-    <div class="date-range">
-      <input type="date" id="date-from" onchange="onDateFilter()">
-      <span>—</span>
-      <input type="date" id="date-to" onchange="onDateFilter()">
-    </div>
-    <button class="btn btn-ghost btn-sm" onclick="resetDateFilter()">Сбросить</button>
+    <span class="filter-label" style="margin-left:8px">Периоды:</span>
+    <div class="periods-row" id="periods-row" style="margin:0"></div>
+    <button class="btn btn-ghost btn-sm" onclick="resetAllFilters()">Сбросить всё</button>
   </div>
 
   <!-- Dashboard -->
@@ -525,11 +521,18 @@ function onCabinetFilter() {
   const cabId = document.getElementById('funnel-cab-filter').value;
   let filtered = reportsFromDB;
   if (cabId) filtered = filtered.filter(r => r.cabinet_id === cabId);
-  if (!filtered.length) {
-    S.weeks = []; S.selW = [];
-    rebuildAllArts(); renderPeriodsRow(); renderAll(); return;
-  }
+  // Rebuild weeks from filtered reports
   S.weeks = filtered.map(r => ({
+    label: fmtPeriod(r.period_start, r.period_end),
+    summary: buildSummary(r), goods: buildGoods(r)
+  }));
+  S.selW = S.weeks.map(w => w.label);
+  rebuildAllArts(); renderPeriodsRow(); renderAll();
+}
+
+function resetAllFilters() {
+  document.getElementById('funnel-cab-filter').value = '';
+  S.weeks = reportsFromDB.map(r => ({
     label: fmtPeriod(r.period_start, r.period_end),
     summary: buildSummary(r), goods: buildGoods(r)
   }));
@@ -611,17 +614,7 @@ function renderPeriodsRow() {
   });
 }
 
-function onDateFilter() {
-  dateFrom = document.getElementById('date-from').value || null;
-  dateTo   = document.getElementById('date-to').value   || null;
-  applyLocalDateFilter();
-}
-function resetDateFilter() {
-  dateFrom = dateTo = null;
-  document.getElementById('date-from').value = '';
-  document.getElementById('date-to').value   = '';
-  applyLocalDateFilter();
-}
+// Date filter via period pills only - no free date input
 // Локальный фильтр — не перезапрашивает сервер, фильтрует уже загруженные отчёты
 function applyLocalDateFilter() {
   // Если ничего не выбрано — показываем все
@@ -781,24 +774,24 @@ function renderDailyGrid(reports) {
     const hidden  = tasks.slice(LIMIT);
 
     function taskRow(t, i) {
-      return `<div class="task-row">
-        <span class="task-num">${i+1}</span>
-        <span class="task-name">${t.name||'—'}</span>
-        <span class="task-art">${t.article||''}</span>
-        <span class="task-metric">${t.metric_start||''}</span>
-        <span class="task-plan" style="font-size:11px;color:var(--g);min-width:50px">${t.metric_plan||''}</span>
-        <span class="task-fact ${t.fact?'done':'pending'}">${t.fact||'—'}</span>
-        <span class="task-time" style="font-size:10px;color:var(--g2);min-width:60px">${t.time_spent||''}</span>
+      return `<div style="display:grid;grid-template-columns:20px 1fr 90px 80px 80px 70px 70px;gap:4px;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.05);font-size:11px;align-items:center">
+        <span style="color:var(--g2);font-size:10px">${i+1}</span>
+        <span style="color:var(--t);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name||'—'}</span>
+        <span style="color:var(--g2)">${t.article||''}</span>
+        <span style="color:var(--g)">${t.metric_start||''}</span>
+        <span style="color:var(--g)">${t.metric_plan||''}</span>
+        <span style="${t.fact?'color:var(--green);font-weight:600':'color:var(--amber)'}">${t.fact||'—'}</span>
+        <span style="color:var(--g2);font-size:10px">${t.time_spent||''}</span>
       </div>`;
     }
-    const colHeaders = tasks.length ? `<div class="task-row" style="border-bottom:0.5px solid var(--b2);padding-bottom:4px;margin-bottom:2px">
-      <span class="task-num" style="color:var(--g2);font-size:9px">#</span>
-      <span class="task-name" style="color:var(--g2);font-size:9px;text-transform:uppercase">Задача</span>
-      <span class="task-art" style="color:var(--g2);font-size:9px;text-transform:uppercase">Арт./Кабинет</span>
-      <span class="task-metric" style="color:var(--g2);font-size:9px;text-transform:uppercase">Метрика</span>
-      <span style="color:var(--g2);font-size:9px;text-transform:uppercase;min-width:50px">Плановая</span>
-      <span style="color:var(--g2);font-size:9px;text-transform:uppercase;min-width:60px">Факт</span>
-      <span style="color:var(--g2);font-size:9px;text-transform:uppercase;min-width:60px">Время</span>
+    const colHeaders = tasks.length ? `<div style="display:grid;grid-template-columns:20px 1fr 90px 80px 80px 70px 70px;gap:4px;padding:4px 0 6px;border-bottom:0.5px solid var(--b2);margin-bottom:2px">
+      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">#</span>
+      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">Задача</span>
+      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">Арт./Кабинет</span>
+      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">Метрика</span>
+      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">Плановая</span>
+      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">Факт</span>
+      <span style="color:var(--g2);font-size:9px;text-transform:uppercase">Время</span>
     </div>` : '';
 
     const visHtml  = visible.length ? colHeaders + visible.map(taskRow).join('') : '<div style="padding:10px;font-size:12px;color:var(--g2)">Нет задач</div>';
@@ -924,8 +917,6 @@ renderWeeks = function() {
   // В новом дашборде недели рендерятся через renderPeriodsRow()
   // Этот override предотвращает ошибку "Cannot set properties of null"
 };
-
-  renderWeeks = function() {};
 
 init();
 </script>
