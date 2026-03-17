@@ -862,19 +862,8 @@ function renderAll() {
 
 
 // ─── FILE HANDLERS ───
-// file drop handled in dashboard upload section
+dz.ondrop = e => { e.preventDefault(); dz.classList.remove('over'); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); };
 
-</script>
-<script>
-// showPage must be available immediately when nav buttons render
-function showPage(name, el) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-'+name).classList.add('active');
-  el.classList.add('active');
-  if (name === 'daily'    && typeof loadDailyReports === 'function') loadDailyReports();
-  if (name === 'cabinets' && typeof loadCabinets     === 'function') loadCabinets();
-}
 </script>
 <script>
 requireAuth();
@@ -1025,19 +1014,14 @@ function renderReportsList() {
     <div style="overflow-x:auto"><table class="rtable">
       <thead><tr><th>Период</th><th>Менеджер</th><th>Кабинет</th><th>Файл</th><th>Загружен</th>
       ${user?.role==='admin'?'<th></th>':''}</tr></thead>
-      <tbody>${reportsFromDB.map(r=>{
-        const cabCell = (r.cabinet_name||r.cabinet_id) ? '<span class="cab-chip">'+(r.cabinet_name||'Кабинет')+'</span>' : '—';
-        const delCell = user?.role==='admin' ? '<td><button class="btn btn-danger btn-sm" onclick="deleteReport(\''+r.id+'\')">Удалить</button></td>' : '';
-        const fname = r.filename ? r.filename.slice(0,40)+(r.filename.length>40?'…':'') : '—';
-        return '<tr>'
-          +'<td style="font-weight:600;color:var(--wb)">'+fmtPeriod(r.period_start,r.period_end)+'</td>'
-          +'<td>'+r.manager_name+'</td>'
-          +'<td>'+cabCell+'</td>'
-          +'<td style="color:var(--g);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(r.filename||'')+'">'+fname+'</td>'
-          +'<td style="color:var(--g2);font-size:11px">'+new Date(r.created_at).toLocaleDateString('ru')+'</td>'
-          +delCell
-          +'</tr>';
-      }).join('')}</tbody>
+      <tbody>${reportsFromDB.map(r=>`<tr>
+        <td style="font-weight:600;color:var(--wb)">${fmtPeriod(r.period_start,r.period_end)}</td>
+        <td>${r.manager_name}</td>
+        <td>${(r.cabinet_name||r.cabinet_id)?`<span class="cab-chip">${r.cabinet_name||'Кабинет'}</span>`:'—'}</td>
+        <td style="color:var(--g);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.filename||''}">${r.filename?r.filename.slice(0,40)+(r.filename.length>40?'…':''):'—'}</td>
+        <td style="color:var(--g2);font-size:11px">${new Date(r.created_at).toLocaleDateString('ru')}</td>
+        ${user?.role==='admin'?`<td><button class="btn btn-danger btn-sm" onclick="deleteReport('${r.id}')">Удалить</button></td>`:''}
+      </tr>`).join('')}</tbody>
     </table></div></div>`;
 }
 
@@ -1068,43 +1052,57 @@ let periodDragSrc = null;
 function renderPeriodsRow() {
   const el = document.getElementById('periods-row');
   el.innerHTML = '';
-  let _drag = null;
   S.weeks.forEach((w,i) => {
     const p = document.createElement('div');
     p.className = 'period-pill' + (S.selW.includes(w.label)?' on':'');
     p.draggable = true;
     p.dataset.idx = i;
-    p.innerHTML = w.label + ' <span class="px">✕</span>';
+    p.innerHTML = w.label + ' <span class="px" title="Удалить">✕</span>';
+
+    // Click: toggle selection (but not if clicked on ✕)
     p.onclick = e => {
-      if (e.target.classList.contains('px')) {
-        S.weeks.splice(i,1); S.selW=S.weeks.map(w=>w.label);
+      if(e.target.classList.contains('px')){
+        S.weeks.splice(i,1);
+        S.selW = S.weeks.map(w=>w.label);
         rebuildAllArts(); renderPeriodsRow(); renderAll(); return;
       }
-      const idx=S.selW.indexOf(w.label);
-      idx>=0?S.selW.splice(idx,1):S.selW.push(w.label);
+      const idx = S.selW.indexOf(w.label);
+      idx >= 0 ? S.selW.splice(idx,1) : S.selW.push(w.label);
       p.classList.toggle('on', S.selW.includes(w.label));
       renderSummary(); renderCharts(); renderGoods();
     };
+
+    // Drag to reorder
     p.addEventListener('dragstart', e => {
-      _drag=i; setTimeout(()=>p.style.opacity='.35',0);
-      e.dataTransfer.effectAllowed='move';
+      periodDragSrc = i;
+      p.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
     });
-    p.addEventListener('dragend', ()=>{
-      p.style.opacity='';
-      el.querySelectorAll('.period-pill').forEach(x=>x.style.outline='');
+    p.addEventListener('dragend', () => {
+      p.classList.remove('dragging');
+      el.querySelectorAll('.period-pill').forEach(x => x.classList.remove('drag-over'));
     });
-    p.addEventListener('dragover', e=>{e.preventDefault();p.style.outline='2px solid var(--wb)';});
-    p.addEventListener('dragleave', ()=>p.style.outline='');
-    p.addEventListener('drop', e=>{
-      e.preventDefault(); p.style.outline='';
-      if(_drag===null||_drag===i) return;
-      const moved=S.weeks.splice(_drag,1)[0];
-      S.weeks.splice(i,0,moved);
-      S.selW=S.weeks.filter(w=>S.selW.includes(w.label)).map(w=>w.label);
-      _drag=null;
+    p.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      p.classList.add('drag-over');
+    });
+    p.addEventListener('dragleave', () => p.classList.remove('drag-over'));
+    p.addEventListener('drop', e => {
+      e.preventDefault();
+      p.classList.remove('drag-over');
+      const destIdx = +p.dataset.idx;
+      if (periodDragSrc === null || periodDragSrc === destIdx) return;
+      // Reorder S.weeks
+      const moved = S.weeks.splice(periodDragSrc, 1)[0];
+      S.weeks.splice(destIdx, 0, moved);
+      // Keep selW in sync with new order
+      S.selW = S.weeks.filter(w => S.selW.includes(w.label)).map(w => w.label);
+      periodDragSrc = null;
       rebuildAllArts(); renderPeriodsRow();
       renderSummary(); renderCharts(); renderGoods();
     });
+
     el.appendChild(p);
   });
 }
@@ -1272,12 +1270,11 @@ function renderDailyGrid(reports) {
     const total   = tasks.filter(t => t.name && t.name.trim()).length;
     const pct     = total ? Math.round(done/total*100) : 0;
 
-    // Compact preview — first 5 tasks: number + name + fact
-    const previewRows = tasks.filter(t=>t.name).slice(0,5).map((t,i) => `
-      <div style="display:grid;grid-template-columns:18px 1fr auto;gap:8px;align-items:center;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.04)">
-        <span style="font-size:10px;color:var(--g2);text-align:right">${i+1}</span>
-        <span style="font-size:12px;color:var(--t);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</span>
-        <span style="font-size:11px;font-weight:600;white-space:nowrap;${t.fact?'color:var(--green)':'color:var(--amber)'}">${t.fact||'—'}</span>
+    // Compact preview — first 5 tasks, just name + fact
+    const previewRows = tasks.slice(0,5).filter(t=>t.name).map((t,i) => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.04)">
+        <span style="font-size:12px;color:var(--t);font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px">${i+1}. ${t.name}</span>
+        <span style="font-size:11px;font-weight:600;flex-shrink:0;${t.fact?'color:var(--green)':'color:var(--amber)'}">${t.fact||'—'}</span>
       </div>`).join('');
 
     const moreCount = tasks.filter(t=>t.name).length - 5;
@@ -1289,7 +1286,7 @@ function renderDailyGrid(reports) {
           <div class="daily-mgr">${r.manager_name}</div>
         </div>
         <div class="daily-actions">
-          <button class="btn btn-ghost btn-sm" onclick='editDaily(${safeJson(r)})'>✏️</button>
+          <button class="btn btn-ghost btn-sm" onclick='editDaily(${JSON.stringify(r).replace(/'/g,"&#39;")})'>✏️</button>
           <button class="btn btn-danger btn-sm" onclick="deleteDaily('${r.id}')">✕</button>
         </div>
       </div>
@@ -1298,7 +1295,7 @@ function renderDailyGrid(reports) {
       <div style="padding:8px 14px 0">
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--g2);margin-bottom:4px">
           <span>Выполнено: ${done}/${total} задач</span>
-          <span style="color:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'}">${pct}%</span>
+          <span style="color:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)';}">${pct}%</span>
         </div>
         <div style="height:3px;background:var(--card2);border-radius:2px;overflow:hidden">
           <div style="height:100%;width:${pct}%;background:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'};border-radius:2px;transition:width .3s"></div>
@@ -1308,14 +1305,14 @@ function renderDailyGrid(reports) {
       <!-- Compact task preview -->
       <div style="padding:8px 14px">
         ${previewRows || '<div style="font-size:12px;color:var(--g2);padding:4px 0">Нет задач</div>'}
-        ${moreCount > 0 ? ('<div style="font-size:11px;color:var(--g2);padding-top:5px">+'+moreCount+' задач...</div>') : ''}
+        ${moreCount > 0 ? `<div style="font-size:11px;color:var(--g2);padding-top:5px">+${moreCount} задач...</div>` : ''}
       </div>
 
-      ${r.notes ? '<div class="daily-notes">'+r.notes+'</div>' : ''}
+      ${r.notes ? `<div class="daily-notes">${r.notes}</div>` : ''}
 
       <!-- Expand button -->
       <div style="padding:8px 14px;border-top:0.5px solid var(--b)">
-        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick='openDailyView(${safeJson(r)})'>
+        <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick='openDailyView(${JSON.stringify(r).replace(/'/g,"&#39;")})'>
           Развернуть полностью
         </button>
       </div>
@@ -1324,14 +1321,13 @@ function renderDailyGrid(reports) {
 }
 
 function expandTasks(id) {
-function expandTasks(id) {
   const tbody = document.getElementById('th-'+id);
   const btn   = document.getElementById('exp-btn-'+id);
   if (!tbody || !btn) return;
   const expanded = tbody.style.display !== 'none';
   tbody.style.display = expanded ? 'none' : '';
   const count = tbody.querySelectorAll('tr').length;
-  btn.textContent = expanded ? `＋${count} задач — развернуть` : '↑ Свернуть';
+  btn.textContent = expanded ? ('＋'+count+' задач — развернуть') : '↑ Свернуть';
 }
 
 function openDailyModal() {
@@ -1455,12 +1451,6 @@ function openDailyView(r) {
   else notesEl.style.display = 'none';
 
   document.getElementById('daily-view-modal').classList.add('show');
-}
-
-
-// Helper to safely serialize object for onclick attribute
-function safeJson(obj) {
-  return JSON.stringify(obj).replace(/'/g, "&#39;").replace(/"/g, '&quot;');
 }
 
 // renderWeeks переопределена — в новом дашборде используется renderPeriodsRow()
