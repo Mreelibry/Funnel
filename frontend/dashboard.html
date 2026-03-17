@@ -1294,7 +1294,7 @@ function renderDailyGrid(reports) {
       <div style="padding:8px 14px 0">
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--g2);margin-bottom:4px">
           <span>Выполнено: ${done}/${total} задач</span>
-          <span style="color:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)';}">${pct}%</span>
+          <span style="color:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'}">${pct}%</span>
         </div>
         <div style="height:3px;background:var(--card2);border-radius:2px;overflow:hidden">
           <div style="height:100%;width:${pct}%;background:${pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'};border-radius:2px;transition:width .3s"></div>
