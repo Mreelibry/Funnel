@@ -456,11 +456,4 @@ function switchTab(name, el) {
   if (name === 'goods') renderFilterList();
 }
 
-// ─── FILE HANDLERS ───
-document.getElementById('fi-land').onchange = e => { if (e.target.files[0]) loadFile(e.target.files[0]); };
-document.getElementById('fi-add').onchange  = e => { if (e.target.files[0]) loadFile(e.target.files[0]); };
-
-const dz = document.getElementById('dz-land');
-dz.ondragover = e => { e.preventDefault(); dz.classList.add('over'); };
-dz.ondragleave = () => dz.classList.remove('over');
-dz.ondrop = e => { e.preventDefault(); dz.classList.remove('over'); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); };
+// ─── FILE HANDLERS ─── (handled in dashboard.html)
