@@ -1038,24 +1038,12 @@ function openDailyView(r) {
   document.getElementById('daily-view-modal').classList.add('show');
 }
 
-// ── Переопределяем функции из app.js которые ищут несуществующие элементы ──
-renderWeeks = function() {};  // В новом дашборде недели — через renderPeriodsRow()
-
-// app.js пытается навесить обработчики на #fi-land, #fi-add, #dz-land
-// В новом дашборде эти элементы называются по-другому — патчим безопасно
-try {
-  // Перехватываем getElementById чтобы вернуть заглушку для несуществующих элементов
-  const _orig = document.getElementById.bind(document);
-  document.getElementById = function(id) {
-    const el = _orig(id);
-    if (!el && (id === 'fi-land' || id === 'fi-add' || id === 'dz-land' || id === 'wrow')) {
-      // Возвращаем безопасную заглушку
-      return { onchange: null, ondragover: null, ondragleave: null, ondrop: null,
-               innerHTML: '', classList: { add:()=>{}, remove:()=>{} } };
-    }
-    return el;
-  };
-} catch(e) {}
+// ── Переопределяем renderWeeks из app.js — в новом дашборде нет #wrow ──
+// Недели отображаются через renderPeriodsRow(), поэтому renderWeeks = no-op
+renderWeeks = function() {
+  // В новом дашборде недели рендерятся через renderPeriodsRow()
+  // Этот override предотвращает ошибку "Cannot set properties of null"
+};
 
 init();
 </script>
