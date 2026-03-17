@@ -13,7 +13,8 @@ router.get('/', authenticate, async (req, res) => {
       result = await db.query(
         `SELECT m.id, m.name, m.user_id, u.username, u.is_active
          FROM managers m
-         LEFT JOIN users u ON u.id = m.user_id
+         INNER JOIN users u ON u.id = m.user_id
+         WHERE u.is_active = true
          ORDER BY m.name`
       );
     } else {
@@ -21,8 +22,8 @@ router.get('/', authenticate, async (req, res) => {
       result = await db.query(
         `SELECT m.id, m.name, m.user_id, u.username, u.is_active
          FROM managers m
-         LEFT JOIN users u ON u.id = m.user_id
-         WHERE m.user_id = $1`,
+         INNER JOIN users u ON u.id = m.user_id
+         WHERE m.user_id = $1 AND u.is_active = true`,
         [req.user.id]
       );
     }
