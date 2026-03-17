@@ -891,6 +891,15 @@ function showPage(name, el) {
   if (name === 'cabinets') loadCabinets();
 }
 
+function switchTab(name, el) {
+  document.querySelectorAll('#main-content .tabs .tab').forEach(t => t.classList.remove('on'));
+  ['summary','charts','goods'].forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    if (el) el.style.display = t === name ? '' : 'none';
+  });
+  el.classList.add('on');
+}
+
 // ── FORMAT ──
 function fmtDate(iso) {
   if (!iso) return '—';
