@@ -149,6 +149,14 @@
     .fp-wb{font-size:10px;color:var(--g2)}
     .goods-right{flex:1;min-width:0}
 
+    /* PAGINATION */
+    .pagination{display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 0;flex-wrap:wrap}
+    .pg-btn{background:var(--card);border:0.5px solid var(--b);border-radius:8px;color:var(--t);font-size:12px;padding:4px 10px;cursor:pointer;min-width:32px}
+    .pg-btn:hover{border-color:var(--wb);color:var(--wb)}
+    .pg-btn.active{background:var(--wb);color:#fff;border-color:var(--wb)}
+    .pg-btn:disabled{opacity:.35;cursor:default}
+    .pg-info{font-size:11px;color:var(--g);padding:0 6px}
+
     /* TABLE */
     .twrap{overflow-x:auto;border-radius:10px;border:0.5px solid var(--b)}
     table{width:100%;border-collapse:collapse;font-size:11px;min-width:400px}
@@ -697,17 +705,17 @@ function toggleArt(art) {
     S.artFilter.has(art) ? S.artFilter.delete(art) : S.artFilter.add(art);
     if (S.artFilter.size >= S.allArts.length) S.artFilter = null;
   }
-  renderFilterList(); updateBadge(); renderGoods();
+  goodsPage = 0; renderFilterList(); updateBadge(); renderGoods();
 }
 
 function clearArtFilter() {
   S.artFilter = null;
-  renderFilterList(); updateBadge(); renderGoods();
+  goodsPage = 0; renderFilterList(); updateBadge(); renderGoods();
 }
 
 function toggleSelAll() {
   S.artFilter = S.artFilter === null ? new Set() : null;
-  renderFilterList(); updateBadge(); renderGoods();
+  goodsPage = 0; renderFilterList(); updateBadge(); renderGoods();
 }
 
 function updateBadge() {
@@ -743,7 +751,9 @@ function renderFilterList() {
 }
 
 // ─── GOODS TABLE ───
+const GOODS_PER_PAGE = 50;
 let dragSrcIdx = null;
+let goodsPage = 0;
 function getOrderedMeta() {
   return S.colOrder.map(k => METRICS.find(m => m.key === k)).filter(m => m && S.selG.has(m.key));
 }
@@ -784,6 +794,10 @@ function renderGoods() {
     });
   }
 
+  const totalPages = Math.ceil(articles.length / GOODS_PER_PAGE);
+  if (goodsPage >= totalPages) goodsPage = Math.max(0, totalPages - 1);
+  const pageArticles = articles.slice(goodsPage * GOODS_PER_PAGE, (goodsPage + 1) * GOODS_PER_PAGE);
+
   let html = '<div class="twrap"><table><thead><tr>';
   html += '<th style="min-width:80px">Артикул</th><th style="min-width:100px;max-width:130px">Название</th><th style="min-width:84px">Неделя</th>';
   orderedMeta.forEach((meta, ci) => {
@@ -792,7 +806,7 @@ function renderGoods() {
   });
   html += '</tr></thead><tbody>';
 
-  articles.forEach(({ art, name, entries }) => {
+  pageArticles.forEach(({ art, name, entries }) => {
     const dispName = name.length > 20 ? name.slice(0, 20) + '…' : name;
     entries.forEach((wd, ei) => {
       html += '<tr>';
@@ -824,6 +838,26 @@ function renderGoods() {
   });
 
   html += '</tbody></table></div>';
+
+  // Pagination controls
+  if (totalPages > 1) {
+    const from = goodsPage * GOODS_PER_PAGE + 1;
+    const to   = Math.min((goodsPage + 1) * GOODS_PER_PAGE, articles.length);
+    html += `<div class="pagination">`;
+    html += `<button class="pg-btn" onclick="gotoGoodsPage(${goodsPage - 1})" ${goodsPage === 0 ? 'disabled' : ''}>‹</button>`;
+    for (let p = 0; p < totalPages; p++) {
+      if (totalPages > 7 && Math.abs(p - goodsPage) > 2 && p !== 0 && p !== totalPages - 1) {
+        if (p === 1 && goodsPage > 3) { html += `<span class="pg-info">…</span>`; continue; }
+        if (p === totalPages - 2 && goodsPage < totalPages - 4) { html += `<span class="pg-info">…</span>`; continue; }
+        if (Math.abs(p - goodsPage) > 2) continue;
+      }
+      html += `<button class="pg-btn${p === goodsPage ? ' active' : ''}" onclick="gotoGoodsPage(${p})">${p + 1}</button>`;
+    }
+    html += `<button class="pg-btn" onclick="gotoGoodsPage(${goodsPage + 1})" ${goodsPage === totalPages - 1 ? 'disabled' : ''}>›</button>`;
+    html += `<span class="pg-info">${from}–${to} из ${articles.length} товаров</span>`;
+    html += `</div>`;
+  }
+
   el.innerHTML = html;
 
   // Drag-to-reorder
@@ -851,13 +885,21 @@ function renderGoods() {
       e.stopPropagation();
       const key = btn.dataset.key;
       S.sortKey === key ? S.sortDir *= -1 : (S.sortKey = key, S.sortDir = -1);
+      goodsPage = 0;
       renderGoods();
     };
   });
 }
 
+function gotoGoodsPage(p) {
+  goodsPage = p;
+  renderGoods();
+  document.getElementById('gtable').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function onGoodsToggle() {
   METRICS.forEach(m => { if (!S.colOrder.includes(m.key)) S.colOrder.splice(m.defPos, 0, m.key); });
+  goodsPage = 0;
   renderGoods();
 }
 
