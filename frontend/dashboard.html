@@ -1148,6 +1148,7 @@ function applyLocalDateFilter() {
 
 function buildSummary(r) {
   const raw = r.raw_data?.summary || {};
+  console.log('[DEBUG raw_data keys]', Object.keys(raw));
   return {
     'Показы':                 r.impressions   ?? raw['Показы'],
     'CTR':                    r.ctr           ?? raw['CTR'],
