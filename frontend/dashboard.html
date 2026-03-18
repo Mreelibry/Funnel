@@ -226,6 +226,10 @@
     .cab-info{flex:1}
     .cab-name{font-size:14px;font-weight:600;color:var(--t);margin-bottom:3px}
     .cab-meta{font-size:11px;color:var(--g)}
+    .rpt-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;margin-top:5px}
+    .rpt-ok{background:rgba(34,197,94,.15);color:#16a34a}
+    .rpt-warn{background:rgba(239,68,68,.15);color:#dc2626}
+    .rpt-none{background:rgba(156,163,175,.15);color:#6b7280}
 
     .empty{text-align:center;padding:30px;color:var(--g);font-size:13px}
     @media(max-width:600px){.goods-layout{flex-direction:column}.filter-panel{width:100%}.daily-grid{grid-template-columns:1fr}}
@@ -1237,6 +1241,15 @@ async function deleteReport(id) {
 }
 
 // ── CABINETS ──
+function cabReportBadge(cabId) {
+  const reps = (reportsFromDB || []).filter(r => String(r.cabinet_id) === String(cabId));
+  if (!reps.length) return '<span class="rpt-badge rpt-none">Нет отчёта</span>';
+  const latest = reps.reduce((a, b) => (a.period_end > b.period_end ? a : b));
+  const days = Math.floor((Date.now() - new Date(latest.period_end)) / 86400000);
+  if (days <= 10) return `<span class="rpt-badge rpt-ok">${days === 0 ? 'Сегодня' : days + ' дн. назад'}</span>`;
+  return `<span class="rpt-badge rpt-warn">${days} дн. назад</span>`;
+}
+
 async function loadCabinets() {
   try {
     const q = selectedManagerId ? `?manager_id=${selectedManagerId}` : '';
@@ -1248,6 +1261,7 @@ async function loadCabinets() {
         <div class="cab-info">
           <div class="cab-name">${c.name}</div>
           <div class="cab-meta">${c.manager_name || '—'}</div>
+          ${cabReportBadge(c.id)}
         </div>
         <button class="btn btn-danger btn-sm" onclick="deleteCabinet('${c.id}')">Удалить</button>
       </div>`).join('');
