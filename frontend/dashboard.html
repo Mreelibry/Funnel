@@ -295,23 +295,46 @@
     .fm-plan-sum.ok{color:#22c55e}.fm-plan-sum.err{color:#ef4444}.fm-plan-sum.auto{color:var(--g)}
     .fm-plan-tbtn{background:var(--card2);border:0.5px solid var(--b2);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--g);cursor:pointer;font-family:inherit;transition:color .12s}
     .fm-plan-tbtn:hover{color:var(--t)}
-    .fm-plan-htable-wrap{overflow-x:auto;max-height:360px;overflow-y:auto}
+    .fm-plan-htable-wrap{overflow-x:auto;overflow-y:visible}
     .fm-plan-htable{border-collapse:collapse;font-size:12px;min-width:max-content;width:100%}
-    .fm-plan-htable thead th,.fm-plan-htable tfoot td{background:var(--card2)}
-    .fm-ph-month-row th{padding:5px 8px;text-align:center;font-size:11px;font-weight:700;color:var(--wb);letter-spacing:.3px;border-bottom:0.5px solid var(--b);border-right:1px solid var(--b);white-space:nowrap}
-    .fm-ph-week-row th{padding:4px 6px;text-align:center;font-size:10px;font-weight:600;color:var(--g);white-space:nowrap;border-bottom:0.5px solid var(--b);border-right:0.5px solid rgba(255,255,255,.04);min-width:68px}
-    .fm-ph-row-label{position:sticky;left:0;z-index:2;background:var(--card2)!important;min-width:78px;font-size:10px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;padding:5px 8px;text-align:left;border-right:1px solid var(--b)!important;white-space:nowrap}
-    .fm-ph-pct-row td,.fm-ph-ord-row td,.fm-ph-buy-row td{padding:4px 5px;border-bottom:0.5px solid rgba(255,255,255,.04);border-right:0.5px solid rgba(255,255,255,.03);text-align:center;vertical-align:middle}
-    .fm-ph-ord-row{background:rgba(255,255,255,.015)}
-    .fm-ph-num{text-align:center;font-weight:600;color:var(--t);min-width:52px}
+    /* Month header */
+    .fm-ph-mhdr{padding:7px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--wb);background:rgba(139,92,246,.07);border-bottom:1px solid rgba(139,92,246,.2);white-space:nowrap;letter-spacing:.3px}
+    .fm-ph-mhdr-sep{border-right:2px solid rgba(139,92,246,.25)!important}
+    /* Week header — clickable */
+    .fm-ph-whdr{padding:6px 8px;text-align:center;font-size:10px;font-weight:600;color:var(--g);background:var(--card2);white-space:nowrap;border-bottom:0.5px solid var(--b);cursor:pointer;user-select:none;transition:color .12s,background .12s;min-width:76px}
+    .fm-ph-whdr:hover{color:var(--wb);background:var(--wb2)}
+    .fm-ph-whdr.wk-open{color:var(--wb);background:var(--wb2)}
+    .fm-ph-whdr-sep{border-right:2px solid rgba(139,92,246,.25)!important}
+    /* Sticky row labels */
+    .fm-ph-lbl{position:sticky;left:0;z-index:2;background:var(--card2)!important;font-size:10px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.5px;padding:6px 10px;text-align:left;white-space:nowrap;border-right:1.5px solid var(--b)!important;min-width:88px}
+    /* Data rows */
+    .fm-ph-pct-row td{padding:5px 6px;border-bottom:0.5px solid var(--b);border-right:0.5px solid rgba(255,255,255,.03);text-align:center;vertical-align:middle}
+    .fm-ph-ord-row td{padding:5px 6px;border-bottom:0.5px solid rgba(255,255,255,.04);border-right:0.5px solid rgba(255,255,255,.03);text-align:center;vertical-align:middle;background:rgba(255,255,255,.015)}
+    .fm-ph-buy-row td{padding:5px 6px;border-bottom:0.5px solid rgba(255,255,255,.04);border-right:0.5px solid rgba(255,255,255,.03);text-align:center;vertical-align:middle}
+    .fm-ph-num{font-weight:600;color:var(--t)}
     .fm-ph-num.pos{color:#22c55e}
-    .fm-ph-month-sep{border-right:1px solid var(--b)!important}
-    .fm-plan-pct-inp{background:var(--card2);border:0.5px solid var(--b2);border-radius:5px;padding:3px 5px;font-size:12px;color:var(--t);font-family:inherit;width:52px;text-align:right}
+    .fm-ph-cell-msep{border-right:2px solid rgba(139,92,246,.2)!important}
+    /* % input */
+    .fm-plan-pct-inp{background:var(--card2);border:0.5px solid var(--b2);border-radius:5px;padding:3px 6px;font-size:12px;color:var(--t);font-family:inherit;width:52px;text-align:right;transition:border-color .12s}
     .fm-plan-pct-inp:focus{outline:none;border-color:var(--wb)}
-    .fm-ph-total-row td{padding:5px 8px;font-weight:700;border-top:0.5px solid var(--b);text-align:center;font-size:11px;color:var(--g);border-right:0.5px solid rgba(255,255,255,.04)}
-    .fm-ph-total-row .fm-ph-row-label{color:var(--t)}
-    .fm-plan-grand-total{padding:8px 12px;font-size:12px;color:var(--g);border-top:0.5px solid var(--b);display:flex;gap:16px;flex-wrap:wrap;background:var(--card2)}
+    /* tfoot monthly totals */
+    .fm-ph-tfrow td{padding:6px 8px;font-weight:700;border-top:1.5px solid var(--b);text-align:center;font-size:11px;background:var(--card2)}
+    .fm-plan-grand-total{padding:10px 14px;font-size:12px;color:var(--g);border-top:1px solid var(--b);display:flex;gap:20px;flex-wrap:wrap;background:var(--bg)}
     .fm-plan-grand-total b{color:var(--t)}
+    /* Day detail panels */
+    .fm-day-panels{border-top:1px solid var(--b)}
+    .fm-day-panel{padding:12px 14px;border-bottom:0.5px solid var(--b);background:rgba(0,0,0,.12)}
+    .fm-day-panel-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+    .fm-day-panel-ttl{font-size:12px;font-weight:700;color:var(--t)}
+    .fm-day-panel-sub{font-size:11px;color:var(--g)}
+    .fm-day-tbl{border-collapse:collapse;font-size:12px;min-width:320px}
+    .fm-day-tbl th{background:var(--card2);padding:5px 10px;font-size:10px;font-weight:700;color:var(--g);text-align:center;border-bottom:0.5px solid var(--b);text-transform:uppercase;letter-spacing:.3px}
+    .fm-day-tbl th:first-child{text-align:left}
+    .fm-day-tbl td{padding:5px 10px;text-align:center;border-bottom:0.5px solid rgba(255,255,255,.03);color:var(--t)}
+    .fm-day-tbl td:first-child{text-align:left;color:var(--g);font-size:11px}
+    .fm-day-tbl td:nth-child(2){color:var(--g2);font-size:11px}
+    .fm-day-tbl tr:last-child td{border-bottom:none}
+    .fm-day-tbl .weekend{opacity:.55}
     .fm-add-btn{background:var(--wb2);border:1.5px dashed var(--wb3);border-radius:14px;padding:18px;text-align:center;color:var(--wb);font-size:13px;font-weight:600;cursor:pointer;width:100%;font-family:inherit;transition:background .15s}
     .fm-add-btn:hover{background:var(--wb3)}
     .fm-charts-section{background:var(--card);border-radius:14px;border:0.5px solid var(--b);padding:18px 20px;margin-bottom:30px}
@@ -1715,7 +1738,6 @@ function fmNewArticle(overrides = {}) {
   return {
     id, name: 'Артикул ' + id,
     price: 1500, buyoutPct: 60,
-    totalBuyouts: 100,        // total planned buyouts for the period
     sendCost: 80, returnCost: 50,
     // WB percentage deductions
     commissionPct: 15,        // комиссия МП %
@@ -1724,7 +1746,7 @@ function fmNewArticle(overrides = {}) {
     drrPct: 10,               // ДРР % (доля рекламных расходов)
     // Cost structure
     costPerUnit: 300,         // direct cost per unit
-    batchSize: 100,           // for amortising extra costs
+    batchSize: 500,           // batch volume → also drives plan orders
     extraLogistics: 3000,     // batch delivery logistics
     extraPackaging: 1000,     // packaging
     extraOther: 0,
@@ -1732,6 +1754,7 @@ function fmNewArticle(overrides = {}) {
     batchOpen: false,
     planOpen: false,
     weeklyPct: [],            // [] = auto; [20,25,...] = manual
+    expandedWeeks: [],        // week indices with day detail open
     ...overrides
   };
 }
@@ -1758,8 +1781,9 @@ function fmCalc(a, priceOverride) {
   const costs      = costUnit + logBuyout + commUnit + taxUnit + acquUnit + drrUnit;
   const roi        = costs > 0 ? profitUnit / costs * 100 : 0;
   const breakEven  = pctFactor > 0 ? (costUnit + logBuyout) / pctFactor : 0;
-  const buyouts    = +(a.totalBuyouts || 0);
-  const orders     = buyRate > 0 ? buyouts / buyRate : 0;
+  // Plan volume: batch size defines total orders; buyouts = orders × buyRate
+  const orders     = Math.max(0, +a.batchSize);
+  const buyouts    = orders * buyRate;
   return { costUnit, extraPerUnit, logOrder, logBuyout,
     commUnit, taxUnit, acquUnit, drrUnit, pctFactor,
     profitUnit, margin, roi, breakEven,
@@ -1797,21 +1821,18 @@ function fmLoad() {
       a.costPerUnit = Math.round(old); a.extraLogistics = 0; a.extraPackaging = 0; a.extraOther = 0;
       delete a.batchPurchase; delete a.batchLogistics; delete a.batchPackaging; delete a.batchOther;
     }
-    // v3→v4: ordersPerMonth + adCost/adType → totalBuyouts + drrPct + commission/tax/acquiring
-    if (a.ordersPerMonth !== undefined && a.totalBuyouts === undefined) {
-      const buyRate = Math.max(0.01, +(a.buyoutPct||60) / 100);
-      a.totalBuyouts = Math.round(+(a.ordersPerMonth||100) * FM.months * buyRate);
-      delete a.ordersPerMonth;
-    }
-    if (a.adCost !== undefined) { delete a.adCost; }
-    if (a.adType !== undefined) { delete a.adType; }
+    // v3→v4: ordersPerMonth + adCost/adType → drrPct + commission/tax/acquiring
+    if (a.ordersPerMonth !== undefined) { delete a.ordersPerMonth; }
+    if (a.adCost         !== undefined) { delete a.adCost; }
+    if (a.adType         !== undefined) { delete a.adType; }
+    // v4→v5: remove totalBuyouts (now derived from batchSize)
+    if (a.totalBuyouts   !== undefined) { delete a.totalBuyouts; }
     if (a.drrPct         === undefined) a.drrPct         = 10;
     if (a.commissionPct  === undefined) a.commissionPct  = 15;
     if (a.taxPct         === undefined) a.taxPct         = 7;
     if (a.acquiringPct   === undefined) a.acquiringPct   = 1.5;
     if (!a.weeklyPct)      a.weeklyPct = [];
-    if (a.expandedWeeks)   delete a.expandedWeeks;
-    if (a.totalBuyouts === undefined) a.totalBuyouts = 100;
+    if (!a.expandedWeeks)  a.expandedWeeks = [];
   });
   fmNextId = Math.max(fmNextId, ...FM.articles.map(a => a.id + 1), 1);
 }
@@ -1878,82 +1899,107 @@ function fmWeeksByMonth(startStr, months) {
   return groups;
 }
 
-// ── Plan section HTML (horizontal table) ──
+// ── Plan section HTML (horizontal table + day drill-down) ──
 function fmPlanHtml(a, c) {
   const n = fmNumWeeks(FM.months);
   const { pcts, auto, sum } = fmEffPcts(a);
-  const sumOk = Math.abs(sum - 100) < 0.5;
+  const sumOk  = Math.abs(sum - 100) < 0.5;
   const sumLbl = auto ? '≈ Равномерно (авто)' : 'Σ ' + sum.toFixed(1) + '%' + (sumOk ? ' ✓' : ' ≠ 100%');
   const sumCls = auto ? 'auto' : (sumOk ? 'ok' : 'err');
-  const months = fmWeeksByMonth(FM.startDate, FM.months);
-  const allWeeks = months.flatMap(g => g.weeks);
+  const mGroups  = fmWeeksByMonth(FM.startDate, FM.months);
+  const allWeeks = mGroups.flatMap(g => g.weeks);
+  const exWeeks  = a.expandedWeeks || [];
 
-  // header row 1: month labels
-  const monthHdrs = months.map((g, mi) => {
-    const isLast = mi === months.length - 1;
-    return `<th colspan="${g.weeks.length}" class="fm-ph-month-row-cell${isLast ? '' : ' fm-ph-month-sep'}"
-      style="padding:5px 8px;text-align:center;font-size:11px;font-weight:700;color:var(--wb);
-      border-bottom:0.5px solid var(--b);${isLast ? '' : 'border-right:1px solid var(--b);'}white-space:nowrap">
-      ${g.label}</th>`;
-  }).join('');
-
-  // header row 2: week date labels
-  const weekHdrs = allWeeks.map((w, wi) => {
-    const mIdx = months.findIndex(g => g.weeks.includes(w));
-    const isLastInMonth = months[mIdx].weeks.at(-1) === w;
-    const isLastOverall = wi === allWeeks.length - 1;
-    const sep = isLastInMonth && !isLastOverall ? '1px solid var(--b)' : '0.5px solid rgba(255,255,255,.04)';
-    return `<th style="padding:4px 6px;text-align:center;font-size:10px;font-weight:600;
-      color:var(--g);white-space:nowrap;border-bottom:0.5px solid var(--b);
-      border-right:${sep};min-width:68px">${fmWeekLabel(FM.startDate, w)}<br>
-      <span style="font-size:9px;font-weight:400">нед ${w+1}</span></th>`;
-  }).join('');
-
-  // cell helper: right border strong at month boundary
-  const cellStyle = (w, wi) => {
-    const mIdx = months.findIndex(g => g.weeks.includes(w));
-    const isLastInMonth = months[mIdx].weeks.at(-1) === w;
-    const isLastOverall = wi === allWeeks.length - 1;
-    const rb = isLastInMonth && !isLastOverall ? '1px solid var(--b)' : '0.5px solid rgba(255,255,255,.03)';
-    return `border-right:${rb}`;
+  // helper: is w the last week inside its month (and not the last month overall)?
+  const isMonthSep = w => {
+    const mi = mGroups.findIndex(g => g.weeks.includes(w));
+    return mGroups[mi].weeks.at(-1) === w && mi < mGroups.length - 1;
   };
 
-  // % row
-  const pctCells = allWeeks.map((w, wi) => {
+  /* ── thead row 1: month labels ── */
+  const monthHdrs = mGroups.map((g, mi) => {
+    const sep = mi < mGroups.length - 1 ? ' fm-ph-mhdr-sep' : '';
+    return `<th colspan="${g.weeks.length}" class="fm-ph-mhdr${sep}">${g.label}</th>`;
+  }).join('');
+
+  /* ── thead row 2: week date headers (click = toggle day panel) ── */
+  const weekHdrs = allWeeks.map(w => {
+    const isOpen = exWeeks.includes(w);
+    const sep    = isMonthSep(w) ? ' fm-ph-whdr-sep' : '';
+    const cls    = `fm-ph-whdr${sep}${isOpen ? ' wk-open' : ''}`;
+    return `<th class="${cls}" onclick="fmTogglePlanWeek(${a.id},${w})" title="${isOpen ? 'Скрыть дни' : 'Детализация по дням'}">
+      ${fmWeekLabel(FM.startDate, w)}<br>
+      <span style="font-size:9px;opacity:.7">нед ${w+1}&nbsp;${isOpen ? '▲' : '▼'}</span></th>`;
+  }).join('');
+
+  /* ── data cell helpers ── */
+  const msepClass = w => isMonthSep(w) ? ' fm-ph-cell-msep' : '';
+
+  /* ── % row ── */
+  const pctCells = allWeeks.map(w => {
     const rawV = auto ? '' : (+(a.weeklyPct[w] || 0) || '');
-    return `<td style="padding:4px 5px;text-align:center;${cellStyle(w,wi)}">
+    return `<td class="${msepClass(w)}" style="padding:5px 6px;text-align:center;vertical-align:middle">
       <input class="fm-plan-pct-inp" type="number" id="fmwp-${a.id}-${w}"
         value="${rawV}" min="0" max="100" step="0.5" placeholder="${(100/n).toFixed(1)}"
         oninput="fmSetWeekPct(${a.id},${w},this.value)" /></td>`;
   }).join('');
 
-  // orders row
-  const ordCells = allWeeks.map((w, wi) => {
-    const wOrd = c.orders * pcts[w] / 100;
-    return `<td class="fm-ph-num" style="${cellStyle(w,wi)}">${Math.round(wOrd)}</td>`;
+  /* ── orders row ── */
+  const ordCells = allWeeks.map(w => {
+    const v = Math.round(c.orders * pcts[w] / 100);
+    return `<td class="fm-ph-num${msepClass(w)}">${v}</td>`;
   }).join('');
 
-  // buyouts row
-  const buyCells = allWeeks.map((w, wi) => {
-    const wBuy = c.buyouts * pcts[w] / 100;
-    return `<td class="fm-ph-num pos" style="${cellStyle(w,wi)}">${Math.round(wBuy)}</td>`;
+  /* ── buyouts row ── */
+  const buyCells = allWeeks.map(w => {
+    const v = Math.round(c.buyouts * pcts[w] / 100);
+    return `<td class="fm-ph-num pos${msepClass(w)}">${v}</td>`;
   }).join('');
 
-  // tfoot: monthly totals for orders and buyouts
-  const tfootOrd = months.map((g, mi) => {
-    const mOrd = g.weeks.reduce((s, w) => s + c.orders * pcts[w] / 100, 0);
-    const isLast = mi === months.length - 1;
-    return `<td colspan="${g.weeks.length}" class="fm-ph-num" style="padding:5px 8px;font-weight:700;
-      border-top:0.5px solid var(--b);text-align:center;font-size:11px;
-      color:var(--t);${isLast?'':'border-right:1px solid var(--b);'}">${Math.round(mOrd)}</td>`;
+  /* ── tfoot: monthly totals ── */
+  const tfOrd = mGroups.map((g, mi) => {
+    const v   = Math.round(g.weeks.reduce((s, w) => s + c.orders  * pcts[w] / 100, 0));
+    const sep = mi < mGroups.length - 1 ? ' fm-ph-mhdr-sep' : '';
+    return `<td colspan="${g.weeks.length}" class="fm-ph-num${sep}" style="padding:6px 8px;font-weight:700;border-top:1.5px solid var(--b);text-align:center;background:var(--card2)">${v}</td>`;
   }).join('');
-  const tfootBuy = months.map((g, mi) => {
-    const mBuy = g.weeks.reduce((s, w) => s + c.buyouts * pcts[w] / 100, 0);
-    const isLast = mi === months.length - 1;
-    return `<td colspan="${g.weeks.length}" class="fm-ph-num pos" style="padding:5px 8px;font-weight:700;
-      border-top:0.5px solid var(--b);text-align:center;font-size:11px;
-      ${isLast?'':'border-right:1px solid var(--b);'}">${Math.round(mBuy)}</td>`;
+  const tfBuy = mGroups.map((g, mi) => {
+    const v   = Math.round(g.weeks.reduce((s, w) => s + c.buyouts * pcts[w] / 100, 0));
+    const sep = mi < mGroups.length - 1 ? ' fm-ph-mhdr-sep' : '';
+    return `<td colspan="${g.weeks.length}" class="fm-ph-num pos${sep}" style="padding:6px 8px;font-weight:700;border-top:0.5px solid var(--b);text-align:center;background:var(--card2)">${v}</td>`;
   }).join('');
+
+  /* ── day detail panels (for expanded weeks) ── */
+  const DAYS_RU = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  const dayPanels = exWeeks.length > 0
+    ? `<div class="fm-day-panels">${[...exWeeks].sort((a,b)=>a-b).map(w => {
+        const wOrd = c.orders  * pcts[w] / 100;
+        const wBuy = c.buyouts * pcts[w] / 100;
+        const dayRows = Array.from({length:7}, (_,d) => {
+          const lbl  = fmDayLabel(FM.startDate, w, d);
+          const dOrd = (wOrd / 7).toFixed(1);
+          const dBuy = (wBuy / 7).toFixed(1);
+          const cls  = d >= 5 ? ' class="weekend"' : '';
+          return `<tr${cls}>
+            <td>${DAYS_RU[d]}</td>
+            <td>${lbl.split(' ')[1] || lbl}</td>
+            <td class="fm-ph-num">${dOrd}</td>
+            <td class="fm-ph-num pos">${dBuy}</td>
+          </tr>`;
+        }).join('');
+        return `<div class="fm-day-panel">
+          <div class="fm-day-panel-hdr">
+            <span style="color:var(--wb);font-size:13px">◈</span>
+            <span class="fm-day-panel-ttl">Нед ${w+1}: ${fmWeekLabel(FM.startDate, w)}</span>
+            <span class="fm-day-panel-sub">${Math.round(wOrd)} заказов · ${Math.round(wBuy)} выкупов</span>
+            <button class="fm-plan-tbtn" style="margin-left:auto" onclick="fmTogglePlanWeek(${a.id},${w})">Скрыть ▲</button>
+          </div>
+          <table class="fm-day-tbl">
+            <thead><tr><th>День</th><th>Дата</th><th>Заказы</th><th>Выкупы</th></tr></thead>
+            <tbody>${dayRows}</tbody>
+          </table>
+        </div>`;
+      }).join('')}</div>`
+    : '';
 
   return `<div class="fm-plan-body" id="fmplnb-${a.id}">
   <div class="fm-plan-toolbar">
@@ -1964,36 +2010,24 @@ function fmPlanHtml(a, c) {
   <div class="fm-plan-htable-wrap">
     <table class="fm-plan-htable">
       <thead>
-        <tr>
-          <th class="fm-ph-row-label" rowspan="2"></th>
-          ${monthHdrs}
-        </tr>
+        <tr><th class="fm-ph-lbl" rowspan="2"></th>${monthHdrs}</tr>
         <tr>${weekHdrs}</tr>
       </thead>
       <tbody>
-        <tr class="fm-ph-pct-row">
-          <td class="fm-ph-row-label">%</td>${pctCells}
-        </tr>
-        <tr class="fm-ph-ord-row">
-          <td class="fm-ph-row-label">Заказы</td>${ordCells}
-        </tr>
-        <tr class="fm-ph-buy-row">
-          <td class="fm-ph-row-label">Выкупы</td>${buyCells}
-        </tr>
+        <tr class="fm-ph-pct-row"><td class="fm-ph-lbl">%</td>${pctCells}</tr>
+        <tr class="fm-ph-ord-row"><td class="fm-ph-lbl">Заказы</td>${ordCells}</tr>
+        <tr class="fm-ph-buy-row"><td class="fm-ph-lbl">Выкупы</td>${buyCells}</tr>
       </tbody>
       <tfoot>
-        <tr class="fm-ph-total-row">
-          <td class="fm-ph-row-label" style="font-size:10px">Заказы / мес</td>${tfootOrd}
-        </tr>
-        <tr class="fm-ph-total-row">
-          <td class="fm-ph-row-label" style="font-size:10px">Выкупы / мес</td>${tfootBuy}
-        </tr>
+        <tr><td class="fm-ph-lbl" style="font-size:9px;background:var(--card2)!important">Заказы / мес</td>${tfOrd}</tr>
+        <tr><td class="fm-ph-lbl" style="font-size:9px;background:var(--card2)!important">Выкупы / мес</td>${tfBuy}</tr>
       </tfoot>
     </table>
   </div>
+  ${dayPanels}
   <div class="fm-plan-grand-total">
-    <span>Всего заказов: <b>${Math.round(c.orders)}</b></span>
-    <span>Всего выкупов: <b>${Math.round(c.buyouts)}</b></span>
+    <span>Заказов: <b>${Math.round(c.orders)}</b></span>
+    <span>Выкупов: <b>${Math.round(c.buyouts)}</b></span>
     <span>Выручка: <b>${fmFmt(c.revenue,'rub')}</b></span>
     <span>Прибыль: <b style="color:${c.profit>=0?'#22c55e':'#ef4444'}">${fmFmt(c.profit,'rub')}</b></span>
   </div>
@@ -2100,12 +2134,12 @@ function fmCardHtml(a) {
     <div class="fm-field fm-field-cost"><label>Себестоимость / ед ₽</label>
       <input type="number" id="fmf-${a.id}-costPerUnit" value="${+a.costPerUnit}" min="0"
         oninput="fmSet(${a.id},'costPerUnit',+this.value)" /></div>
+    <div class="fm-field" style="border:0.5px solid var(--wb3);border-radius:8px;padding:4px 6px"><label style="color:var(--wb)">Тираж / партия, шт</label>
+      <input type="number" id="fmf-${a.id}-batchSize" value="${+a.batchSize}" min="1"
+        oninput="fmSet(${a.id},'batchSize',+this.value)" /></div>
     <div class="fm-field"><label>% выкупа</label>
       <input type="number" id="fmf-${a.id}-buyoutPct" value="${+a.buyoutPct}" min="1" max="100"
         oninput="fmSet(${a.id},'buyoutPct',+this.value)" /></div>
-    <div class="fm-field"><label>Выкупов за период</label>
-      <input type="number" id="fmf-${a.id}-totalBuyouts" value="${+(a.totalBuyouts||0)}" min="0"
-        oninput="fmSet(${a.id},'totalBuyouts',+this.value)" /></div>
     <div class="fm-field"><label>Отправка ₽</label>
       <input type="number" id="fmf-${a.id}-sendCost" value="${+a.sendCost}" min="0"
         oninput="fmSet(${a.id},'sendCost',+this.value)" /></div>
@@ -2132,9 +2166,6 @@ function fmCardHtml(a) {
   </button>
   <div class="fm-batch-body${a.batchOpen?' open':''}">
     <div class="fm-fields">
-      <div class="fm-field"><label>Размер партии, шт</label>
-        <input type="number" id="fmf-${a.id}-batchSize" value="${+a.batchSize}" min="1"
-          oninput="fmSet(${a.id},'batchSize',+this.value)" /></div>
       <div class="fm-field"><label>Логистика поставки</label>
         <input type="number" id="fmf-${a.id}-extraLogistics" value="${+a.extraLogistics}" min="0"
           oninput="fmSet(${a.id},'extraLogistics',+this.value)" /></div>
@@ -2229,6 +2260,13 @@ function fmTogglePlan(id) {
 }
 
 // ── Plan mutations ──
+function fmTogglePlanWeek(id, w) {
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  if (!a.expandedWeeks) a.expandedWeeks = [];
+  const idx = a.expandedWeeks.indexOf(w);
+  if (idx >= 0) a.expandedWeeks.splice(idx, 1); else a.expandedWeeks.push(w);
+  fmSave(); fmUpdatePlan(id);
+}
 function fmSetWeekPct(id, w, val) {
   const a = FM.articles.find(x => x.id === id); if (!a) return;
   while (a.weeklyPct.length <= w) a.weeklyPct.push(0);
@@ -2244,7 +2282,7 @@ function fmAutoDistribute(id) {
 }
 function fmResetPlan(id) {
   const a = FM.articles.find(x => x.id === id); if (!a) return;
-  a.weeklyPct = []; fmSave(); fmUpdatePlan(id);
+  a.weeklyPct = []; a.expandedWeeks = []; fmSave(); fmUpdatePlan(id);
 }
 
 // ── Charts ──
