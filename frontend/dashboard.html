@@ -14,6 +14,13 @@
       --bg:#13111E;--card:#1E1B2E;--card2:#282440;
       --b:rgba(255,255,255,.07);--b2:rgba(255,255,255,.13)
     }
+    html.light{
+      --wb:#7C3AED;--wb2:rgba(124,58,237,.09);--wb3:rgba(124,58,237,.18);
+      --green:#16A34A;--red:#DC2626;--amber:#D97706;
+      --t:#111827;--g:#6B7280;--g2:#9CA3AF;
+      --bg:#f5f4f8;--card:#ffffff;--card2:#f0eef6;
+      --b:rgba(0,0,0,.08);--b2:rgba(0,0,0,.12)
+    }
     body{font-family:'Onest',sans-serif;background:var(--bg);color:var(--t);min-height:100vh}
 
     /* NAV */
@@ -26,6 +33,7 @@
     .nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
     .nav-username{font-size:12px;color:var(--g)}
     .btn-logout{border:none;background:none;cursor:pointer;font-size:12px;color:var(--red);font-family:inherit}
+    .btn-theme{border:none;background:var(--card2);border-radius:8px;padding:4px 9px;font-size:14px;color:var(--g);cursor:pointer;transition:color .15s;line-height:1}.btn-theme:hover{color:var(--wb)}
 
     select{border:0.5px solid var(--b2);border-radius:8px;padding:5px 10px;font-size:12px;font-family:inherit;color:var(--t);background:var(--card2);cursor:pointer}
     select:focus{outline:none;border-color:var(--wb)}
@@ -239,6 +247,7 @@
     <select id="mgr-select" style="display:none" onchange="onManagerChange()">
       <option value="">Все менеджеры</option>
     </select>
+    <button class="btn-theme" id="theme-btn" onclick="toggleTheme()" title="Сменить тему"></button>
     <span class="nav-username" id="nav-username">—</span>
     <button class="btn-logout" onclick="logout()">Выйти</button>
   </div>
@@ -860,6 +869,26 @@ function renderAll() {
 
 
 // ─── FILE HANDLERS ─── (handled in upload section above)
+
+// ─── THEME ───
+function initTheme() {
+  const saved = localStorage.getItem('wb_theme');
+  if (saved === 'light') document.documentElement.classList.add('light');
+  updateThemeBtn();
+}
+function toggleTheme() {
+  const light = document.documentElement.classList.toggle('light');
+  localStorage.setItem('wb_theme', light ? 'light' : 'dark');
+  updateThemeBtn();
+}
+function updateThemeBtn() {
+  const btn = document.getElementById('theme-btn');
+  if (!btn) return;
+  const light = document.documentElement.classList.contains('light');
+  btn.textContent = light ? '◑' : '◐';
+  btn.title = light ? 'Тёмная тема' : 'Светлая тема';
+}
+initTheme();
 
 </script>
 <script>
