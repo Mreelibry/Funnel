@@ -39,7 +39,7 @@ function parseWBReport(buffer, filename) {
       const headers = rows[hi].map(c => String(c).trim());
       const data    = rows[hi + 1] || [];
       const obj = {};
-      headers.forEach((k, i) => { if (k) obj[k] = data[i]; });
+      headers.forEach((k, i) => { if (k) obj[k.replace(/[\u20A0-\u20CF]/g, '₽')] = data[i]; });
       result.summary = obj;
     }
   }

@@ -524,7 +524,7 @@ function parseSummary(ws) {
   }
   if (hi < 0) return null;
   const h = rows[hi].map(c => String(c).trim()), d = rows[hi + 1] || [], o = {};
-  h.forEach((k, i) => { if (k) o[k] = d[i]; });
+  h.forEach((k, i) => { if (k) o[k.replace(/[\u20A0-\u20CF]/g, '₽')] = d[i]; });
   return o;
 }
 
@@ -1147,8 +1147,9 @@ function applyLocalDateFilter() {
 }
 
 function buildSummary(r) {
-  const raw = r.raw_data?.summary || {};
-  console.log('[DEBUG raw_data keys]', Object.keys(raw));
+  const rawOrig = r.raw_data?.summary || {};
+  const raw = {};
+  Object.keys(rawOrig).forEach(k => { raw[k.replace(/[\u20A0-\u20CF]/g, '₽')] = rawOrig[k]; });
   return {
     'Показы':                 r.impressions   ?? raw['Показы'],
     'CTR':                    r.ctr           ?? raw['CTR'],

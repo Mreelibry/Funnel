@@ -75,7 +75,7 @@ function parseSummary(ws) {
   }
   if (hi < 0) return null;
   const h = rows[hi].map(c => String(c).trim()), d = rows[hi + 1] || [], o = {};
-  h.forEach((k, i) => { if (k) o[k] = d[i]; });
+  h.forEach((k, i) => { if (k) o[k.replace(/[\u20A0-\u20CF]/g, '₽')] = d[i]; });
   return o;
 }
 
