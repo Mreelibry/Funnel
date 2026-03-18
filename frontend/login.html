@@ -8,15 +8,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    :root{--wb:#7C3AED;--wb2:rgba(124,58,237,0.09);--err:#DC2626}
-    body{font-family:'Onest',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f5f4f8}
-    .card{background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 8px 40px rgba(0,0,0,0.1)}
+    :root{--wb:#7C3AED;--wb2:rgba(124,58,237,0.09);--err:#DC2626;--bg:#f5f4f8;--card:#fff;--t:#111;--g:#888;--inp:#fafafa;--inp-b:#e0dde8}
+    html.dark{--bg:#13111E;--card:#1E1B2E;--t:#F1F0F5;--g:#9CA3AF;--inp:#282440;--inp-b:rgba(255,255,255,.15)}
+    body{font-family:'Onest',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+    .theme-toggle{position:fixed;top:14px;right:16px;border:none;background:rgba(124,58,237,.1);border-radius:8px;padding:5px 10px;font-size:14px;color:var(--g);cursor:pointer;line-height:1}
+    .theme-toggle:hover{color:var(--wb)}
+    .card{background:var(--card);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;box-shadow:0 8px 40px rgba(0,0,0,0.1)}
     .logo{width:52px;height:52px;border-radius:14px;background:var(--wb);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;margin:0 auto 16px}
-    h1{font-size:22px;font-weight:700;text-align:center;color:#111;margin-bottom:6px}
-    .sub{font-size:13px;color:#888;text-align:center;margin-bottom:28px}
+    h1{font-size:22px;font-weight:700;text-align:center;color:var(--t);margin-bottom:6px}
+    .sub{font-size:13px;color:var(--g);text-align:center;margin-bottom:28px}
     .field{margin-bottom:16px}
     label{display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
-    input{width:100%;border:1.5px solid #e0dde8;border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:#111;transition:border-color .15s;background:#fafafa}
+    input{width:100%;border:1.5px solid var(--inp-b);border-radius:10px;padding:11px 14px;font-size:14px;font-family:inherit;color:var(--t);transition:border-color .15s;background:var(--inp)}
     input:focus{outline:none;border-color:var(--wb);background:#fff}
     .btn{width:100%;background:var(--wb);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .15s;margin-top:8px}
     .btn:hover{opacity:.88}
@@ -28,6 +31,7 @@
   </style>
 </head>
 <body>
+<button class="theme-toggle" id="theme-btn" onclick="toggleTheme()"></button>
 <div class="card">
   <div class="logo">WB</div>
   <h1>Добро пожаловать</h1>
@@ -49,6 +53,23 @@
 </div>
 
 <script>
+  function initTheme() {
+    if (localStorage.getItem('wb_theme') === 'dark') document.documentElement.classList.add('dark');
+    updateThemeBtn();
+  }
+  function toggleTheme() {
+    const dark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('wb_theme', dark ? 'dark' : 'light');
+    updateThemeBtn();
+  }
+  function updateThemeBtn() {
+    const btn = document.getElementById('theme-btn');
+    if (!btn) return;
+    btn.textContent = document.documentElement.classList.contains('dark') ? '◐' : '◑';
+    btn.title = document.documentElement.classList.contains('dark') ? 'Светлая тема' : 'Тёмная тема';
+  }
+  initTheme();
+
   const API = window.location.hostname === 'localhost'
     ? 'http://localhost:3000/api'
     : 'https://funnel-zn2f.onrender.com/api'; // ← замените после деплоя
