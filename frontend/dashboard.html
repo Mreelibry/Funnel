@@ -295,22 +295,23 @@
     .fm-plan-sum.ok{color:#22c55e}.fm-plan-sum.err{color:#ef4444}.fm-plan-sum.auto{color:var(--g)}
     .fm-plan-tbtn{background:var(--card2);border:0.5px solid var(--b2);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--g);cursor:pointer;font-family:inherit;transition:color .12s}
     .fm-plan-tbtn:hover{color:var(--t)}
-    .fm-plan-table-wrap{max-height:340px;overflow-y:auto}
-    .fm-plan-table{width:100%;border-collapse:collapse;font-size:12px}
-    .fm-plan-table th{position:sticky;top:0;z-index:1;background:var(--card2);padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;border-bottom:0.5px solid var(--b)}
-    .fm-plan-table td{padding:5px 8px;border-bottom:0.5px solid rgba(255,255,255,.03);vertical-align:middle}
-    .fm-plan-table tbody tr:last-child td{border-bottom:none}
-    .fm-plan-week-row:hover td{background:rgba(255,255,255,.02)}
-    .fm-plan-day-row td{background:rgba(0,0,0,.14);font-size:11px}
-    .fm-plan-wnum{font-weight:700;color:var(--g);width:26px;font-size:11px}
-    .fm-plan-dates{color:var(--g2);font-size:11px;white-space:nowrap;min-width:110px}
-    .fm-plan-pct-inp{background:var(--card2);border:0.5px solid var(--b2);border-radius:5px;padding:3px 6px;font-size:12px;color:var(--t);font-family:inherit;width:60px;text-align:right}
+    .fm-plan-htable-wrap{overflow-x:auto;max-height:360px;overflow-y:auto}
+    .fm-plan-htable{border-collapse:collapse;font-size:12px;min-width:max-content;width:100%}
+    .fm-plan-htable thead th,.fm-plan-htable tfoot td{background:var(--card2)}
+    .fm-ph-month-row th{padding:5px 8px;text-align:center;font-size:11px;font-weight:700;color:var(--wb);letter-spacing:.3px;border-bottom:0.5px solid var(--b);border-right:1px solid var(--b);white-space:nowrap}
+    .fm-ph-week-row th{padding:4px 6px;text-align:center;font-size:10px;font-weight:600;color:var(--g);white-space:nowrap;border-bottom:0.5px solid var(--b);border-right:0.5px solid rgba(255,255,255,.04);min-width:68px}
+    .fm-ph-row-label{position:sticky;left:0;z-index:2;background:var(--card2)!important;min-width:78px;font-size:10px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;padding:5px 8px;text-align:left;border-right:1px solid var(--b)!important;white-space:nowrap}
+    .fm-ph-pct-row td,.fm-ph-ord-row td,.fm-ph-buy-row td{padding:4px 5px;border-bottom:0.5px solid rgba(255,255,255,.04);border-right:0.5px solid rgba(255,255,255,.03);text-align:center;vertical-align:middle}
+    .fm-ph-ord-row{background:rgba(255,255,255,.015)}
+    .fm-ph-num{text-align:center;font-weight:600;color:var(--t);min-width:52px}
+    .fm-ph-num.pos{color:#22c55e}
+    .fm-ph-month-sep{border-right:1px solid var(--b)!important}
+    .fm-plan-pct-inp{background:var(--card2);border:0.5px solid var(--b2);border-radius:5px;padding:3px 5px;font-size:12px;color:var(--t);font-family:inherit;width:52px;text-align:right}
     .fm-plan-pct-inp:focus{outline:none;border-color:var(--wb)}
-    .fm-plan-num{text-align:right;font-weight:600;color:var(--t)}
-    .fm-plan-num.pos{color:#22c55e}
-    .fm-plan-exp-btn{background:none;border:none;color:var(--g);cursor:pointer;font-size:10px;padding:2px 5px;font-family:inherit;transition:color .1s}
-    .fm-plan-exp-btn:hover{color:var(--t)}
-    .fm-plan-total-row td{background:var(--card2)!important;padding:7px 8px;font-weight:700;border-top:0.5px solid var(--b)}
+    .fm-ph-total-row td{padding:5px 8px;font-weight:700;border-top:0.5px solid var(--b);text-align:center;font-size:11px;color:var(--g);border-right:0.5px solid rgba(255,255,255,.04)}
+    .fm-ph-total-row .fm-ph-row-label{color:var(--t)}
+    .fm-plan-grand-total{padding:8px 12px;font-size:12px;color:var(--g);border-top:0.5px solid var(--b);display:flex;gap:16px;flex-wrap:wrap;background:var(--card2)}
+    .fm-plan-grand-total b{color:var(--t)}
     .fm-add-btn{background:var(--wb2);border:1.5px dashed var(--wb3);border-radius:14px;padding:18px;text-align:center;color:var(--wb);font-size:13px;font-weight:600;cursor:pointer;width:100%;font-family:inherit;transition:background .15s}
     .fm-add-btn:hover{background:var(--wb3)}
     .fm-charts-section{background:var(--card);border-radius:14px;border:0.5px solid var(--b);padding:18px 20px;margin-bottom:30px}
@@ -1713,10 +1714,15 @@ function fmNewArticle(overrides = {}) {
   const id = fmNextId++;
   return {
     id, name: 'Артикул ' + id,
-    price: 1500, buyoutPct: 60, ordersPerMonth: 100,
+    price: 1500, buyoutPct: 60,
+    totalBuyouts: 100,        // total planned buyouts for the period
     sendCost: 80, returnCost: 50,
-    adCost: 50, adType: 'perOrder',
-    // Cost (new structure)
+    // WB percentage deductions
+    commissionPct: 15,        // комиссия МП %
+    taxPct: 7,                // налог %
+    acquiringPct: 1.5,        // эквайринг %
+    drrPct: 10,               // ДРР % (доля рекламных расходов)
+    // Cost structure
     costPerUnit: 300,         // direct cost per unit
     batchSize: 100,           // for amortising extra costs
     extraLogistics: 3000,     // batch delivery logistics
@@ -1726,7 +1732,6 @@ function fmNewArticle(overrides = {}) {
     batchOpen: false,
     planOpen: false,
     weeklyPct: [],            // [] = auto; [20,25,...] = manual
-    expandedWeeks: [],        // week indices showing day detail
     ...overrides
   };
 }
@@ -1739,15 +1744,26 @@ function fmCalc(a, priceOverride) {
   const costUnit   = +a.costPerUnit + extraPerUnit;
   const logOrder   = +a.sendCost + (1 - buyRate) * +a.returnCost;
   const logBuyout  = logOrder / buyRate;
-  const adUnit     = a.adType === 'perBuyout' ? +a.adCost : +a.adCost / buyRate;
-  const profitUnit = price - costUnit - logBuyout - adUnit;
+  const commPct    = +(a.commissionPct || 0);
+  const taxPct     = +(a.taxPct || 0);
+  const acquPct    = +(a.acquiringPct || 0);
+  const drrPct     = +(a.drrPct || 0);
+  const pctFactor  = 1 - (commPct + acquPct + drrPct + taxPct) / 100;
+  const commUnit   = price * commPct / 100;
+  const taxUnit    = price * taxPct / 100;
+  const acquUnit   = price * acquPct / 100;
+  const drrUnit    = price * drrPct / 100;
+  const profitUnit = price * pctFactor - (costUnit + logBuyout);
   const margin     = price > 0 ? profitUnit / price * 100 : 0;
-  const costs      = costUnit + logBuyout + adUnit;
+  const costs      = costUnit + logBuyout + commUnit + taxUnit + acquUnit + drrUnit;
   const roi        = costs > 0 ? profitUnit / costs * 100 : 0;
-  const orders     = +a.ordersPerMonth * FM.months;
-  const buyouts    = orders * buyRate;
-  return { costUnit, extraPerUnit, logOrder, logBuyout, adUnit, profitUnit, margin, roi,
-    breakEven: costs, orders, buyouts, revenue: buyouts * price, profit: buyouts * profitUnit };
+  const breakEven  = pctFactor > 0 ? (costUnit + logBuyout) / pctFactor : 0;
+  const buyouts    = +(a.totalBuyouts || 0);
+  const orders     = buyRate > 0 ? buyouts / buyRate : 0;
+  return { costUnit, extraPerUnit, logOrder, logBuyout,
+    commUnit, taxUnit, acquUnit, drrUnit, pctFactor,
+    profitUnit, margin, roi, breakEven,
+    orders, buyouts, revenue: buyouts * price, profit: buyouts * profitUnit };
 }
 
 function fmFmt(v, type) {
@@ -1774,15 +1790,28 @@ function fmLoad() {
   } catch(e) {}
   if (!FM.articles || !FM.articles.length) FM.articles = [fmNewArticle({ name: 'Артикул 1' })];
   if (!FM.startDate) FM.startDate = new Date().toISOString().slice(0, 10);
-  // Migrate articles saved before v3 (had batchPurchase instead of costPerUnit)
   FM.articles.forEach(a => {
+    // v2→v3: batchPurchase → costPerUnit
     if (a.batchPurchase !== undefined && a.costPerUnit === undefined) {
       const old = (+a.batchPurchase + +(a.batchLogistics||0) + +(a.batchPackaging||0) + +(a.batchOther||0)) / Math.max(1, +a.batchSize||1);
       a.costPerUnit = Math.round(old); a.extraLogistics = 0; a.extraPackaging = 0; a.extraOther = 0;
       delete a.batchPurchase; delete a.batchLogistics; delete a.batchPackaging; delete a.batchOther;
     }
-    if (!a.weeklyPct)     a.weeklyPct = [];
-    if (!a.expandedWeeks) a.expandedWeeks = [];
+    // v3→v4: ordersPerMonth + adCost/adType → totalBuyouts + drrPct + commission/tax/acquiring
+    if (a.ordersPerMonth !== undefined && a.totalBuyouts === undefined) {
+      const buyRate = Math.max(0.01, +(a.buyoutPct||60) / 100);
+      a.totalBuyouts = Math.round(+(a.ordersPerMonth||100) * FM.months * buyRate);
+      delete a.ordersPerMonth;
+    }
+    if (a.adCost !== undefined) { delete a.adCost; }
+    if (a.adType !== undefined) { delete a.adType; }
+    if (a.drrPct         === undefined) a.drrPct         = 10;
+    if (a.commissionPct  === undefined) a.commissionPct  = 15;
+    if (a.taxPct         === undefined) a.taxPct         = 7;
+    if (a.acquiringPct   === undefined) a.acquiringPct   = 1.5;
+    if (!a.weeklyPct)      a.weeklyPct = [];
+    if (a.expandedWeeks)   delete a.expandedWeeks;
+    if (a.totalBuyouts === undefined) a.totalBuyouts = 100;
   });
   fmNextId = Math.max(fmNextId, ...FM.articles.map(a => a.id + 1), 1);
 }
@@ -1831,44 +1860,99 @@ function fmEffPcts(a) {
   return        { pcts: raw,                             auto: false, sum };
 }
 
-// ── Plan section HTML ──
+// Groups weeks (0-based) by the calendar month of their start date
+// Returns [{label, monthKey, weeks: [wIdx, ...]}]
+function fmWeeksByMonth(startStr, months) {
+  const n = fmNumWeeks(months);
+  const base = new Date(startStr || new Date().toISOString().slice(0, 10));
+  const groups = [];
+  const MONTHS_RU = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+  for (let w = 0; w < n; w++) {
+    const d = new Date(base); d.setDate(d.getDate() + w * 7);
+    const mk = d.getFullYear() * 100 + d.getMonth();
+    const lbl = MONTHS_RU[d.getMonth()] + " '" + String(d.getFullYear()).slice(2);
+    let grp = groups.find(g => g.monthKey === mk);
+    if (!grp) { grp = { monthKey: mk, label: lbl, weeks: [] }; groups.push(grp); }
+    grp.weeks.push(w);
+  }
+  return groups;
+}
+
+// ── Plan section HTML (horizontal table) ──
 function fmPlanHtml(a, c) {
   const n = fmNumWeeks(FM.months);
   const { pcts, auto, sum } = fmEffPcts(a);
   const sumOk = Math.abs(sum - 100) < 0.5;
   const sumLbl = auto ? '≈ Равномерно (авто)' : 'Σ ' + sum.toFixed(1) + '%' + (sumOk ? ' ✓' : ' ≠ 100%');
   const sumCls = auto ? 'auto' : (sumOk ? 'ok' : 'err');
-  const exWeeks = a.expandedWeeks || [];
+  const months = fmWeeksByMonth(FM.startDate, FM.months);
+  const allWeeks = months.flatMap(g => g.weeks);
 
-  const rows = Array.from({length: n}, (_, w) => {
-    const pct = pcts[w];
-    const wOrd = c.orders  * pct / 100;
-    const wBuy = c.buyouts * pct / 100;
-    const isExp = exWeeks.includes(w);
-    const rawV  = auto ? '' : (+(a.weeklyPct[w] || 0) || '');
+  // header row 1: month labels
+  const monthHdrs = months.map((g, mi) => {
+    const isLast = mi === months.length - 1;
+    return `<th colspan="${g.weeks.length}" class="fm-ph-month-row-cell${isLast ? '' : ' fm-ph-month-sep'}"
+      style="padding:5px 8px;text-align:center;font-size:11px;font-weight:700;color:var(--wb);
+      border-bottom:0.5px solid var(--b);${isLast ? '' : 'border-right:1px solid var(--b);'}white-space:nowrap">
+      ${g.label}</th>`;
+  }).join('');
 
-    const dayRows = isExp ? Array.from({length: 7}, (_, d) => `
-      <tr class="fm-plan-day-row">
-        <td></td>
-        <td class="fm-plan-dates" style="padding-left:18px">${fmDayLabel(FM.startDate,w,d)}</td>
-        <td></td>
-        <td class="fm-plan-num">${(wOrd/7).toFixed(1)}</td>
-        <td class="fm-plan-num pos">${(wBuy/7).toFixed(1)}</td>
-        <td></td>
-      </tr>`).join('') : '';
+  // header row 2: week date labels
+  const weekHdrs = allWeeks.map((w, wi) => {
+    const mIdx = months.findIndex(g => g.weeks.includes(w));
+    const isLastInMonth = months[mIdx].weeks.at(-1) === w;
+    const isLastOverall = wi === allWeeks.length - 1;
+    const sep = isLastInMonth && !isLastOverall ? '1px solid var(--b)' : '0.5px solid rgba(255,255,255,.04)';
+    return `<th style="padding:4px 6px;text-align:center;font-size:10px;font-weight:600;
+      color:var(--g);white-space:nowrap;border-bottom:0.5px solid var(--b);
+      border-right:${sep};min-width:68px">${fmWeekLabel(FM.startDate, w)}<br>
+      <span style="font-size:9px;font-weight:400">нед ${w+1}</span></th>`;
+  }).join('');
 
-    return `
-    <tr class="fm-plan-week-row">
-      <td class="fm-plan-wnum">${w+1}</td>
-      <td class="fm-plan-dates">${fmWeekLabel(FM.startDate, w)}</td>
-      <td><input class="fm-plan-pct-inp" type="number" id="fmwp-${a.id}-${w}"
-          value="${rawV}" min="0" max="100" step="0.5" placeholder="${(100/n).toFixed(1)}"
-          oninput="fmSetWeekPct(${a.id},${w},this.value)" /></td>
-      <td class="fm-plan-num">${Math.round(wOrd)}</td>
-      <td class="fm-plan-num pos">${Math.round(wBuy)}</td>
-      <td><button class="fm-plan-exp-btn" onclick="fmTogglePlanWeek(${a.id},${w})"
-          title="${isExp?'Свернуть':'По дням'}">${isExp?'▼':'▶'}</button></td>
-    </tr>${dayRows}`;
+  // cell helper: right border strong at month boundary
+  const cellStyle = (w, wi) => {
+    const mIdx = months.findIndex(g => g.weeks.includes(w));
+    const isLastInMonth = months[mIdx].weeks.at(-1) === w;
+    const isLastOverall = wi === allWeeks.length - 1;
+    const rb = isLastInMonth && !isLastOverall ? '1px solid var(--b)' : '0.5px solid rgba(255,255,255,.03)';
+    return `border-right:${rb}`;
+  };
+
+  // % row
+  const pctCells = allWeeks.map((w, wi) => {
+    const rawV = auto ? '' : (+(a.weeklyPct[w] || 0) || '');
+    return `<td style="padding:4px 5px;text-align:center;${cellStyle(w,wi)}">
+      <input class="fm-plan-pct-inp" type="number" id="fmwp-${a.id}-${w}"
+        value="${rawV}" min="0" max="100" step="0.5" placeholder="${(100/n).toFixed(1)}"
+        oninput="fmSetWeekPct(${a.id},${w},this.value)" /></td>`;
+  }).join('');
+
+  // orders row
+  const ordCells = allWeeks.map((w, wi) => {
+    const wOrd = c.orders * pcts[w] / 100;
+    return `<td class="fm-ph-num" style="${cellStyle(w,wi)}">${Math.round(wOrd)}</td>`;
+  }).join('');
+
+  // buyouts row
+  const buyCells = allWeeks.map((w, wi) => {
+    const wBuy = c.buyouts * pcts[w] / 100;
+    return `<td class="fm-ph-num pos" style="${cellStyle(w,wi)}">${Math.round(wBuy)}</td>`;
+  }).join('');
+
+  // tfoot: monthly totals for orders and buyouts
+  const tfootOrd = months.map((g, mi) => {
+    const mOrd = g.weeks.reduce((s, w) => s + c.orders * pcts[w] / 100, 0);
+    const isLast = mi === months.length - 1;
+    return `<td colspan="${g.weeks.length}" class="fm-ph-num" style="padding:5px 8px;font-weight:700;
+      border-top:0.5px solid var(--b);text-align:center;font-size:11px;
+      color:var(--t);${isLast?'':'border-right:1px solid var(--b);'}">${Math.round(mOrd)}</td>`;
+  }).join('');
+  const tfootBuy = months.map((g, mi) => {
+    const mBuy = g.weeks.reduce((s, w) => s + c.buyouts * pcts[w] / 100, 0);
+    const isLast = mi === months.length - 1;
+    return `<td colspan="${g.weeks.length}" class="fm-ph-num pos" style="padding:5px 8px;font-weight:700;
+      border-top:0.5px solid var(--b);text-align:center;font-size:11px;
+      ${isLast?'':'border-right:1px solid var(--b);'}">${Math.round(mBuy)}</td>`;
   }).join('');
 
   return `<div class="fm-plan-body" id="fmplnb-${a.id}">
@@ -1877,22 +1961,41 @@ function fmPlanHtml(a, c) {
     <button class="fm-plan-tbtn" onclick="fmAutoDistribute(${a.id})">Равномерно</button>
     <button class="fm-plan-tbtn" onclick="fmResetPlan(${a.id})">Сброс</button>
   </div>
-  <div class="fm-plan-table-wrap">
-    <table class="fm-plan-table">
-      <thead><tr>
-        <th>№</th><th>Период</th><th style="width:70px">%</th>
-        <th style="text-align:right">Заказы</th><th style="text-align:right">Выкупы</th><th></th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-      <tfoot><tr class="fm-plan-total-row">
-        <td colspan="2" style="font-size:11px;color:var(--g)">Итого за период</td>
-        <td class="fm-plan-num" style="font-size:11px;color:${sumCls==='err'?'#ef4444':'var(--g)'}">
-          ${auto ? '100%' : sum.toFixed(1)+'%'}</td>
-        <td class="fm-plan-num">${Math.round(c.orders)}</td>
-        <td class="fm-plan-num pos">${Math.round(c.buyouts)}</td>
-        <td></td>
-      </tr></tfoot>
+  <div class="fm-plan-htable-wrap">
+    <table class="fm-plan-htable">
+      <thead>
+        <tr>
+          <th class="fm-ph-row-label" rowspan="2"></th>
+          ${monthHdrs}
+        </tr>
+        <tr>${weekHdrs}</tr>
+      </thead>
+      <tbody>
+        <tr class="fm-ph-pct-row">
+          <td class="fm-ph-row-label">%</td>${pctCells}
+        </tr>
+        <tr class="fm-ph-ord-row">
+          <td class="fm-ph-row-label">Заказы</td>${ordCells}
+        </tr>
+        <tr class="fm-ph-buy-row">
+          <td class="fm-ph-row-label">Выкупы</td>${buyCells}
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr class="fm-ph-total-row">
+          <td class="fm-ph-row-label" style="font-size:10px">Заказы / мес</td>${tfootOrd}
+        </tr>
+        <tr class="fm-ph-total-row">
+          <td class="fm-ph-row-label" style="font-size:10px">Выкупы / мес</td>${tfootBuy}
+        </tr>
+      </tfoot>
     </table>
+  </div>
+  <div class="fm-plan-grand-total">
+    <span>Всего заказов: <b>${Math.round(c.orders)}</b></span>
+    <span>Всего выкупов: <b>${Math.round(c.buyouts)}</b></span>
+    <span>Выручка: <b>${fmFmt(c.revenue,'rub')}</b></span>
+    <span>Прибыль: <b style="color:${c.profit>=0?'#22c55e':'#ef4444'}">${fmFmt(c.profit,'rub')}</b></span>
   </div>
 </div>`;
 }
@@ -1903,7 +2006,7 @@ function fmUpdateSummary() {
   FM.articles.forEach(a => {
     const c = fmCalc(a);
     totRev += c.revenue; totProfit += c.profit;
-    totCosts += c.buyouts * (c.costUnit + c.logBuyout + c.adUnit);
+    totCosts += c.buyouts * (c.costUnit + c.logBuyout + c.commUnit + c.taxUnit + c.acquUnit + c.drrUnit);
   });
   const totRoi = totCosts > 0 ? totProfit / totCosts * 100 : 0;
   document.getElementById('fm-sum-rev').textContent    = fmFmt(totRev,    'rub');
@@ -1918,9 +2021,12 @@ function fmResultsHtml(a, c) {
   const pc = c.profitUnit >= 0 ? 'pos' : 'neg';
   return `<div class="fm-res-item"><div class="fm-res-lbl">Заказы за период</div><div class="fm-res-val">${fmFmt(c.orders,'n')}</div></div>
 <div class="fm-res-item"><div class="fm-res-lbl">Выкупы</div><div class="fm-res-val">${fmFmt(c.buyouts,'n')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">Возвраты</div><div class="fm-res-val">${fmFmt(c.orders-c.buyouts,'n')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">Себестоимость</div><div class="fm-res-val">${fmFmt(c.costUnit,'rub')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">Себестоимость / ед</div><div class="fm-res-val">${fmFmt(c.costUnit,'rub')}</div></div>
 <div class="fm-res-item"><div class="fm-res-lbl">Логистика / выкуп</div><div class="fm-res-val">${fmFmt(c.logBuyout,'rub')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">Комиссия МП</div><div class="fm-res-val">${fmFmt(c.commUnit,'rub')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">ДРР</div><div class="fm-res-val">${fmFmt(c.drrUnit,'rub')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">Налог</div><div class="fm-res-val">${fmFmt(c.taxUnit,'rub')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">Эквайринг</div><div class="fm-res-val">${fmFmt(c.acquUnit,'rub')}</div></div>
 <div class="fm-res-item"><div class="fm-res-lbl">Прибыль / шт</div><div class="fm-res-val ${pc}">${fmFmt(c.profitUnit,'rub')}</div></div>
 <div class="fm-res-item"><div class="fm-res-lbl">Маржа</div><div class="fm-res-val ${pc}">${fmFmt(c.margin,'pct')}</div></div>
 <div class="fm-res-item"><div class="fm-res-lbl">ROI</div><div class="fm-res-val ${pc}">${fmFmt(c.roi,'pct')}</div></div>
@@ -1997,23 +2103,27 @@ function fmCardHtml(a) {
     <div class="fm-field"><label>% выкупа</label>
       <input type="number" id="fmf-${a.id}-buyoutPct" value="${+a.buyoutPct}" min="1" max="100"
         oninput="fmSet(${a.id},'buyoutPct',+this.value)" /></div>
-    <div class="fm-field"><label>Заказов / мес</label>
-      <input type="number" id="fmf-${a.id}-ordersPerMonth" value="${+a.ordersPerMonth}" min="0"
-        oninput="fmSet(${a.id},'ordersPerMonth',+this.value)" /></div>
+    <div class="fm-field"><label>Выкупов за период</label>
+      <input type="number" id="fmf-${a.id}-totalBuyouts" value="${+(a.totalBuyouts||0)}" min="0"
+        oninput="fmSet(${a.id},'totalBuyouts',+this.value)" /></div>
     <div class="fm-field"><label>Отправка ₽</label>
       <input type="number" id="fmf-${a.id}-sendCost" value="${+a.sendCost}" min="0"
         oninput="fmSet(${a.id},'sendCost',+this.value)" /></div>
     <div class="fm-field"><label>Возврат ₽</label>
       <input type="number" id="fmf-${a.id}-returnCost" value="${+a.returnCost}" min="0"
         oninput="fmSet(${a.id},'returnCost',+this.value)" /></div>
-    <div class="fm-field"><label>Реклама ₽</label>
-      <input type="number" id="fmf-${a.id}-adCost" value="${+a.adCost}" min="0"
-        oninput="fmSet(${a.id},'adCost',+this.value)" /></div>
-    <div class="fm-field"><label>Тип рекламы</label>
-      <select id="fmf-${a.id}-adType" onchange="fmSet(${a.id},'adType',this.value)">
-        <option value="perOrder"  ${a.adType==='perOrder' ?'selected':''}>На заказ</option>
-        <option value="perBuyout" ${a.adType==='perBuyout'?'selected':''}>На выкуп</option>
-      </select></div>
+    <div class="fm-field"><label>Комиссия МП %</label>
+      <input type="number" id="fmf-${a.id}-commissionPct" value="${+(a.commissionPct||0)}" min="0" max="100" step="0.1"
+        oninput="fmSet(${a.id},'commissionPct',+this.value)" /></div>
+    <div class="fm-field"><label>ДРР % (реклама)</label>
+      <input type="number" id="fmf-${a.id}-drrPct" value="${+(a.drrPct||0)}" min="0" max="100" step="0.1"
+        oninput="fmSet(${a.id},'drrPct',+this.value)" /></div>
+    <div class="fm-field"><label>Налог %</label>
+      <input type="number" id="fmf-${a.id}-taxPct" value="${+(a.taxPct||0)}" min="0" max="100" step="0.1"
+        oninput="fmSet(${a.id},'taxPct',+this.value)" /></div>
+    <div class="fm-field"><label>Эквайринг %</label>
+      <input type="number" id="fmf-${a.id}-acquiringPct" value="${+(a.acquiringPct||0)}" min="0" max="100" step="0.1"
+        oninput="fmSet(${a.id},'acquiringPct',+this.value)" /></div>
   </div>
   <div class="fm-results">${fmResultsHtml(a, c)}</div>
 
@@ -2125,12 +2235,6 @@ function fmSetWeekPct(id, w, val) {
   a.weeklyPct[w] = +val || 0; fmSave();
   fmUpdatePlan(id);
 }
-function fmTogglePlanWeek(id, w) {
-  const a = FM.articles.find(x => x.id === id); if (!a) return;
-  const idx = a.expandedWeeks.indexOf(w);
-  if (idx >= 0) a.expandedWeeks.splice(idx, 1); else a.expandedWeeks.push(w);
-  fmSave(); fmUpdatePlan(id);
-}
 function fmAutoDistribute(id) {
   const a = FM.articles.find(x => x.id === id); if (!a) return;
   const n = fmNumWeeks(FM.months), base = +(100/n).toFixed(2);
@@ -2140,7 +2244,7 @@ function fmAutoDistribute(id) {
 }
 function fmResetPlan(id) {
   const a = FM.articles.find(x => x.id === id); if (!a) return;
-  a.weeklyPct = []; a.expandedWeeks = []; fmSave(); fmUpdatePlan(id);
+  a.weeklyPct = []; fmSave(); fmUpdatePlan(id);
 }
 
 // ── Charts ──
@@ -2210,9 +2314,8 @@ function fmRenderCharts() {
     options: baseOpts('ROI %')
   });
 
-  const mProfits = [1,2,3,4,5,6].map(m =>
-    +a.ordersPerMonth * m * (+a.buyoutPct / 100) * c.profitUnit
-  );
+  const buyoutsPerMonth = FM.months > 0 ? c.buyouts / FM.months : 0;
+  const mProfits = [1,2,3,4,5,6].map(m => buyoutsPerMonth * m * c.profitUnit);
   mk('fc-months', {
     type: 'bar',
     data: { labels: ['1 мес','2 мес','3 мес','4 мес','5 мес','6 мес'], datasets: [{
