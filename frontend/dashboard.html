@@ -239,6 +239,65 @@
     .rpt-warn{background:rgba(239,68,68,.15);color:#dc2626}
     .rpt-none{background:rgba(156,163,175,.15);color:#6b7280}
 
+    /* ── ФИНМОДЕЛЬ ── */
+    #page-finmodel{padding:16px 20px;max-width:1200px;margin:0 auto}
+    .fm-topbar{margin-bottom:20px}
+    .fm-title-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+    .fm-project-name{font-size:18px;font-weight:700;color:var(--t);background:transparent;border:none;border-bottom:1.5px solid transparent;padding:2px 6px;min-width:160px;font-family:inherit}
+    .fm-project-name:focus{outline:none;border-bottom-color:var(--wb)}
+    .fm-period-btns{display:flex;gap:3px;background:var(--card);border-radius:10px;padding:3px;border:0.5px solid var(--b)}
+    .fm-period-btn{background:none;border:none;padding:5px 12px;border-radius:7px;font-size:13px;font-weight:600;color:var(--g);cursor:pointer;transition:all .15s;font-family:inherit}
+    .fm-period-btn.active{background:var(--wb);color:#fff}
+    .fm-period-btn:not(.active):hover{color:var(--t)}
+    .fm-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+    .fm-sum-card{background:var(--card);border-radius:12px;border:0.5px solid var(--b);padding:14px 18px}
+    .fm-sum-label{font-size:11px;color:var(--g);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+    .fm-sum-value{font-size:22px;font-weight:700;color:var(--t)}
+    .fm-sum-value.pos{color:#22c55e}.fm-sum-value.neg{color:#ef4444}
+    .fm-articles{display:flex;flex-direction:column;gap:14px;margin-bottom:20px}
+    .fm-card{background:var(--card);border-radius:14px;border:0.5px solid var(--b);padding:18px 20px;transition:border-color .25s}
+    .fm-card.profit-pos{border-color:rgba(34,197,94,.35)}
+    .fm-card.profit-neg{border-color:rgba(239,68,68,.35)}
+    .fm-card-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+    .fm-art-name{font-size:15px;font-weight:700;color:var(--t);background:transparent;border:none;border-bottom:1.5px solid transparent;padding:2px 4px;flex:1;min-width:0;font-family:inherit}
+    .fm-art-name:focus{outline:none;border-bottom-color:var(--wb)}
+    .fm-warn{display:none;font-size:11px;font-weight:600;color:#f97316;background:rgba(249,115,22,.12);padding:3px 10px;border-radius:6px;white-space:nowrap}
+    .fm-warn.show{display:block}
+    .fm-price-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+    .fm-price-lbl{font-size:12px;color:var(--g);font-weight:600;white-space:nowrap}
+    .fm-price-inp{font-size:20px;font-weight:700;color:var(--t);background:var(--card2);border:0.5px solid var(--b2);border-radius:8px;padding:6px 10px;width:130px;text-align:right;font-family:inherit}
+    .fm-price-inp:focus{outline:none;border-color:var(--wb)}
+    .fm-slider{flex:1;min-width:100px;accent-color:var(--wb);cursor:pointer}
+    .fm-be-hint{font-size:11px;color:var(--g);white-space:nowrap}
+    .fm-be-hint b{color:var(--amber)}
+    .fm-fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px}
+    .fm-field{display:flex;flex-direction:column;gap:4px}
+    .fm-field label{font-size:10px;color:var(--g);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+    .fm-field input,.fm-field select{background:var(--card2);border:0.5px solid var(--b2);border-radius:8px;padding:6px 9px;font-size:13px;color:var(--t);font-family:inherit;width:100%}
+    .fm-field input:focus,.fm-field select:focus{outline:none;border-color:var(--wb)}
+    .fm-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;background:var(--card2);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+    .fm-res-item{display:flex;flex-direction:column;gap:3px}
+    .fm-res-lbl{font-size:10px;color:var(--g)}
+    .fm-res-val{font-size:15px;font-weight:700;color:var(--t)}
+    .fm-res-val.pos{color:#22c55e}.fm-res-val.neg{color:#ef4444}
+    .fm-batch-toggle{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--g);font-size:12px;font-weight:600;cursor:pointer;padding:4px 0;font-family:inherit}
+    .fm-batch-toggle:hover{color:var(--t)}
+    .fm-barrow{display:inline-block;transition:transform .2s;font-size:10px}
+    .fm-batch-toggle.open .fm-barrow{transform:rotate(90deg)}
+    .fm-batch-body{display:none;background:var(--bg);border-radius:10px;padding:12px 14px;margin-top:8px;border:0.5px solid var(--b)}
+    .fm-batch-body.open{display:block}
+    .fm-batch-cst{font-size:12px;color:var(--g);margin-top:8px;padding-top:8px;border-top:0.5px solid var(--b)}
+    .fm-batch-cst b{color:var(--t);font-size:14px}
+    .fm-add-btn{background:var(--wb2);border:1.5px dashed var(--wb3);border-radius:14px;padding:18px;text-align:center;color:var(--wb);font-size:13px;font-weight:600;cursor:pointer;width:100%;font-family:inherit;transition:background .15s}
+    .fm-add-btn:hover{background:var(--wb3)}
+    .fm-charts-section{background:var(--card);border-radius:14px;border:0.5px solid var(--b);padding:18px 20px;margin-bottom:30px}
+    .fm-charts-hdr{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+    .fm-charts-ttl{font-size:14px;font-weight:700;color:var(--t);flex:1}
+    .fm-charts-sel select{background:var(--card2);border:0.5px solid var(--b2);border-radius:8px;padding:5px 9px;font-size:12px;color:var(--t);font-family:inherit}
+    .fm-charts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+    .fm-chart-card{background:var(--card2);border-radius:10px;padding:14px}
+    .fm-chart-ttl{font-size:11px;color:var(--g);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+
     .empty{text-align:center;padding:30px;color:var(--g);font-size:13px}
     @media(max-width:600px){.goods-layout{flex-direction:column}.filter-panel{width:100%}.daily-grid{grid-template-columns:1fr}}
   </style>
@@ -253,6 +312,7 @@
     <button class="nav-tab active" onclick="showPage('funnel',this)">Воронка</button>
     <button class="nav-tab" onclick="showPage('daily',this)">Ежедневный</button>
     <button class="nav-tab" id="nav-cabinets" onclick="showPage('cabinets',this)" style="display:none">Кабинеты</button>
+    <button class="nav-tab" onclick="showPage('finmodel',this)">Финмодель</button>
     <a class="nav-tab" href="admin.html" id="nav-admin" style="display:none">Управление</a>
   </div>
   <div class="nav-right">
@@ -379,6 +439,61 @@
   </div>
   <div class="cab-grid" id="cab-grid">
     <div class="empty">Загрузка...</div>
+  </div>
+</div>
+
+<!-- ═══ ФИНМОДЕЛЬ ═══ -->
+<div class="page" id="page-finmodel">
+  <div class="fm-topbar">
+    <div class="fm-title-row">
+      <input class="fm-project-name" id="fm-project-name" value="Финансовая модель"
+        oninput="FM.projectName=this.value;fmSave()" placeholder="Название проекта" />
+      <div class="fm-period-btns">
+        <button class="fm-period-btn active" data-m="1" onclick="fmSetPeriod(1)">1 мес</button>
+        <button class="fm-period-btn" data-m="2" onclick="fmSetPeriod(2)">2 мес</button>
+        <button class="fm-period-btn" data-m="3" onclick="fmSetPeriod(3)">3 мес</button>
+        <button class="fm-period-btn" data-m="4" onclick="fmSetPeriod(4)">4 мес</button>
+        <button class="fm-period-btn" data-m="5" onclick="fmSetPeriod(5)">5 мес</button>
+        <button class="fm-period-btn" data-m="6" onclick="fmSetPeriod(6)">6 мес</button>
+      </div>
+    </div>
+    <div class="fm-summary-grid">
+      <div class="fm-sum-card">
+        <div class="fm-sum-label">Выручка за период</div>
+        <div class="fm-sum-value" id="fm-sum-rev">—</div>
+      </div>
+      <div class="fm-sum-card">
+        <div class="fm-sum-label">Прибыль за период</div>
+        <div class="fm-sum-value" id="fm-sum-profit">—</div>
+      </div>
+      <div class="fm-sum-card">
+        <div class="fm-sum-label">ROI</div>
+        <div class="fm-sum-value" id="fm-sum-roi">—</div>
+      </div>
+    </div>
+  </div>
+  <div class="fm-articles" id="fm-articles"></div>
+  <div class="fm-charts-section">
+    <div class="fm-charts-hdr">
+      <span class="fm-charts-ttl">Графики</span>
+      <div class="fm-charts-sel">
+        <select id="fm-chart-art" onchange="fmRenderCharts()"></select>
+      </div>
+    </div>
+    <div class="fm-charts-grid">
+      <div class="fm-chart-card">
+        <div class="fm-chart-ttl">Цена → Прибыль / шт</div>
+        <canvas id="fc-price-profit" height="160"></canvas>
+      </div>
+      <div class="fm-chart-card">
+        <div class="fm-chart-ttl">Цена → ROI</div>
+        <canvas id="fc-price-roi" height="160"></canvas>
+      </div>
+      <div class="fm-chart-card">
+        <div class="fm-chart-ttl">Прибыль по месяцам (1–6)</div>
+        <canvas id="fc-months" height="160"></canvas>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1550,6 +1665,333 @@ function openDailyView(r) {
 renderWeeks = function() {};
 
 init();
+
+// ══════════════════════════════════════
+// ФИНМОДЕЛЬ
+// ══════════════════════════════════════
+const FM_KEY = 'wb_finmodel';
+let fmNextId = 1;
+let FM = { projectName: 'Финансовая модель', months: 1, articles: [] };
+let fmChartInst = {};
+let fmChartTimer = null;
+
+function fmNewArticle(overrides = {}) {
+  const id = fmNextId++;
+  return {
+    id, name: 'Артикул ' + id,
+    price: 1500, buyoutPct: 60, ordersPerMonth: 100,
+    sendCost: 80, returnCost: 50,
+    adCost: 50, adType: 'perOrder',
+    batchSize: 100, batchPurchase: 30000,
+    batchLogistics: 3000, batchPackaging: 1000, batchOther: 0,
+    batchOpen: false,
+    ...overrides
+  };
+}
+
+function fmCalc(a, priceOverride) {
+  const price    = priceOverride !== undefined ? priceOverride : +a.price;
+  const buyRate  = Math.max(0.01, +a.buyoutPct / 100);
+  const batchTot = +a.batchPurchase + +a.batchLogistics + +a.batchPackaging + +a.batchOther;
+  const costUnit = batchTot / Math.max(1, +a.batchSize);
+  const logOrder  = +a.sendCost + (1 - buyRate) * +a.returnCost;
+  const logBuyout = logOrder / buyRate;
+  const adUnit    = a.adType === 'perBuyout' ? +a.adCost : +a.adCost / buyRate;
+  const profitUnit = price - costUnit - logBuyout - adUnit;
+  const margin     = price > 0 ? profitUnit / price * 100 : 0;
+  const costs      = costUnit + logBuyout + adUnit;
+  const roi        = costs > 0 ? profitUnit / costs * 100 : 0;
+  const breakEven  = costs;
+  const orders     = +a.ordersPerMonth * FM.months;
+  const buyouts    = orders * buyRate;
+  const revenue    = buyouts * price;
+  const profit     = buyouts * profitUnit;
+  return { costUnit, logOrder, logBuyout, adUnit, profitUnit, margin, roi, breakEven, orders, buyouts, revenue, profit };
+}
+
+function fmFmt(v, type) {
+  if (v === null || v === undefined || (typeof v === 'number' && isNaN(v))) return '—';
+  const n = +v;
+  if (type === 'rub') {
+    const s = n < 0 ? '−' : '', a = Math.abs(n);
+    if (a >= 1e6) return s + (a / 1e6).toFixed(1) + ' млн ₽';
+    if (a >= 1e3) return s + Math.round(a).toLocaleString('ru') + ' ₽';
+    return s + Math.round(a) + ' ₽';
+  }
+  if (type === 'pct') return n.toFixed(1) + '%';
+  if (type === 'n')   return Math.round(n).toLocaleString('ru');
+  return String(n);
+}
+
+function fmEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function fmSave() {
+  try { localStorage.setItem(FM_KEY, JSON.stringify({ ...FM, _nid: fmNextId })); } catch(e) {}
+}
+
+function fmLoad() {
+  try {
+    const d = JSON.parse(localStorage.getItem(FM_KEY) || 'null');
+    if (d) { fmNextId = d._nid || 1; delete d._nid; FM = d; }
+  } catch(e) {}
+  if (!FM.articles || !FM.articles.length) FM.articles = [fmNewArticle({ name: 'Артикул 1' })];
+  fmNextId = Math.max(fmNextId, ...FM.articles.map(a => a.id + 1), 1);
+}
+
+function fmCardHtml(a) {
+  const c = fmCalc(a);
+  const pc = c.profitUnit >= 0 ? 'pos' : 'neg';
+  const slMin = Math.max(1, Math.round(c.breakEven * 0.4));
+  const slMax = Math.round(Math.max(+a.price * 2.5, c.breakEven * 3, slMin + 500));
+  return `
+<div class="fm-card ${c.profitUnit >= 0 ? 'profit-pos' : 'profit-neg'}" id="fmc-${a.id}">
+  <div class="fm-card-header">
+    <input class="fm-art-name" id="fmn-${a.id}" value="${fmEsc(a.name)}"
+      oninput="fmSet(${a.id},'name',this.value)" placeholder="Название" />
+    <span class="fm-warn${+a.price < c.breakEven ? ' show' : ''}" title="Цена ниже точки безубыточности">⚠ Убыток</span>
+    <button class="btn btn-danger btn-sm" onclick="fmDelete(${a.id})">✕</button>
+  </div>
+  <div class="fm-price-row">
+    <span class="fm-price-lbl">Цена ₽</span>
+    <input class="fm-price-inp" type="number" id="fmp-${a.id}" value="${+a.price}" min="1"
+      oninput="fmSetPrice(${a.id},+this.value)" />
+    <input class="fm-slider" type="range" id="fms-${a.id}"
+      min="${slMin}" max="${slMax}" step="10" value="${+a.price}"
+      oninput="fmSetPrice(${a.id},+this.value)" />
+    <span class="fm-be-hint">Безубыток: <b>${fmFmt(c.breakEven,'rub')}</b></span>
+  </div>
+  <div class="fm-fields">
+    <div class="fm-field"><label>% выкупа</label>
+      <input type="number" id="fmf-${a.id}-buyoutPct" value="${+a.buyoutPct}" min="1" max="100"
+        oninput="fmSet(${a.id},'buyoutPct',+this.value)" /></div>
+    <div class="fm-field"><label>Заказов / мес</label>
+      <input type="number" id="fmf-${a.id}-ordersPerMonth" value="${+a.ordersPerMonth}" min="0"
+        oninput="fmSet(${a.id},'ordersPerMonth',+this.value)" /></div>
+    <div class="fm-field"><label>Отправка ₽</label>
+      <input type="number" id="fmf-${a.id}-sendCost" value="${+a.sendCost}" min="0"
+        oninput="fmSet(${a.id},'sendCost',+this.value)" /></div>
+    <div class="fm-field"><label>Возврат ₽</label>
+      <input type="number" id="fmf-${a.id}-returnCost" value="${+a.returnCost}" min="0"
+        oninput="fmSet(${a.id},'returnCost',+this.value)" /></div>
+    <div class="fm-field"><label>Реклама ₽</label>
+      <input type="number" id="fmf-${a.id}-adCost" value="${+a.adCost}" min="0"
+        oninput="fmSet(${a.id},'adCost',+this.value)" /></div>
+    <div class="fm-field"><label>Тип рекламы</label>
+      <select id="fmf-${a.id}-adType" onchange="fmSet(${a.id},'adType',this.value)">
+        <option value="perOrder"  ${a.adType==='perOrder' ?'selected':''}>На заказ</option>
+        <option value="perBuyout" ${a.adType==='perBuyout'?'selected':''}>На выкуп</option>
+      </select></div>
+  </div>
+  <div class="fm-results">
+    <div class="fm-res-item"><div class="fm-res-lbl">Заказы за период</div><div class="fm-res-val">${fmFmt(c.orders,'n')}</div></div>
+    <div class="fm-res-item"><div class="fm-res-lbl">Выкупы</div><div class="fm-res-val">${fmFmt(c.buyouts,'n')}</div></div>
+    <div class="fm-res-item"><div class="fm-res-lbl">Возвраты</div><div class="fm-res-val">${fmFmt(c.orders-c.buyouts,'n')}</div></div>
+    <div class="fm-res-item"><div class="fm-res-lbl">Себестоимость</div><div class="fm-res-val">${fmFmt(c.costUnit,'rub')}</div></div>
+    <div class="fm-res-item"><div class="fm-res-lbl">Логистика / выкуп</div><div class="fm-res-val">${fmFmt(c.logBuyout,'rub')}</div></div>
+    <div class="fm-res-item"><div class="fm-res-lbl">Прибыль / шт</div><div class="fm-res-val ${pc}">${fmFmt(c.profitUnit,'rub')}</div></div>
+    <div class="fm-res-item"><div class="fm-res-lbl">Маржа</div><div class="fm-res-val ${pc}">${fmFmt(c.margin,'pct')}</div></div>
+    <div class="fm-res-item"><div class="fm-res-lbl">ROI</div><div class="fm-res-val ${pc}">${fmFmt(c.roi,'pct')}</div></div>
+    <div class="fm-res-item"><div class="fm-res-lbl">Выручка</div><div class="fm-res-val">${fmFmt(c.revenue,'rub')}</div></div>
+    <div class="fm-res-item"><div class="fm-res-lbl">Прибыль за период</div><div class="fm-res-val ${pc}">${fmFmt(c.profit,'rub')}</div></div>
+  </div>
+  <button class="fm-batch-toggle${a.batchOpen?' open':''}" onclick="fmToggleBatch(${a.id})">
+    <span class="fm-barrow">▶</span> Партия и закупка
+  </button>
+  <div class="fm-batch-body${a.batchOpen?' open':''}">
+    <div class="fm-fields">
+      <div class="fm-field"><label>Размер партии</label>
+        <input type="number" id="fmf-${a.id}-batchSize" value="${+a.batchSize}" min="1"
+          oninput="fmSet(${a.id},'batchSize',+this.value)" /></div>
+      <div class="fm-field"><label>Закупка ₽</label>
+        <input type="number" id="fmf-${a.id}-batchPurchase" value="${+a.batchPurchase}" min="0"
+          oninput="fmSet(${a.id},'batchPurchase',+this.value)" /></div>
+      <div class="fm-field"><label>Логистика партии</label>
+        <input type="number" id="fmf-${a.id}-batchLogistics" value="${+a.batchLogistics}" min="0"
+          oninput="fmSet(${a.id},'batchLogistics',+this.value)" /></div>
+      <div class="fm-field"><label>Упаковка</label>
+        <input type="number" id="fmf-${a.id}-batchPackaging" value="${+a.batchPackaging}" min="0"
+          oninput="fmSet(${a.id},'batchPackaging',+this.value)" /></div>
+      <div class="fm-field"><label>Прочие расходы</label>
+        <input type="number" id="fmf-${a.id}-batchOther" value="${+a.batchOther}" min="0"
+          oninput="fmSet(${a.id},'batchOther',+this.value)" /></div>
+    </div>
+    <div class="fm-batch-cst">Себестоимость единицы: <b>${fmFmt(c.costUnit,'rub')}</b></div>
+  </div>
+</div>`;
+}
+
+function fmRender() {
+  // Save focused element to restore after re-render
+  const activeId    = document.activeElement?.id;
+  const selStart    = document.activeElement?.selectionStart;
+  const selEnd      = document.activeElement?.selectionEnd;
+
+  fmSave();
+
+  // Project name
+  const pnEl = document.getElementById('fm-project-name');
+  if (pnEl && document.activeElement !== pnEl) pnEl.value = FM.projectName;
+
+  // Period buttons
+  document.querySelectorAll('.fm-period-btn').forEach(b =>
+    b.classList.toggle('active', +b.dataset.m === FM.months));
+
+  // Summary
+  let totRev = 0, totProfit = 0, totCosts = 0;
+  FM.articles.forEach(a => {
+    const c = fmCalc(a);
+    totRev    += c.revenue;
+    totProfit += c.profit;
+    totCosts  += c.buyouts * (c.costUnit + c.logBuyout + c.adUnit);
+  });
+  const totRoi = totCosts > 0 ? totProfit / totCosts * 100 : 0;
+  document.getElementById('fm-sum-rev').textContent    = fmFmt(totRev,    'rub');
+  document.getElementById('fm-sum-profit').textContent = fmFmt(totProfit, 'rub');
+  document.getElementById('fm-sum-roi').textContent    = fmFmt(totRoi,    'pct');
+  document.getElementById('fm-sum-profit').className   = 'fm-sum-value ' + (totProfit >= 0 ? 'pos' : 'neg');
+  document.getElementById('fm-sum-roi').className      = 'fm-sum-value ' + (totRoi    >= 0 ? 'pos' : 'neg');
+
+  // Articles
+  const el = document.getElementById('fm-articles');
+  el.innerHTML = FM.articles.map(a => fmCardHtml(a)).join('') +
+    `<button class="fm-add-btn" onclick="fmAddArticle()">＋ Добавить артикул</button>`;
+
+  // Restore focus
+  if (activeId) {
+    const el = document.getElementById(activeId);
+    if (el) {
+      el.focus();
+      try { el.setSelectionRange(selStart, selEnd); } catch(e) {}
+    }
+  }
+
+  // Charts (debounced)
+  clearTimeout(fmChartTimer);
+  fmChartTimer = setTimeout(fmRenderCharts, 250);
+}
+
+function fmSet(id, field, val) {
+  const a = FM.articles.find(x => x.id === id);
+  if (!a) return;
+  a[field] = val;
+  fmRender();
+}
+
+function fmSetPrice(id, val) {
+  if (!val || isNaN(val) || val < 1) return;
+  const a = FM.articles.find(x => x.id === id);
+  if (!a) return;
+  a.price = val;
+  const inp = document.getElementById('fmp-' + id);
+  const sld = document.getElementById('fms-' + id);
+  if (inp && document.activeElement !== inp) inp.value = val;
+  if (sld && document.activeElement !== sld) sld.value = val;
+  fmRender();
+}
+
+function fmSetPeriod(m) { FM.months = m; fmRender(); }
+
+function fmAddArticle() {
+  FM.articles.push(fmNewArticle({ name: 'Артикул ' + (FM.articles.length + 1) }));
+  fmRender();
+}
+
+function fmDelete(id) {
+  if (FM.articles.length <= 1) return;
+  FM.articles = FM.articles.filter(a => a.id !== id);
+  fmRender();
+}
+
+function fmToggleBatch(id) {
+  const a = FM.articles.find(x => x.id === id);
+  if (a) { a.batchOpen = !a.batchOpen; fmRender(); }
+}
+
+function fmRenderCharts() {
+  const sel = document.getElementById('fm-chart-art');
+  if (!sel) return;
+  const prevId = sel.value;
+  sel.innerHTML = FM.articles.map(a =>
+    `<option value="${a.id}" ${String(a.id) === prevId ? 'selected' : ''}>${fmEsc(a.name)}</option>`
+  ).join('');
+  const a = FM.articles.find(x => String(x.id) === sel.value) || FM.articles[0];
+  if (!a) return;
+
+  const c   = fmCalc(a);
+  const pts = 40;
+  const lo  = Math.max(1, Math.round(c.breakEven * 0.4));
+  const hi  = Math.round(Math.max(+a.price * 2.5, c.breakEven * 2.5, lo + 500));
+  const step = (hi - lo) / pts;
+  const prices  = Array.from({length: pts + 1}, (_, i) => Math.round(lo + i * step));
+  const profits = prices.map(p => fmCalc(a, p).profitUnit);
+  const rois    = prices.map(p => fmCalc(a, p).roi);
+
+  const dark = !document.documentElement.classList.contains('light');
+  const gc   = dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
+  const tc   = dark ? '#9CA3AF' : '#6B7280';
+
+  const baseOpts = (yLbl) => ({
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gc }, ticks: { color: tc, maxTicksLimit: 6,
+        callback: (_, i) => prices[i] ? prices[i] + ' ₽' : '' } },
+      y: { grid: { color: gc }, ticks: { color: tc, maxTicksLimit: 5 },
+        title: { display: true, text: yLbl, color: tc, font: { size: 10 } } }
+    }
+  });
+
+  const mk = (id, cfg) => {
+    if (fmChartInst[id]) { fmChartInst[id].destroy(); delete fmChartInst[id]; }
+    const ctx = document.getElementById(id)?.getContext('2d');
+    if (ctx) fmChartInst[id] = new Chart(ctx, cfg);
+  };
+
+  mk('fc-price-profit', {
+    type: 'line',
+    data: { labels: prices, datasets: [{
+      data: profits, borderWidth: 2, tension: 0.3, pointRadius: 0,
+      borderColor: profits.map(v => v >= 0 ? '#22C55E' : '#EF4444'),
+      segment: { borderColor: ctx => profits[ctx.p0DataIndex] >= 0 ? '#22C55E' : '#EF4444' },
+      backgroundColor: 'transparent'
+    }]},
+    options: baseOpts('Прибыль ₽')
+  });
+
+  mk('fc-price-roi', {
+    type: 'line',
+    data: { labels: prices, datasets: [{
+      data: rois, borderColor: '#8B5CF6', borderWidth: 2, tension: 0.3,
+      pointRadius: 0, backgroundColor: 'rgba(139,92,246,.08)', fill: true
+    }]},
+    options: baseOpts('ROI %')
+  });
+
+  const mLabels  = [1,2,3,4,5,6];
+  const mProfits = mLabels.map(m => {
+    const buyouts = +a.ordersPerMonth * m * (+a.buyoutPct / 100);
+    return buyouts * c.profitUnit;
+  });
+  mk('fc-months', {
+    type: 'bar',
+    data: { labels: mLabels.map(m => m + ' мес'), datasets: [{
+      data: mProfits,
+      backgroundColor: mProfits.map(v => v >= 0 ? 'rgba(34,197,94,.45)' : 'rgba(239,68,68,.45)'),
+      borderColor:     mProfits.map(v => v >= 0 ? '#22C55E' : '#EF4444'),
+      borderWidth: 1.5, borderRadius: 6
+    }]},
+    options: { ...baseOpts('Прибыль ₽'), plugins: { legend: { display: false } } }
+  });
+}
+
+// Init finmodel
+fmLoad();
+// Render when finmodel tab is opened
+const _origShowPage = showPage;
+showPage = function(name, el) {
+  _origShowPage(name, el);
+  if (name === 'finmodel') fmRender();
+};
 </script>
 </body>
 </html>
