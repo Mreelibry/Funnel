@@ -297,6 +297,12 @@
     .fm-charts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
     .fm-chart-card{background:var(--card2);border-radius:10px;padding:14px}
     .fm-chart-ttl{font-size:11px;color:var(--g);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+    .fm-chart-inner{position:relative;height:180px;overflow:hidden}
+    .fm-date-range{display:flex;align-items:center;gap:8px;background:var(--card);border-radius:10px;padding:5px 12px;border:0.5px solid var(--b);flex-shrink:0}
+    .fm-date-inp{background:transparent;border:none;color:var(--t);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;width:130px}
+    .fm-date-inp:focus{outline:none}
+    .fm-date-arrow{color:var(--g);font-size:13px}
+    .fm-date-end-lbl{font-size:13px;font-weight:600;color:var(--wb)}
 
     .empty{text-align:center;padding:30px;color:var(--g);font-size:13px}
     @media(max-width:600px){.goods-layout{flex-direction:column}.filter-panel{width:100%}.daily-grid{grid-template-columns:1fr}}
@@ -456,6 +462,11 @@
         <button class="fm-period-btn" data-m="5" onclick="fmSetPeriod(5)">5 мес</button>
         <button class="fm-period-btn" data-m="6" onclick="fmSetPeriod(6)">6 мес</button>
       </div>
+      <div class="fm-date-range">
+        <input type="date" id="fm-start-date" class="fm-date-inp" oninput="fmSetStartDate(this.value)" />
+        <span class="fm-date-arrow">→</span>
+        <span class="fm-date-end-lbl" id="fm-date-end">—</span>
+      </div>
     </div>
     <div class="fm-summary-grid">
       <div class="fm-sum-card">
@@ -483,15 +494,15 @@
     <div class="fm-charts-grid">
       <div class="fm-chart-card">
         <div class="fm-chart-ttl">Цена → Прибыль / шт</div>
-        <canvas id="fc-price-profit" height="160"></canvas>
+        <div class="fm-chart-inner"><canvas id="fc-price-profit"></canvas></div>
       </div>
       <div class="fm-chart-card">
         <div class="fm-chart-ttl">Цена → ROI</div>
-        <canvas id="fc-price-roi" height="160"></canvas>
+        <div class="fm-chart-inner"><canvas id="fc-price-roi"></canvas></div>
       </div>
       <div class="fm-chart-card">
         <div class="fm-chart-ttl">Прибыль по месяцам (1–6)</div>
-        <canvas id="fc-months" height="160"></canvas>
+        <div class="fm-chart-inner"><canvas id="fc-months"></canvas></div>
       </div>
     </div>
   </div>
@@ -1667,11 +1678,11 @@ renderWeeks = function() {};
 init();
 
 // ══════════════════════════════════════
-// ФИНМОДЕЛЬ
+// ФИНМОДЕЛЬ (optimized)
 // ══════════════════════════════════════
 const FM_KEY = 'wb_finmodel';
 let fmNextId = 1;
-let FM = { projectName: 'Финансовая модель', months: 1, articles: [] };
+let FM = { projectName: 'Финансовая модель', months: 1, startDate: '', articles: [] };
 let fmChartInst = {};
 let fmChartTimer = null;
 
@@ -1684,8 +1695,7 @@ function fmNewArticle(overrides = {}) {
     adCost: 50, adType: 'perOrder',
     batchSize: 100, batchPurchase: 30000,
     batchLogistics: 3000, batchPackaging: 1000, batchOther: 0,
-    batchOpen: false,
-    ...overrides
+    batchOpen: false, ...overrides
   };
 }
 
@@ -1693,7 +1703,7 @@ function fmCalc(a, priceOverride) {
   const price    = priceOverride !== undefined ? priceOverride : +a.price;
   const buyRate  = Math.max(0.01, +a.buyoutPct / 100);
   const batchTot = +a.batchPurchase + +a.batchLogistics + +a.batchPackaging + +a.batchOther;
-  const costUnit = batchTot / Math.max(1, +a.batchSize);
+  const costUnit  = batchTot / Math.max(1, +a.batchSize);
   const logOrder  = +a.sendCost + (1 - buyRate) * +a.returnCost;
   const logBuyout = logOrder / buyRate;
   const adUnit    = a.adType === 'perBuyout' ? +a.adCost : +a.adCost / buyRate;
@@ -1701,12 +1711,10 @@ function fmCalc(a, priceOverride) {
   const margin     = price > 0 ? profitUnit / price * 100 : 0;
   const costs      = costUnit + logBuyout + adUnit;
   const roi        = costs > 0 ? profitUnit / costs * 100 : 0;
-  const breakEven  = costs;
   const orders     = +a.ordersPerMonth * FM.months;
   const buyouts    = orders * buyRate;
-  const revenue    = buyouts * price;
-  const profit     = buyouts * profitUnit;
-  return { costUnit, logOrder, logBuyout, adUnit, profitUnit, margin, roi, breakEven, orders, buyouts, revenue, profit };
+  return { costUnit, logOrder, logBuyout, adUnit, profitUnit, margin, roi,
+    breakEven: costs, orders, buyouts, revenue: buyouts * price, profit: buyouts * profitUnit };
 }
 
 function fmFmt(v, type) {
@@ -1722,29 +1730,100 @@ function fmFmt(v, type) {
   if (type === 'n')   return Math.round(n).toLocaleString('ru');
   return String(n);
 }
-
 function fmEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
-
 function fmSave() {
   try { localStorage.setItem(FM_KEY, JSON.stringify({ ...FM, _nid: fmNextId })); } catch(e) {}
 }
-
 function fmLoad() {
   try {
     const d = JSON.parse(localStorage.getItem(FM_KEY) || 'null');
     if (d) { fmNextId = d._nid || 1; delete d._nid; FM = d; }
   } catch(e) {}
   if (!FM.articles || !FM.articles.length) FM.articles = [fmNewArticle({ name: 'Артикул 1' })];
+  if (!FM.startDate) FM.startDate = new Date().toISOString().slice(0, 10);
   fmNextId = Math.max(fmNextId, ...FM.articles.map(a => a.id + 1), 1);
+}
+
+// ── Date helpers ──
+function fmEndDate(startStr, months) {
+  if (!startStr) return '';
+  const d = new Date(startStr);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
+function fmFmtDate(str) {
+  if (!str) return '—';
+  const [y, m, d] = str.split('-');
+  return d + '.' + m + '.' + y;
+}
+function fmUpdateDateRange() {
+  const inp = document.getElementById('fm-start-date');
+  if (inp && inp.value !== FM.startDate) inp.value = FM.startDate;
+  const endEl = document.getElementById('fm-date-end');
+  if (endEl) endEl.textContent = fmFmtDate(fmEndDate(FM.startDate, FM.months));
+}
+function fmSetStartDate(val) { FM.startDate = val; fmSave(); fmUpdateDateRange(); }
+
+// ── Summary (lightweight, no DOM rebuild) ──
+function fmUpdateSummary() {
+  let totRev = 0, totProfit = 0, totCosts = 0;
+  FM.articles.forEach(a => {
+    const c = fmCalc(a);
+    totRev += c.revenue; totProfit += c.profit;
+    totCosts += c.buyouts * (c.costUnit + c.logBuyout + c.adUnit);
+  });
+  const totRoi = totCosts > 0 ? totProfit / totCosts * 100 : 0;
+  document.getElementById('fm-sum-rev').textContent    = fmFmt(totRev,    'rub');
+  document.getElementById('fm-sum-profit').textContent = fmFmt(totProfit, 'rub');
+  document.getElementById('fm-sum-roi').textContent    = fmFmt(totRoi,    'pct');
+  document.getElementById('fm-sum-profit').className   = 'fm-sum-value ' + (totProfit >= 0 ? 'pos' : 'neg');
+  document.getElementById('fm-sum-roi').className      = 'fm-sum-value ' + (totRoi    >= 0 ? 'pos' : 'neg');
+}
+
+// ── Results HTML fragment (reused in card build + partial update) ──
+function fmResultsHtml(a, c) {
+  const pc = c.profitUnit >= 0 ? 'pos' : 'neg';
+  return `<div class="fm-res-item"><div class="fm-res-lbl">Заказы за период</div><div class="fm-res-val">${fmFmt(c.orders,'n')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">Выкупы</div><div class="fm-res-val">${fmFmt(c.buyouts,'n')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">Возвраты</div><div class="fm-res-val">${fmFmt(c.orders-c.buyouts,'n')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">Себестоимость</div><div class="fm-res-val">${fmFmt(c.costUnit,'rub')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">Логистика / выкуп</div><div class="fm-res-val">${fmFmt(c.logBuyout,'rub')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">Прибыль / шт</div><div class="fm-res-val ${pc}">${fmFmt(c.profitUnit,'rub')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">Маржа</div><div class="fm-res-val ${pc}">${fmFmt(c.margin,'pct')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">ROI</div><div class="fm-res-val ${pc}">${fmFmt(c.roi,'pct')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">Выручка</div><div class="fm-res-val">${fmFmt(c.revenue,'rub')}</div></div>
+<div class="fm-res-item"><div class="fm-res-lbl">Прибыль за период</div><div class="fm-res-val ${pc}">${fmFmt(c.profit,'rub')}</div></div>`;
+}
+
+// ── Partial card update — touches only computed output, never inputs ──
+function fmUpdateCard(id) {
+  const a = FM.articles.find(x => x.id === id);
+  if (!a) return;
+  const c = fmCalc(a);
+  const card = document.getElementById('fmc-' + id);
+  if (!card) return;
+  card.className = 'fm-card ' + (c.profitUnit >= 0 ? 'profit-pos' : 'profit-neg');
+  const warn = card.querySelector('.fm-warn');
+  if (warn) warn.className = 'fm-warn' + (+a.price < c.breakEven ? ' show' : '');
+  const beB = card.querySelector('.fm-be-hint b');
+  if (beB) beB.textContent = fmFmt(c.breakEven, 'rub');
+  const sld = document.getElementById('fms-' + id);
+  if (sld && document.activeElement !== sld) {
+    const slMin = Math.max(1, Math.round(c.breakEven * 0.4));
+    sld.min = slMin;
+    sld.max = Math.round(Math.max(+a.price * 2.5, c.breakEven * 3, slMin + 500));
+  }
+  const res = card.querySelector('.fm-results');
+  if (res) res.innerHTML = fmResultsHtml(a, c);
+  const bCst = card.querySelector('.fm-batch-cst b');
+  if (bCst) bCst.textContent = fmFmt(c.costUnit, 'rub');
 }
 
 function fmCardHtml(a) {
   const c = fmCalc(a);
-  const pc = c.profitUnit >= 0 ? 'pos' : 'neg';
   const slMin = Math.max(1, Math.round(c.breakEven * 0.4));
   const slMax = Math.round(Math.max(+a.price * 2.5, c.breakEven * 3, slMin + 500));
-  return `
-<div class="fm-card ${c.profitUnit >= 0 ? 'profit-pos' : 'profit-neg'}" id="fmc-${a.id}">
+  return `<div class="fm-card ${c.profitUnit >= 0 ? 'profit-pos' : 'profit-neg'}" id="fmc-${a.id}">
   <div class="fm-card-header">
     <input class="fm-art-name" id="fmn-${a.id}" value="${fmEsc(a.name)}"
       oninput="fmSet(${a.id},'name',this.value)" placeholder="Название" />
@@ -1782,18 +1861,7 @@ function fmCardHtml(a) {
         <option value="perBuyout" ${a.adType==='perBuyout'?'selected':''}>На выкуп</option>
       </select></div>
   </div>
-  <div class="fm-results">
-    <div class="fm-res-item"><div class="fm-res-lbl">Заказы за период</div><div class="fm-res-val">${fmFmt(c.orders,'n')}</div></div>
-    <div class="fm-res-item"><div class="fm-res-lbl">Выкупы</div><div class="fm-res-val">${fmFmt(c.buyouts,'n')}</div></div>
-    <div class="fm-res-item"><div class="fm-res-lbl">Возвраты</div><div class="fm-res-val">${fmFmt(c.orders-c.buyouts,'n')}</div></div>
-    <div class="fm-res-item"><div class="fm-res-lbl">Себестоимость</div><div class="fm-res-val">${fmFmt(c.costUnit,'rub')}</div></div>
-    <div class="fm-res-item"><div class="fm-res-lbl">Логистика / выкуп</div><div class="fm-res-val">${fmFmt(c.logBuyout,'rub')}</div></div>
-    <div class="fm-res-item"><div class="fm-res-lbl">Прибыль / шт</div><div class="fm-res-val ${pc}">${fmFmt(c.profitUnit,'rub')}</div></div>
-    <div class="fm-res-item"><div class="fm-res-lbl">Маржа</div><div class="fm-res-val ${pc}">${fmFmt(c.margin,'pct')}</div></div>
-    <div class="fm-res-item"><div class="fm-res-lbl">ROI</div><div class="fm-res-val ${pc}">${fmFmt(c.roi,'pct')}</div></div>
-    <div class="fm-res-item"><div class="fm-res-lbl">Выручка</div><div class="fm-res-val">${fmFmt(c.revenue,'rub')}</div></div>
-    <div class="fm-res-item"><div class="fm-res-lbl">Прибыль за период</div><div class="fm-res-val ${pc}">${fmFmt(c.profit,'rub')}</div></div>
-  </div>
+  <div class="fm-results">${fmResultsHtml(a, c)}</div>
   <button class="fm-batch-toggle${a.batchOpen?' open':''}" onclick="fmToggleBatch(${a.id})">
     <span class="fm-barrow">▶</span> Партия и закупка
   </button>
@@ -1820,61 +1888,36 @@ function fmCardHtml(a) {
 </div>`;
 }
 
-function fmRender() {
-  // Save focused element to restore after re-render
-  const activeId    = document.activeElement?.id;
-  const selStart    = document.activeElement?.selectionStart;
-  const selEnd      = document.activeElement?.selectionEnd;
-
+// ── Full rebuild (only on init / add / delete / period change) ──
+function fmRenderFull() {
   fmSave();
-
-  // Project name
   const pnEl = document.getElementById('fm-project-name');
-  if (pnEl && document.activeElement !== pnEl) pnEl.value = FM.projectName;
-
-  // Period buttons
+  if (pnEl) pnEl.value = FM.projectName;
   document.querySelectorAll('.fm-period-btn').forEach(b =>
     b.classList.toggle('active', +b.dataset.m === FM.months));
-
-  // Summary
-  let totRev = 0, totProfit = 0, totCosts = 0;
-  FM.articles.forEach(a => {
-    const c = fmCalc(a);
-    totRev    += c.revenue;
-    totProfit += c.profit;
-    totCosts  += c.buyouts * (c.costUnit + c.logBuyout + c.adUnit);
-  });
-  const totRoi = totCosts > 0 ? totProfit / totCosts * 100 : 0;
-  document.getElementById('fm-sum-rev').textContent    = fmFmt(totRev,    'rub');
-  document.getElementById('fm-sum-profit').textContent = fmFmt(totProfit, 'rub');
-  document.getElementById('fm-sum-roi').textContent    = fmFmt(totRoi,    'pct');
-  document.getElementById('fm-sum-profit').className   = 'fm-sum-value ' + (totProfit >= 0 ? 'pos' : 'neg');
-  document.getElementById('fm-sum-roi').className      = 'fm-sum-value ' + (totRoi    >= 0 ? 'pos' : 'neg');
-
-  // Articles
-  const el = document.getElementById('fm-articles');
-  el.innerHTML = FM.articles.map(a => fmCardHtml(a)).join('') +
+  fmUpdateSummary();
+  fmUpdateDateRange();
+  const container = document.getElementById('fm-articles');
+  container.innerHTML = FM.articles.map(a => fmCardHtml(a)).join('') +
     `<button class="fm-add-btn" onclick="fmAddArticle()">＋ Добавить артикул</button>`;
+  fmScheduleCharts();
+}
+function fmRender() { fmRenderFull(); }
 
-  // Restore focus
-  if (activeId) {
-    const el = document.getElementById(activeId);
-    if (el) {
-      el.focus();
-      try { el.setSelectionRange(selStart, selEnd); } catch(e) {}
-    }
-  }
-
-  // Charts (debounced)
+function fmScheduleCharts() {
   clearTimeout(fmChartTimer);
-  fmChartTimer = setTimeout(fmRenderCharts, 250);
+  fmChartTimer = setTimeout(fmRenderCharts, 350);
 }
 
+// ── Field mutations — partial update only ──
 function fmSet(id, field, val) {
   const a = FM.articles.find(x => x.id === id);
   if (!a) return;
   a[field] = val;
-  fmRender();
+  fmSave();
+  fmUpdateCard(id);
+  fmUpdateSummary();
+  fmScheduleCharts();
 }
 
 function fmSetPrice(id, val) {
@@ -1886,56 +1929,85 @@ function fmSetPrice(id, val) {
   const sld = document.getElementById('fms-' + id);
   if (inp && document.activeElement !== inp) inp.value = val;
   if (sld && document.activeElement !== sld) sld.value = val;
-  fmRender();
+  fmSave();
+  fmUpdateCard(id);
+  fmUpdateSummary();
+  fmScheduleCharts();
 }
 
-function fmSetPeriod(m) { FM.months = m; fmRender(); }
+function fmSetPeriod(m) { FM.months = m; fmRenderFull(); }
 
 function fmAddArticle() {
-  FM.articles.push(fmNewArticle({ name: 'Артикул ' + (FM.articles.length + 1) }));
-  fmRender();
+  const a = fmNewArticle({ name: 'Артикул ' + (FM.articles.length + 1) });
+  FM.articles.push(a);
+  fmSave();
+  const container = document.getElementById('fm-articles');
+  const addBtn = container.lastElementChild;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = fmCardHtml(a);
+  container.insertBefore(tmp.firstElementChild, addBtn);
+  fmUpdateSummary();
+  fmUpdateChartSelect();
 }
 
 function fmDelete(id) {
   if (FM.articles.length <= 1) return;
   FM.articles = FM.articles.filter(a => a.id !== id);
-  fmRender();
+  fmSave();
+  document.getElementById('fmc-' + id)?.remove();
+  fmUpdateSummary();
+  fmUpdateChartSelect();
+  fmScheduleCharts();
 }
 
 function fmToggleBatch(id) {
   const a = FM.articles.find(x => x.id === id);
-  if (a) { a.batchOpen = !a.batchOpen; fmRender(); }
+  if (!a) return;
+  a.batchOpen = !a.batchOpen;
+  fmSave();
+  const card = document.getElementById('fmc-' + id);
+  if (!card) return;
+  card.querySelector('.fm-batch-toggle')?.classList.toggle('open', a.batchOpen);
+  card.querySelector('.fm-batch-body')?.classList.toggle('open', a.batchOpen);
+}
+
+// ── Charts ──
+function fmUpdateChartSelect() {
+  const sel = document.getElementById('fm-chart-art');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = FM.articles.map(a =>
+    `<option value="${a.id}" ${String(a.id) === prev ? 'selected' : ''}>${fmEsc(a.name)}</option>`
+  ).join('');
 }
 
 function fmRenderCharts() {
+  fmUpdateChartSelect();
   const sel = document.getElementById('fm-chart-art');
-  if (!sel) return;
-  const prevId = sel.value;
-  sel.innerHTML = FM.articles.map(a =>
-    `<option value="${a.id}" ${String(a.id) === prevId ? 'selected' : ''}>${fmEsc(a.name)}</option>`
-  ).join('');
-  const a = FM.articles.find(x => String(x.id) === sel.value) || FM.articles[0];
+  const a = FM.articles.find(x => String(x.id) === sel?.value) || FM.articles[0];
   if (!a) return;
 
-  const c   = fmCalc(a);
-  const pts = 40;
-  const lo  = Math.max(1, Math.round(c.breakEven * 0.4));
-  const hi  = Math.round(Math.max(+a.price * 2.5, c.breakEven * 2.5, lo + 500));
-  const step = (hi - lo) / pts;
+  const c    = fmCalc(a);
+  const pts  = 30;
+  const lo   = Math.max(1, Math.round(c.breakEven * 0.4));
+  const hi   = Math.round(Math.max(+a.price * 2.5, c.breakEven * 2.5, lo + 500));
+  const step = Math.max(1, (hi - lo) / pts);
   const prices  = Array.from({length: pts + 1}, (_, i) => Math.round(lo + i * step));
   const profits = prices.map(p => fmCalc(a, p).profitUnit);
   const rois    = prices.map(p => fmCalc(a, p).roi);
 
   const dark = !document.documentElement.classList.contains('light');
-  const gc   = dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
-  const tc   = dark ? '#9CA3AF' : '#6B7280';
+  const gc = dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
+  const tc = dark ? '#9CA3AF' : '#6B7280';
 
   const baseOpts = (yLbl) => ({
-    responsive: true, maintainAspectRatio: false,
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
     plugins: { legend: { display: false } },
     scales: {
-      x: { grid: { color: gc }, ticks: { color: tc, maxTicksLimit: 6,
-        callback: (_, i) => prices[i] ? prices[i] + ' ₽' : '' } },
+      x: { grid: { color: gc }, ticks: { color: tc, maxTicksLimit: 5,
+        callback: (_, i) => i % Math.ceil(prices.length / 5) === 0 ? prices[i] + '₽' : '' } },
       y: { grid: { color: gc }, ticks: { color: tc, maxTicksLimit: 5 },
         title: { display: true, text: yLbl, color: tc, font: { size: 10 } } }
     }
@@ -1951,9 +2023,8 @@ function fmRenderCharts() {
     type: 'line',
     data: { labels: prices, datasets: [{
       data: profits, borderWidth: 2, tension: 0.3, pointRadius: 0,
-      borderColor: profits.map(v => v >= 0 ? '#22C55E' : '#EF4444'),
-      segment: { borderColor: ctx => profits[ctx.p0DataIndex] >= 0 ? '#22C55E' : '#EF4444' },
-      backgroundColor: 'transparent'
+      borderColor: '#22C55E', backgroundColor: 'transparent',
+      segment: { borderColor: ctx => profits[ctx.p0DataIndex] >= 0 ? '#22C55E' : '#EF4444' }
     }]},
     options: baseOpts('Прибыль ₽')
   });
@@ -1967,17 +2038,15 @@ function fmRenderCharts() {
     options: baseOpts('ROI %')
   });
 
-  const mLabels  = [1,2,3,4,5,6];
-  const mProfits = mLabels.map(m => {
-    const buyouts = +a.ordersPerMonth * m * (+a.buyoutPct / 100);
-    return buyouts * c.profitUnit;
-  });
+  const mProfits = [1,2,3,4,5,6].map(m =>
+    +a.ordersPerMonth * m * (+a.buyoutPct / 100) * c.profitUnit
+  );
   mk('fc-months', {
     type: 'bar',
-    data: { labels: mLabels.map(m => m + ' мес'), datasets: [{
+    data: { labels: ['1 мес','2 мес','3 мес','4 мес','5 мес','6 мес'], datasets: [{
       data: mProfits,
       backgroundColor: mProfits.map(v => v >= 0 ? 'rgba(34,197,94,.45)' : 'rgba(239,68,68,.45)'),
-      borderColor:     mProfits.map(v => v >= 0 ? '#22C55E' : '#EF4444'),
+      borderColor: mProfits.map(v => v >= 0 ? '#22C55E' : '#EF4444'),
       borderWidth: 1.5, borderRadius: 6
     }]},
     options: { ...baseOpts('Прибыль ₽'), plugins: { legend: { display: false } } }
@@ -1986,7 +2055,6 @@ function fmRenderCharts() {
 
 // Init finmodel
 fmLoad();
-// Render when finmodel tab is opened
 const _origShowPage = showPage;
 showPage = function(name, el) {
   _origShowPage(name, el);
