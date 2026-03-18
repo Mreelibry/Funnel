@@ -33,13 +33,13 @@ function parseWBReport(buffer, filename) {
     const rows = XLSX.utils.sheet_to_json(filtSheet, { header: 1, defval: '' });
     let hi = -1;
     for (let i = 0; i < rows.length; i++) {
-      if (String(rows[i][0]).trim() === 'Показы') { hi = i; break; }
+      if (rows[i].some(c => String(c).trim() === 'Показы')) { hi = i; break; }
     }
     if (hi >= 0) {
       const headers = rows[hi].map(c => String(c).trim());
       const data    = rows[hi + 1] || [];
       const obj = {};
-      headers.forEach((k, i) => { obj[k] = data[i]; });
+      headers.forEach((k, i) => { if (k) obj[k] = data[i]; });
       result.summary = obj;
     }
   }
@@ -174,7 +174,7 @@ router.post('/', authenticate, upload.single('file'), async (req, res) => {
       v('Показы'), v('Переходы в карточку'), v('CTR'), v('Положили в корзину'),
       v('Заказали, шт'), v('Выкупили, шт'), v('Отменили, шт'),
       v('Конверсия в корзину, %'), v('Конверсия в заказ, %'), v('Процент выкупа'),
-      v('Заказали на сумму, ⃀'), v('Средняя цена, ⃀'),
+      v('Заказали на сумму, ₽'), v('Средняя цена, ₽'),
       JSON.stringify({ summary: s, goods: parsed.goods })
     ];
     if (cabinetId) vals.push(cabinetId);

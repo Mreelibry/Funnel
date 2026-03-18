@@ -10,10 +10,10 @@ const METRICS = [
   { key: 'Заказали, шт',    col: 'Заказали, шт',                           fmt: 'n',   defPos: 7  },
   { key: 'Выкупили, шт',    col: 'Выкупили, шт',                           fmt: 'n',   defPos: 8  },
   { key: 'Отменили, шт',    col: 'Отменили, шт',                           fmt: 'n',   defPos: 9  },
-  { key: 'Сумма заказов',   col: 'Заказали на сумму, ⃀',                  fmt: 'rub', defPos: 10 },
-  { key: 'Выкупили сумма',  col: 'Выкупили на сумму, ⃀',                  fmt: 'rub', defPos: 11 },
-  { key: 'Динамика заказов',col: 'Динамика суммы заказов, ⃀',             fmt: 'rub', defPos: 12 },
-  { key: 'Средняя цена',    col: 'Средняя цена, ⃀',                       fmt: 'rub', defPos: 13 },
+  { key: 'Сумма заказов',   col: 'Заказали на сумму, ₽',                  fmt: 'rub', defPos: 10 },
+  { key: 'Выкупили сумма',  col: 'Выкупили на сумму, ₽',                  fmt: 'rub', defPos: 11 },
+  { key: 'Динамика заказов',col: 'Динамика суммы заказов, ₽',             fmt: 'rub', defPos: 12 },
+  { key: 'Средняя цена',    col: 'Средняя цена, ₽',                       fmt: 'rub', defPos: 13 },
   { key: 'Заказов в день',  col: 'Среднее количество заказов в день, шт',  fmt: 'f1',  defPos: 14 },
 ];
 
@@ -71,11 +71,11 @@ function parseSummary(ws) {
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
   let hi = -1;
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]).trim() === 'Показы') { hi = i; break; }
+    if (rows[i].some(c => String(c).trim() === 'Показы')) { hi = i; break; }
   }
   if (hi < 0) return null;
   const h = rows[hi].map(c => String(c).trim()), d = rows[hi + 1] || [], o = {};
-  h.forEach((k, i) => { o[k] = d[i]; });
+  h.forEach((k, i) => { if (k) o[k] = d[i]; });
   return o;
 }
 
