@@ -53,12 +53,12 @@ function parseWBReport(buffer, filename) {
       if (String(rows[i][0]).includes('Артикул')) { hi = i; break; }
     }
     if (hi >= 0) {
-      const headers = rows[hi].map(c => String(c).trim());
+      const headers = rows[hi].map(c => String(c).trim().replace(/[\u20A0-\u20CF]/g, '₽'));
       result.goods = rows.slice(hi + 1)
         .filter(r => r.some(c => String(c).trim()))
         .map(r => {
           const obj = {};
-          headers.forEach((k, i) => { obj[k] = r[i]; });
+          headers.forEach((k, i) => { if (k) obj[k] = r[i]; });
           return obj;
         });
     }

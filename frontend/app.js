@@ -34,15 +34,16 @@ const S = {
 // ─── FORMAT ───
 function fmt(v, type) {
   if (v === null || v === undefined || v === '') return '—';
-  const n = parseFloat(v);
+  const s = typeof v === 'string' ? v.replace(/\s/g, '').replace(',', '.') : v;
+  const n = parseFloat(s);
   if (isNaN(n)) return String(v);
   if (type === 'pct') return n.toFixed(1) + '%';
   if (type === 'rub') {
-    const a = Math.abs(n), s = n < 0 ? '−' : '';
-    return s + (a >= 1e6 ? (a/1e6).toFixed(1)+' млн' : a >= 1e3 ? (a/1e3).toFixed(0)+' тыс' : a.toFixed(0)) + ' ₽';
+    const a = Math.abs(n), sign = n < 0 ? '−' : '';
+    return sign + (a >= 1e6 ? (a/1e6).toFixed(1)+' млн' : a >= 1e3 ? Math.round(a).toLocaleString('ru') : Math.round(a).toString()) + ' ₽';
   }
   if (type === 'f1') return n.toFixed(1);
-  if (type === 'n')  return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(0)+'K' : n.toFixed(0);
+  if (type === 'n')  return Math.round(n).toLocaleString('ru');
   return String(v);
 }
 
