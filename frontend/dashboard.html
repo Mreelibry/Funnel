@@ -280,14 +280,37 @@
     .fm-res-lbl{font-size:10px;color:var(--g)}
     .fm-res-val{font-size:15px;font-weight:700;color:var(--t)}
     .fm-res-val.pos{color:#22c55e}.fm-res-val.neg{color:#ef4444}
-    .fm-batch-toggle{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--g);font-size:12px;font-weight:600;cursor:pointer;padding:4px 0;font-family:inherit}
-    .fm-batch-toggle:hover{color:var(--t)}
+    .fm-batch-toggle,.fm-plan-toggle{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--g);font-size:12px;font-weight:600;cursor:pointer;padding:4px 0;font-family:inherit;margin-top:2px}
+    .fm-batch-toggle:hover,.fm-plan-toggle:hover{color:var(--t)}
     .fm-barrow{display:inline-block;transition:transform .2s;font-size:10px}
-    .fm-batch-toggle.open .fm-barrow{transform:rotate(90deg)}
+    .fm-batch-toggle.open .fm-barrow,.fm-plan-toggle.open .fm-barrow{transform:rotate(90deg)}
     .fm-batch-body{display:none;background:var(--bg);border-radius:10px;padding:12px 14px;margin-top:8px;border:0.5px solid var(--b)}
     .fm-batch-body.open{display:block}
     .fm-batch-cst{font-size:12px;color:var(--g);margin-top:8px;padding-top:8px;border-top:0.5px solid var(--b)}
     .fm-batch-cst b{color:var(--t);font-size:14px}
+    .fm-field-cost input{border-color:var(--wb3)!important}
+    .fm-plan-body{margin-top:8px;background:var(--bg);border-radius:10px;border:0.5px solid var(--b);overflow:hidden}
+    .fm-plan-toolbar{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:0.5px solid var(--b);flex-wrap:wrap}
+    .fm-plan-sum{font-size:12px;font-weight:700;flex:1;min-width:130px}
+    .fm-plan-sum.ok{color:#22c55e}.fm-plan-sum.err{color:#ef4444}.fm-plan-sum.auto{color:var(--g)}
+    .fm-plan-tbtn{background:var(--card2);border:0.5px solid var(--b2);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:var(--g);cursor:pointer;font-family:inherit;transition:color .12s}
+    .fm-plan-tbtn:hover{color:var(--t)}
+    .fm-plan-table-wrap{max-height:340px;overflow-y:auto}
+    .fm-plan-table{width:100%;border-collapse:collapse;font-size:12px}
+    .fm-plan-table th{position:sticky;top:0;z-index:1;background:var(--card2);padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;border-bottom:0.5px solid var(--b)}
+    .fm-plan-table td{padding:5px 8px;border-bottom:0.5px solid rgba(255,255,255,.03);vertical-align:middle}
+    .fm-plan-table tbody tr:last-child td{border-bottom:none}
+    .fm-plan-week-row:hover td{background:rgba(255,255,255,.02)}
+    .fm-plan-day-row td{background:rgba(0,0,0,.14);font-size:11px}
+    .fm-plan-wnum{font-weight:700;color:var(--g);width:26px;font-size:11px}
+    .fm-plan-dates{color:var(--g2);font-size:11px;white-space:nowrap;min-width:110px}
+    .fm-plan-pct-inp{background:var(--card2);border:0.5px solid var(--b2);border-radius:5px;padding:3px 6px;font-size:12px;color:var(--t);font-family:inherit;width:60px;text-align:right}
+    .fm-plan-pct-inp:focus{outline:none;border-color:var(--wb)}
+    .fm-plan-num{text-align:right;font-weight:600;color:var(--t)}
+    .fm-plan-num.pos{color:#22c55e}
+    .fm-plan-exp-btn{background:none;border:none;color:var(--g);cursor:pointer;font-size:10px;padding:2px 5px;font-family:inherit;transition:color .1s}
+    .fm-plan-exp-btn:hover{color:var(--t)}
+    .fm-plan-total-row td{background:var(--card2)!important;padding:7px 8px;font-weight:700;border-top:0.5px solid var(--b)}
     .fm-add-btn{background:var(--wb2);border:1.5px dashed var(--wb3);border-radius:14px;padding:18px;text-align:center;color:var(--wb);font-size:13px;font-weight:600;cursor:pointer;width:100%;font-family:inherit;transition:background .15s}
     .fm-add-btn:hover{background:var(--wb3)}
     .fm-charts-section{background:var(--card);border-radius:14px;border:0.5px solid var(--b);padding:18px 20px;margin-bottom:30px}
@@ -1678,7 +1701,7 @@ renderWeeks = function() {};
 init();
 
 // ══════════════════════════════════════
-// ФИНМОДЕЛЬ (optimized)
+// ФИНМОДЕЛЬ (v3 — plan + cost rework)
 // ══════════════════════════════════════
 const FM_KEY = 'wb_finmodel';
 let fmNextId = 1;
@@ -1693,27 +1716,37 @@ function fmNewArticle(overrides = {}) {
     price: 1500, buyoutPct: 60, ordersPerMonth: 100,
     sendCost: 80, returnCost: 50,
     adCost: 50, adType: 'perOrder',
-    batchSize: 100, batchPurchase: 30000,
-    batchLogistics: 3000, batchPackaging: 1000, batchOther: 0,
-    batchOpen: false, ...overrides
+    // Cost (new structure)
+    costPerUnit: 300,         // direct cost per unit
+    batchSize: 100,           // for amortising extra costs
+    extraLogistics: 3000,     // batch delivery logistics
+    extraPackaging: 1000,     // packaging
+    extraOther: 0,
+    // Section states
+    batchOpen: false,
+    planOpen: false,
+    weeklyPct: [],            // [] = auto; [20,25,...] = manual
+    expandedWeeks: [],        // week indices showing day detail
+    ...overrides
   };
 }
 
 function fmCalc(a, priceOverride) {
-  const price    = priceOverride !== undefined ? priceOverride : +a.price;
-  const buyRate  = Math.max(0.01, +a.buyoutPct / 100);
-  const batchTot = +a.batchPurchase + +a.batchLogistics + +a.batchPackaging + +a.batchOther;
-  const costUnit  = batchTot / Math.max(1, +a.batchSize);
-  const logOrder  = +a.sendCost + (1 - buyRate) * +a.returnCost;
-  const logBuyout = logOrder / buyRate;
-  const adUnit    = a.adType === 'perBuyout' ? +a.adCost : +a.adCost / buyRate;
+  const price      = priceOverride !== undefined ? priceOverride : +a.price;
+  const buyRate    = Math.max(0.01, +a.buyoutPct / 100);
+  const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther;
+  const extraPerUnit = extraTotal / Math.max(1, +a.batchSize);
+  const costUnit   = +a.costPerUnit + extraPerUnit;
+  const logOrder   = +a.sendCost + (1 - buyRate) * +a.returnCost;
+  const logBuyout  = logOrder / buyRate;
+  const adUnit     = a.adType === 'perBuyout' ? +a.adCost : +a.adCost / buyRate;
   const profitUnit = price - costUnit - logBuyout - adUnit;
   const margin     = price > 0 ? profitUnit / price * 100 : 0;
   const costs      = costUnit + logBuyout + adUnit;
   const roi        = costs > 0 ? profitUnit / costs * 100 : 0;
   const orders     = +a.ordersPerMonth * FM.months;
   const buyouts    = orders * buyRate;
-  return { costUnit, logOrder, logBuyout, adUnit, profitUnit, margin, roi,
+  return { costUnit, extraPerUnit, logOrder, logBuyout, adUnit, profitUnit, margin, roi,
     breakEven: costs, orders, buyouts, revenue: buyouts * price, profit: buyouts * profitUnit };
 }
 
@@ -1741,20 +1774,28 @@ function fmLoad() {
   } catch(e) {}
   if (!FM.articles || !FM.articles.length) FM.articles = [fmNewArticle({ name: 'Артикул 1' })];
   if (!FM.startDate) FM.startDate = new Date().toISOString().slice(0, 10);
+  // Migrate articles saved before v3 (had batchPurchase instead of costPerUnit)
+  FM.articles.forEach(a => {
+    if (a.batchPurchase !== undefined && a.costPerUnit === undefined) {
+      const old = (+a.batchPurchase + +(a.batchLogistics||0) + +(a.batchPackaging||0) + +(a.batchOther||0)) / Math.max(1, +a.batchSize||1);
+      a.costPerUnit = Math.round(old); a.extraLogistics = 0; a.extraPackaging = 0; a.extraOther = 0;
+      delete a.batchPurchase; delete a.batchLogistics; delete a.batchPackaging; delete a.batchOther;
+    }
+    if (!a.weeklyPct)     a.weeklyPct = [];
+    if (!a.expandedWeeks) a.expandedWeeks = [];
+  });
   fmNextId = Math.max(fmNextId, ...FM.articles.map(a => a.id + 1), 1);
 }
 
 // ── Date helpers ──
 function fmEndDate(startStr, months) {
   if (!startStr) return '';
-  const d = new Date(startStr);
-  d.setMonth(d.getMonth() + months);
+  const d = new Date(startStr); d.setMonth(d.getMonth() + months);
   return d.toISOString().slice(0, 10);
 }
 function fmFmtDate(str) {
   if (!str) return '—';
-  const [y, m, d] = str.split('-');
-  return d + '.' + m + '.' + y;
+  const [y, m, d] = str.split('-'); return d + '.' + m + '.' + y;
 }
 function fmUpdateDateRange() {
   const inp = document.getElementById('fm-start-date');
@@ -1764,7 +1805,99 @@ function fmUpdateDateRange() {
 }
 function fmSetStartDate(val) { FM.startDate = val; fmSave(); fmUpdateDateRange(); }
 
-// ── Summary (lightweight, no DOM rebuild) ──
+// ── Week / day plan helpers ──
+function fmNumWeeks(months) { return Math.ceil(months * 30.4 / 7); }
+
+function fmWeekLabel(startStr, w) {
+  if (!startStr) return 'Нед. ' + (w + 1);
+  const d1 = new Date(startStr); d1.setDate(d1.getDate() + w * 7);
+  const d2 = new Date(d1);       d2.setDate(d2.getDate() + 6);
+  const f = d => d.getDate().toString().padStart(2,'0') + '.' + (d.getMonth()+1).toString().padStart(2,'0');
+  return f(d1) + '–' + f(d2);
+}
+function fmDayLabel(startStr, w, d) {
+  const DAYS = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  const base = new Date(startStr || '2026-01-01');
+  base.setDate(base.getDate() + w * 7 + d);
+  const dow = base.getDay();
+  return DAYS[dow === 0 ? 6 : dow - 1] + ' ' +
+    base.getDate().toString().padStart(2,'0') + '.' + (base.getMonth()+1).toString().padStart(2,'0');
+}
+function fmEffPcts(a) {
+  const n = fmNumWeeks(FM.months);
+  const raw = Array.from({length: n}, (_, i) => +(a.weeklyPct[i] || 0));
+  const sum = raw.reduce((s, v) => s + v, 0);
+  if (sum <= 0) return { pcts: raw.map(() => 100 / n), auto: true,  sum: 100 };
+  return        { pcts: raw,                             auto: false, sum };
+}
+
+// ── Plan section HTML ──
+function fmPlanHtml(a, c) {
+  const n = fmNumWeeks(FM.months);
+  const { pcts, auto, sum } = fmEffPcts(a);
+  const sumOk = Math.abs(sum - 100) < 0.5;
+  const sumLbl = auto ? '≈ Равномерно (авто)' : 'Σ ' + sum.toFixed(1) + '%' + (sumOk ? ' ✓' : ' ≠ 100%');
+  const sumCls = auto ? 'auto' : (sumOk ? 'ok' : 'err');
+  const exWeeks = a.expandedWeeks || [];
+
+  const rows = Array.from({length: n}, (_, w) => {
+    const pct = pcts[w];
+    const wOrd = c.orders  * pct / 100;
+    const wBuy = c.buyouts * pct / 100;
+    const isExp = exWeeks.includes(w);
+    const rawV  = auto ? '' : (+(a.weeklyPct[w] || 0) || '');
+
+    const dayRows = isExp ? Array.from({length: 7}, (_, d) => `
+      <tr class="fm-plan-day-row">
+        <td></td>
+        <td class="fm-plan-dates" style="padding-left:18px">${fmDayLabel(FM.startDate,w,d)}</td>
+        <td></td>
+        <td class="fm-plan-num">${(wOrd/7).toFixed(1)}</td>
+        <td class="fm-plan-num pos">${(wBuy/7).toFixed(1)}</td>
+        <td></td>
+      </tr>`).join('') : '';
+
+    return `
+    <tr class="fm-plan-week-row">
+      <td class="fm-plan-wnum">${w+1}</td>
+      <td class="fm-plan-dates">${fmWeekLabel(FM.startDate, w)}</td>
+      <td><input class="fm-plan-pct-inp" type="number" id="fmwp-${a.id}-${w}"
+          value="${rawV}" min="0" max="100" step="0.5" placeholder="${(100/n).toFixed(1)}"
+          oninput="fmSetWeekPct(${a.id},${w},this.value)" /></td>
+      <td class="fm-plan-num">${Math.round(wOrd)}</td>
+      <td class="fm-plan-num pos">${Math.round(wBuy)}</td>
+      <td><button class="fm-plan-exp-btn" onclick="fmTogglePlanWeek(${a.id},${w})"
+          title="${isExp?'Свернуть':'По дням'}">${isExp?'▼':'▶'}</button></td>
+    </tr>${dayRows}`;
+  }).join('');
+
+  return `<div class="fm-plan-body" id="fmplnb-${a.id}">
+  <div class="fm-plan-toolbar">
+    <span class="fm-plan-sum ${sumCls}">${sumLbl}</span>
+    <button class="fm-plan-tbtn" onclick="fmAutoDistribute(${a.id})">Равномерно</button>
+    <button class="fm-plan-tbtn" onclick="fmResetPlan(${a.id})">Сброс</button>
+  </div>
+  <div class="fm-plan-table-wrap">
+    <table class="fm-plan-table">
+      <thead><tr>
+        <th>№</th><th>Период</th><th style="width:70px">%</th>
+        <th style="text-align:right">Заказы</th><th style="text-align:right">Выкупы</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="fm-plan-total-row">
+        <td colspan="2" style="font-size:11px;color:var(--g)">Итого за период</td>
+        <td class="fm-plan-num" style="font-size:11px;color:${sumCls==='err'?'#ef4444':'var(--g)'}">
+          ${auto ? '100%' : sum.toFixed(1)+'%'}</td>
+        <td class="fm-plan-num">${Math.round(c.orders)}</td>
+        <td class="fm-plan-num pos">${Math.round(c.buyouts)}</td>
+        <td></td>
+      </tr></tfoot>
+    </table>
+  </div>
+</div>`;
+}
+
+// ── Summary ──
 function fmUpdateSummary() {
   let totRev = 0, totProfit = 0, totCosts = 0;
   FM.articles.forEach(a => {
@@ -1780,7 +1913,7 @@ function fmUpdateSummary() {
   document.getElementById('fm-sum-roi').className      = 'fm-sum-value ' + (totRoi    >= 0 ? 'pos' : 'neg');
 }
 
-// ── Results HTML fragment (reused in card build + partial update) ──
+// ── Results HTML ──
 function fmResultsHtml(a, c) {
   const pc = c.profitUnit >= 0 ? 'pos' : 'neg';
   return `<div class="fm-res-item"><div class="fm-res-lbl">Заказы за период</div><div class="fm-res-val">${fmFmt(c.orders,'n')}</div></div>
@@ -1795,7 +1928,19 @@ function fmResultsHtml(a, c) {
 <div class="fm-res-item"><div class="fm-res-lbl">Прибыль за период</div><div class="fm-res-val ${pc}">${fmFmt(c.profit,'rub')}</div></div>`;
 }
 
-// ── Partial card update — touches only computed output, never inputs ──
+// ── Plan partial update ──
+function fmUpdatePlan(id) {
+  const a = FM.articles.find(x => x.id === id);
+  if (!a || !a.planOpen) return;
+  const c = fmCalc(a);
+  const wrap = document.getElementById('fmplnwrap-' + id);
+  if (!wrap) return;
+  const activeId = document.activeElement?.id;
+  wrap.innerHTML = fmPlanHtml(a, c);
+  if (activeId) { const el = document.getElementById(activeId); if (el) el.focus(); }
+}
+
+// ── Partial card update ──
 function fmUpdateCard(id) {
   const a = FM.articles.find(x => x.id === id);
   if (!a) return;
@@ -1815,10 +1960,16 @@ function fmUpdateCard(id) {
   }
   const res = card.querySelector('.fm-results');
   if (res) res.innerHTML = fmResultsHtml(a, c);
-  const bCst = card.querySelector('.fm-batch-cst b');
-  if (bCst) bCst.textContent = fmFmt(c.costUnit, 'rub');
+  // Extra-cost amortisation display
+  const epuEl = card.querySelector('.fm-epu-val');
+  if (epuEl) epuEl.textContent = fmFmt(c.extraPerUnit, 'rub');
+  const tcEl = card.querySelector('.fm-total-cost-val');
+  if (tcEl) tcEl.textContent = fmFmt(c.costUnit, 'rub');
+  // Refresh plan if open
+  fmUpdatePlan(id);
 }
 
+// ── Card HTML ──
 function fmCardHtml(a) {
   const c = fmCalc(a);
   const slMin = Math.max(1, Math.round(c.breakEven * 0.4));
@@ -1840,6 +1991,9 @@ function fmCardHtml(a) {
     <span class="fm-be-hint">Безубыток: <b>${fmFmt(c.breakEven,'rub')}</b></span>
   </div>
   <div class="fm-fields">
+    <div class="fm-field fm-field-cost"><label>Себестоимость / ед ₽</label>
+      <input type="number" id="fmf-${a.id}-costPerUnit" value="${+a.costPerUnit}" min="0"
+        oninput="fmSet(${a.id},'costPerUnit',+this.value)" /></div>
     <div class="fm-field"><label>% выкупа</label>
       <input type="number" id="fmf-${a.id}-buyoutPct" value="${+a.buyoutPct}" min="1" max="100"
         oninput="fmSet(${a.id},'buyoutPct',+this.value)" /></div>
@@ -1862,33 +2016,41 @@ function fmCardHtml(a) {
       </select></div>
   </div>
   <div class="fm-results">${fmResultsHtml(a, c)}</div>
+
   <button class="fm-batch-toggle${a.batchOpen?' open':''}" onclick="fmToggleBatch(${a.id})">
-    <span class="fm-barrow">▶</span> Партия и закупка
+    <span class="fm-barrow">▶</span> Доп. расходы партии
   </button>
   <div class="fm-batch-body${a.batchOpen?' open':''}">
     <div class="fm-fields">
-      <div class="fm-field"><label>Размер партии</label>
+      <div class="fm-field"><label>Размер партии, шт</label>
         <input type="number" id="fmf-${a.id}-batchSize" value="${+a.batchSize}" min="1"
           oninput="fmSet(${a.id},'batchSize',+this.value)" /></div>
-      <div class="fm-field"><label>Закупка ₽</label>
-        <input type="number" id="fmf-${a.id}-batchPurchase" value="${+a.batchPurchase}" min="0"
-          oninput="fmSet(${a.id},'batchPurchase',+this.value)" /></div>
-      <div class="fm-field"><label>Логистика партии</label>
-        <input type="number" id="fmf-${a.id}-batchLogistics" value="${+a.batchLogistics}" min="0"
-          oninput="fmSet(${a.id},'batchLogistics',+this.value)" /></div>
-      <div class="fm-field"><label>Упаковка</label>
-        <input type="number" id="fmf-${a.id}-batchPackaging" value="${+a.batchPackaging}" min="0"
-          oninput="fmSet(${a.id},'batchPackaging',+this.value)" /></div>
+      <div class="fm-field"><label>Логистика поставки</label>
+        <input type="number" id="fmf-${a.id}-extraLogistics" value="${+a.extraLogistics}" min="0"
+          oninput="fmSet(${a.id},'extraLogistics',+this.value)" /></div>
+      <div class="fm-field"><label>Упаковка ₽</label>
+        <input type="number" id="fmf-${a.id}-extraPackaging" value="${+a.extraPackaging}" min="0"
+          oninput="fmSet(${a.id},'extraPackaging',+this.value)" /></div>
       <div class="fm-field"><label>Прочие расходы</label>
-        <input type="number" id="fmf-${a.id}-batchOther" value="${+a.batchOther}" min="0"
-          oninput="fmSet(${a.id},'batchOther',+this.value)" /></div>
+        <input type="number" id="fmf-${a.id}-extraOther" value="${+a.extraOther}" min="0"
+          oninput="fmSet(${a.id},'extraOther',+this.value)" /></div>
     </div>
-    <div class="fm-batch-cst">Себестоимость единицы: <b>${fmFmt(c.costUnit,'rub')}</b></div>
+    <div class="fm-batch-cst">
+      Доп. расходы / ед: <b class="fm-epu-val">${fmFmt(c.extraPerUnit,'rub')}</b>
+      &nbsp;·&nbsp; Итого себестоимость: <b class="fm-total-cost-val">${fmFmt(c.costUnit,'rub')}</b>
+    </div>
+  </div>
+
+  <button class="fm-plan-toggle${a.planOpen?' open':''}" onclick="fmTogglePlan(${a.id})">
+    <span class="fm-barrow">▶</span> Распределение по периоду
+  </button>
+  <div id="fmplnwrap-${a.id}" style="${a.planOpen?'':'display:none'}">
+    ${a.planOpen ? fmPlanHtml(a, c) : ''}
   </div>
 </div>`;
 }
 
-// ── Full rebuild (only on init / add / delete / period change) ──
+// ── Full rebuild ──
 function fmRenderFull() {
   fmSave();
   const pnEl = document.getElementById('fm-project-name');
@@ -1903,72 +2065,82 @@ function fmRenderFull() {
   fmScheduleCharts();
 }
 function fmRender() { fmRenderFull(); }
+function fmScheduleCharts() { clearTimeout(fmChartTimer); fmChartTimer = setTimeout(fmRenderCharts, 350); }
 
-function fmScheduleCharts() {
-  clearTimeout(fmChartTimer);
-  fmChartTimer = setTimeout(fmRenderCharts, 350);
-}
-
-// ── Field mutations — partial update only ──
+// ── Field mutations ──
 function fmSet(id, field, val) {
   const a = FM.articles.find(x => x.id === id);
   if (!a) return;
-  a[field] = val;
-  fmSave();
-  fmUpdateCard(id);
-  fmUpdateSummary();
-  fmScheduleCharts();
+  a[field] = val; fmSave();
+  fmUpdateCard(id); fmUpdateSummary(); fmScheduleCharts();
 }
-
 function fmSetPrice(id, val) {
   if (!val || isNaN(val) || val < 1) return;
   const a = FM.articles.find(x => x.id === id);
   if (!a) return;
   a.price = val;
-  const inp = document.getElementById('fmp-' + id);
-  const sld = document.getElementById('fms-' + id);
+  const inp = document.getElementById('fmp-' + id), sld = document.getElementById('fms-' + id);
   if (inp && document.activeElement !== inp) inp.value = val;
   if (sld && document.activeElement !== sld) sld.value = val;
-  fmSave();
-  fmUpdateCard(id);
-  fmUpdateSummary();
-  fmScheduleCharts();
+  fmSave(); fmUpdateCard(id); fmUpdateSummary(); fmScheduleCharts();
 }
-
 function fmSetPeriod(m) { FM.months = m; fmRenderFull(); }
 
 function fmAddArticle() {
   const a = fmNewArticle({ name: 'Артикул ' + (FM.articles.length + 1) });
-  FM.articles.push(a);
-  fmSave();
+  FM.articles.push(a); fmSave();
   const container = document.getElementById('fm-articles');
   const addBtn = container.lastElementChild;
-  const tmp = document.createElement('div');
-  tmp.innerHTML = fmCardHtml(a);
+  const tmp = document.createElement('div'); tmp.innerHTML = fmCardHtml(a);
   container.insertBefore(tmp.firstElementChild, addBtn);
-  fmUpdateSummary();
-  fmUpdateChartSelect();
+  fmUpdateSummary(); fmUpdateChartSelect();
 }
-
 function fmDelete(id) {
   if (FM.articles.length <= 1) return;
-  FM.articles = FM.articles.filter(a => a.id !== id);
-  fmSave();
+  FM.articles = FM.articles.filter(a => a.id !== id); fmSave();
   document.getElementById('fmc-' + id)?.remove();
-  fmUpdateSummary();
-  fmUpdateChartSelect();
-  fmScheduleCharts();
+  fmUpdateSummary(); fmUpdateChartSelect(); fmScheduleCharts();
 }
-
 function fmToggleBatch(id) {
-  const a = FM.articles.find(x => x.id === id);
-  if (!a) return;
-  a.batchOpen = !a.batchOpen;
-  fmSave();
-  const card = document.getElementById('fmc-' + id);
-  if (!card) return;
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  a.batchOpen = !a.batchOpen; fmSave();
+  const card = document.getElementById('fmc-' + id); if (!card) return;
   card.querySelector('.fm-batch-toggle')?.classList.toggle('open', a.batchOpen);
   card.querySelector('.fm-batch-body')?.classList.toggle('open', a.batchOpen);
+}
+function fmTogglePlan(id) {
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  a.planOpen = !a.planOpen; fmSave();
+  const card = document.getElementById('fmc-' + id); if (!card) return;
+  card.querySelector('.fm-plan-toggle')?.classList.toggle('open', a.planOpen);
+  const wrap = document.getElementById('fmplnwrap-' + id); if (!wrap) return;
+  if (a.planOpen) { wrap.innerHTML = fmPlanHtml(a, fmCalc(a)); wrap.style.display = ''; }
+  else            { wrap.style.display = 'none'; }
+}
+
+// ── Plan mutations ──
+function fmSetWeekPct(id, w, val) {
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  while (a.weeklyPct.length <= w) a.weeklyPct.push(0);
+  a.weeklyPct[w] = +val || 0; fmSave();
+  fmUpdatePlan(id);
+}
+function fmTogglePlanWeek(id, w) {
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  const idx = a.expandedWeeks.indexOf(w);
+  if (idx >= 0) a.expandedWeeks.splice(idx, 1); else a.expandedWeeks.push(w);
+  fmSave(); fmUpdatePlan(id);
+}
+function fmAutoDistribute(id) {
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  const n = fmNumWeeks(FM.months), base = +(100/n).toFixed(2);
+  a.weeklyPct = Array.from({length: n}, (_, i) =>
+    i < n-1 ? base : +(100 - base*(n-1)).toFixed(2));
+  fmSave(); fmUpdatePlan(id);
+}
+function fmResetPlan(id) {
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  a.weeklyPct = []; a.expandedWeeks = []; fmSave(); fmUpdatePlan(id);
 }
 
 // ── Charts ──
