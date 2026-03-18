@@ -275,11 +275,15 @@
     .fm-field label{font-size:10px;color:var(--g);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
     .fm-field input,.fm-field select{background:var(--card2);border:0.5px solid var(--b2);border-radius:8px;padding:6px 9px;font-size:13px;color:var(--t);font-family:inherit;width:100%}
     .fm-field input:focus,.fm-field select:focus{outline:none;border-color:var(--wb)}
-    .fm-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;background:var(--card2);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+    .fm-results{background:var(--card2);border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;flex-direction:column;gap:8px}
+    .fm-res-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:8px}
+    .fm-res-row+.fm-res-row{border-top:1px solid rgba(255,255,255,.07);padding-top:8px}
     .fm-res-item{display:flex;flex-direction:column;gap:3px}
     .fm-res-lbl{font-size:10px;color:var(--g)}
     .fm-res-val{font-size:15px;font-weight:700;color:var(--t)}
     .fm-res-val.pos{color:#22c55e}.fm-res-val.neg{color:#ef4444}
+    .fm-taxbase-tog{font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid var(--wb3);background:var(--card);color:var(--g);cursor:pointer}
+    .fm-taxbase-tog.active{border-color:#8b5cf6;color:#8b5cf6;background:rgba(139,92,246,.12)}
     .fm-batch-toggle,.fm-plan-toggle{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--g);font-size:12px;font-weight:600;cursor:pointer;padding:4px 0;font-family:inherit;margin-top:2px}
     .fm-batch-toggle:hover,.fm-plan-toggle:hover{color:var(--t)}
     .fm-barrow{display:inline-block;transition:transform .2s;font-size:10px}
@@ -1742,52 +1746,81 @@ function fmNewArticle(overrides = {}) {
     // WB percentage deductions
     commissionPct: 15,        // комиссия МП %
     taxPct: 7,                // налог %
+    taxBase: 'price',         // 'price' | 'rcs'
     acquiringPct: 1.5,        // эквайринг %
     drrPct: 10,               // ДРР % (доля рекламных расходов)
+    selfBuyoutPct: 0,         // % самовыкупов от ДРР-бюджета партии
     // Cost structure
     costPerUnit: 300,         // direct cost per unit
-    batchSize: 500,           // batch volume → also drives plan orders
+    batchSize: 500,           // = target buyouts for the period
     extraLogistics: 3000,     // batch delivery logistics
     extraPackaging: 1000,     // packaging
     extraOther: 0,
     // Section states
     batchOpen: false,
     planOpen: false,
-    weeklyPct: [],            // [] = auto; [20,25,...] = manual
+    weeklyPct: [],            // [] = auto; [20,25,...] = manual %
+    weeklyPrice: {},          // { week_index: price } — dynamic price per week
     expandedWeeks: [],        // week indices with day detail open
     ...overrides
   };
 }
 
 function fmCalc(a, priceOverride) {
-  const price      = priceOverride !== undefined ? priceOverride : +a.price;
-  const buyRate    = Math.max(0.01, +a.buyoutPct / 100);
-  const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther;
-  const extraPerUnit = extraTotal / Math.max(1, +a.batchSize);
-  const costUnit   = +a.costPerUnit + extraPerUnit;
-  const logOrder   = +a.sendCost + (1 - buyRate) * +a.returnCost;
-  const logBuyout  = logOrder / buyRate;
-  const commPct    = +(a.commissionPct || 0);
-  const taxPct     = +(a.taxPct || 0);
-  const acquPct    = +(a.acquiringPct || 0);
-  const drrPct     = +(a.drrPct || 0);
-  const pctFactor  = 1 - (commPct + acquPct + drrPct + taxPct) / 100;
-  const commUnit   = price * commPct / 100;
-  const taxUnit    = price * taxPct / 100;
-  const acquUnit   = price * acquPct / 100;
-  const drrUnit    = price * drrPct / 100;
-  const profitUnit = price * pctFactor - (costUnit + logBuyout);
+  const price     = priceOverride !== undefined ? priceOverride : +a.price;
+  const buyRate   = Math.max(0.01, +a.buyoutPct / 100);
+  // batchSize = target buyouts; orders = how many to send to achieve that buyout count
+  const buyouts   = Math.max(0, +a.batchSize);
+  const orders    = Math.round(buyouts / buyRate);
+  const extraTotal   = +a.extraLogistics + +a.extraPackaging + +a.extraOther;
+  const extraPerUnit = extraTotal / Math.max(1, buyouts);
+  const costUnit  = +a.costPerUnit;           // direct cost per unit (display)
+  const logOrder  = +a.sendCost + (1 - buyRate) * +a.returnCost;
+  const logBuyout = logOrder / buyRate;       // effective logistics per buyout
+  const commPct   = +(a.commissionPct || 0);
+  const acquPct   = +(a.acquiringPct  || 0);
+  const drrPct    = +(a.drrPct        || 0);
+  const taxPct    = +(a.taxPct        || 0);
+  const commUnit  = price * commPct / 100;
+  const acquUnit  = price * acquPct  / 100;
+  const drrUnit   = price * drrPct   / 100;
+  // Оплата на Р/С (per buyout): цена − комиссия − реклама − логистика − эквайринг
+  const receipt   = price - commUnit - drrUnit - logBuyout - acquUnit;
+  // Налог: от суммы продажи или от оплаты на Р/С
+  const taxBase   = a.taxBase || 'price';
+  const taxUnit   = taxBase === 'rcs'
+    ? Math.max(0, receipt) * taxPct / 100
+    : price * taxPct / 100;
+  // Самовыкупы: % от ДРР-бюджета (внешние расходы)
+  const selfBuyoutPct  = +(a.selfBuyoutPct || 0);
+  const selfBuyoutUnit = drrUnit * selfBuyoutPct / 100;
+  // Прибыль за 1 выкуп
+  const profitUnit = receipt - taxUnit - costUnit - extraPerUnit - selfBuyoutUnit;
   const margin     = price > 0 ? profitUnit / price * 100 : 0;
-  const costs      = costUnit + logBuyout + commUnit + taxUnit + acquUnit + drrUnit;
-  const roi        = costs > 0 ? profitUnit / costs * 100 : 0;
-  const breakEven  = pctFactor > 0 ? (costUnit + logBuyout) / pctFactor : 0;
-  // Plan volume: batch size defines total orders; buyouts = orders × buyRate
-  const orders     = Math.max(0, +a.batchSize);
-  const buyouts    = orders * buyRate;
+  // ROI: прибыль / все расходы
+  const allCosts   = costUnit + extraPerUnit + selfBuyoutUnit + logBuyout + commUnit + acquUnit + drrUnit + taxUnit;
+  const roi        = allCosts > 0 ? profitUnit / allCosts * 100 : 0;
+  // Breakeven
+  const cfrac = commPct/100, dfrac = drrPct/100, afrac = acquPct/100, tfrac = taxPct/100;
+  const sbfrac = dfrac * selfBuyoutPct/100;
+  const fixedCosts = logBuyout + costUnit + extraPerUnit;
+  let breakEven;
+  if (taxBase === 'rcs') {
+    const A = (1 - cfrac - dfrac - afrac) * (1 - tfrac) - sbfrac;
+    const B = logBuyout * (1 - tfrac) + costUnit + extraPerUnit;
+    breakEven = A > 0.01 ? B / A : 0;
+  } else {
+    const pctEff = 1 - cfrac - dfrac - afrac - tfrac - sbfrac;
+    breakEven = pctEff > 0.01 ? fixedCosts / pctEff : 0;
+  }
+  const revenue      = buyouts * price;
+  const receiptTotal = buyouts * receipt;
+  const profit       = buyouts * profitUnit;
   return { costUnit, extraPerUnit, logOrder, logBuyout,
-    commUnit, taxUnit, acquUnit, drrUnit, pctFactor,
+    commUnit, taxUnit, acquUnit, drrUnit, selfBuyoutUnit,
+    receipt, receiptTotal,
     profitUnit, margin, roi, breakEven,
-    orders, buyouts, revenue: buyouts * price, profit: buyouts * profitUnit };
+    orders, buyouts, revenue, profit };
 }
 
 function fmFmt(v, type) {
@@ -1831,8 +1864,11 @@ function fmLoad() {
     if (a.commissionPct  === undefined) a.commissionPct  = 15;
     if (a.taxPct         === undefined) a.taxPct         = 7;
     if (a.acquiringPct   === undefined) a.acquiringPct   = 1.5;
-    if (!a.weeklyPct)      a.weeklyPct = [];
-    if (!a.expandedWeeks)  a.expandedWeeks = [];
+    if (!a.weeklyPct)           a.weeklyPct      = [];
+    if (!a.expandedWeeks)       a.expandedWeeks  = [];
+    if (!a.weeklyPrice)         a.weeklyPrice    = {};
+    if (a.selfBuyoutPct === undefined) a.selfBuyoutPct = 0;
+    if (!a.taxBase)             a.taxBase        = 'price';
   });
   fmNextId = Math.max(fmNextId, ...FM.articles.map(a => a.id + 1), 1);
 }
@@ -1956,6 +1992,26 @@ function fmPlanHtml(a, c) {
     return `<td class="fm-ph-num pos${msepClass(w)}">${v}</td>`;
   }).join('');
 
+  /* ── price row (input, per week) ── */
+  const priceCells = allWeeks.map(w => {
+    const custom = a.weeklyPrice?.[w];
+    const raw = custom ? custom : '';
+    return `<td class="${msepClass(w)}" style="padding:4px 5px;text-align:center;vertical-align:middle">
+      <input class="fm-plan-pct-inp" type="number" id="fmwpr-${a.id}-${w}"
+        value="${raw}" min="0" step="50" placeholder="${Math.round(+a.price)}"
+        style="${custom ? 'border-color:#8b5cf6;color:#8b5cf6' : ''}"
+        oninput="fmSetWeekPrice(${a.id},${w},this.value)" /></td>`;
+  }).join('');
+
+  /* ── revenue row (per-week price × per-week buyouts) ── */
+  const revCells = allWeeks.map(w => {
+    const wBuy   = c.buyouts * pcts[w] / 100;
+    const wPrice = +(a.weeklyPrice?.[w] || a.price);
+    const wRev   = wBuy * wPrice;
+    const custom = !!a.weeklyPrice?.[w];
+    return `<td class="fm-ph-num${msepClass(w)}"${custom?' style="color:#8b5cf6"':''}>${fmFmt(wRev,'rub')}</td>`;
+  }).join('');
+
   /* ── tfoot: monthly totals ── */
   const tfOrd = mGroups.map((g, mi) => {
     const v   = Math.round(g.weeks.reduce((s, w) => s + c.orders  * pcts[w] / 100, 0));
@@ -1967,6 +2023,27 @@ function fmPlanHtml(a, c) {
     const sep = mi < mGroups.length - 1 ? ' fm-ph-mhdr-sep' : '';
     return `<td colspan="${g.weeks.length}" class="fm-ph-num pos${sep}" style="padding:6px 8px;font-weight:700;border-top:0.5px solid var(--b);text-align:center;background:var(--card2)">${v}</td>`;
   }).join('');
+  const tfRev = mGroups.map((g, mi) => {
+    const v   = g.weeks.reduce((s, w) => {
+      const wBuy = c.buyouts * pcts[w] / 100;
+      return s + wBuy * +(a.weeklyPrice?.[w] || a.price);
+    }, 0);
+    const sep = mi < mGroups.length - 1 ? ' fm-ph-mhdr-sep' : '';
+    return `<td colspan="${g.weeks.length}" class="fm-ph-num${sep}" style="padding:6px 8px;font-weight:700;border-top:0.5px solid var(--b);text-align:center;background:var(--card2)">${fmFmt(v,'rub')}</td>`;
+  }).join('');
+
+  /* ── per-week weighted totals for grand total ── */
+  const totalRevenue = allWeeks.reduce((s, w) => {
+    return s + c.buyouts * pcts[w] / 100 * +(a.weeklyPrice?.[w] || a.price);
+  }, 0);
+  const totalProfit = allWeeks.reduce((s, w) => {
+    const wc = fmCalc(a, +(a.weeklyPrice?.[w] || a.price));
+    return s + c.buyouts * pcts[w] / 100 * wc.profitUnit;
+  }, 0);
+  const totalReceipt = allWeeks.reduce((s, w) => {
+    const wc = fmCalc(a, +(a.weeklyPrice?.[w] || a.price));
+    return s + c.buyouts * pcts[w] / 100 * wc.receipt;
+  }, 0);
 
   /* ── day detail panels (for expanded weeks) ── */
   const DAYS_RU = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
@@ -2017,10 +2094,13 @@ function fmPlanHtml(a, c) {
         <tr class="fm-ph-pct-row"><td class="fm-ph-lbl">%</td>${pctCells}</tr>
         <tr class="fm-ph-ord-row"><td class="fm-ph-lbl">Заказы</td>${ordCells}</tr>
         <tr class="fm-ph-buy-row"><td class="fm-ph-lbl">Выкупы</td>${buyCells}</tr>
+        <tr class="fm-ph-pct-row"><td class="fm-ph-lbl" style="color:#8b5cf6">Цена ₽</td>${priceCells}</tr>
+        <tr class="fm-ph-ord-row"><td class="fm-ph-lbl">Выручка</td>${revCells}</tr>
       </tbody>
       <tfoot>
         <tr><td class="fm-ph-lbl" style="font-size:9px;background:var(--card2)!important">Заказы / мес</td>${tfOrd}</tr>
         <tr><td class="fm-ph-lbl" style="font-size:9px;background:var(--card2)!important">Выкупы / мес</td>${tfBuy}</tr>
+        <tr><td class="fm-ph-lbl" style="font-size:9px;background:var(--card2)!important">Выручка / мес</td>${tfRev}</tr>
       </tfoot>
     </table>
   </div>
@@ -2028,8 +2108,9 @@ function fmPlanHtml(a, c) {
   <div class="fm-plan-grand-total">
     <span>Заказов: <b>${Math.round(c.orders)}</b></span>
     <span>Выкупов: <b>${Math.round(c.buyouts)}</b></span>
-    <span>Выручка: <b>${fmFmt(c.revenue,'rub')}</b></span>
-    <span>Прибыль: <b style="color:${c.profit>=0?'#22c55e':'#ef4444'}">${fmFmt(c.profit,'rub')}</b></span>
+    <span>Выручка: <b>${fmFmt(totalRevenue,'rub')}</b></span>
+    <span>Приход на Р/С: <b>${fmFmt(totalReceipt,'rub')}</b></span>
+    <span>Прибыль: <b style="color:${totalProfit>=0?'#22c55e':'#ef4444'}">${fmFmt(totalProfit,'rub')}</b></span>
   </div>
 </div>`;
 }
@@ -2052,20 +2133,32 @@ function fmUpdateSummary() {
 
 // ── Results HTML ──
 function fmResultsHtml(a, c) {
-  const pc = c.profitUnit >= 0 ? 'pos' : 'neg';
-  return `<div class="fm-res-item"><div class="fm-res-lbl">Заказы за период</div><div class="fm-res-val">${fmFmt(c.orders,'n')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">Выкупы</div><div class="fm-res-val">${fmFmt(c.buyouts,'n')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">Себестоимость / ед</div><div class="fm-res-val">${fmFmt(c.costUnit,'rub')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">Логистика / выкуп</div><div class="fm-res-val">${fmFmt(c.logBuyout,'rub')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">Комиссия МП</div><div class="fm-res-val">${fmFmt(c.commUnit,'rub')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">ДРР</div><div class="fm-res-val">${fmFmt(c.drrUnit,'rub')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">Налог</div><div class="fm-res-val">${fmFmt(c.taxUnit,'rub')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">Эквайринг</div><div class="fm-res-val">${fmFmt(c.acquUnit,'rub')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">Прибыль / шт</div><div class="fm-res-val ${pc}">${fmFmt(c.profitUnit,'rub')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">Маржа</div><div class="fm-res-val ${pc}">${fmFmt(c.margin,'pct')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">ROI</div><div class="fm-res-val ${pc}">${fmFmt(c.roi,'pct')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">Выручка</div><div class="fm-res-val">${fmFmt(c.revenue,'rub')}</div></div>
-<div class="fm-res-item"><div class="fm-res-lbl">Прибыль за период</div><div class="fm-res-val ${pc}">${fmFmt(c.profit,'rub')}</div></div>`;
+  const pc  = c.profitUnit >= 0 ? 'pos' : 'neg';
+  const rc  = c.receipt   >= 0 ? ''    : 'neg';
+  const taxLbl = (a.taxBase||'price') === 'rcs' ? 'Налог (от Р/С)' : 'Налог';
+  const ri = (lbl, val, cls) =>
+    `<div class="fm-res-item"><div class="fm-res-lbl">${lbl}</div><div class="fm-res-val${cls?' '+cls:''}">${val}</div></div>`;
+  const row1 = [
+    ri('Заказы за период',  fmFmt(c.orders,      'n')),
+    ri('Выкупы',            fmFmt(c.buyouts,     'n')),
+    ri('Себестоимость / ед',fmFmt(c.costUnit,    'rub')),
+    ri('Логистика / выкуп', fmFmt(c.logBuyout,   'rub')),
+    ri('Комиссия МП',       fmFmt(c.commUnit,    'rub')),
+    ri('ДРР',               fmFmt(c.drrUnit,     'rub')),
+    c.selfBuyoutUnit > 0 ? ri('Самовыкупы / ед', fmFmt(c.selfBuyoutUnit,'rub')) : '',
+    ri(taxLbl,              fmFmt(c.taxUnit,     'rub')),
+    ri('Эквайринг',         fmFmt(c.acquUnit,    'rub')),
+    ri('Оплата на Р/С',     fmFmt(c.receipt,     'rub'), rc),
+    ri('Прибыль / шт',      fmFmt(c.profitUnit,  'rub'), pc),
+  ].join('');
+  const row2 = [
+    ri('Маржа',             fmFmt(c.margin,      'pct'), pc),
+    ri('ROI',               fmFmt(c.roi,         'pct'), pc),
+    ri('Выручка',           fmFmt(c.revenue,     'rub')),
+    ri('Приход на Р/С',     fmFmt(c.receiptTotal,'rub')),
+    ri('Прибыль за период', fmFmt(c.profit,      'rub'), pc),
+  ].join('');
+  return `<div class="fm-res-row">${row1}</div><div class="fm-res-row">${row2}</div>`;
 }
 
 // ── Plan partial update ──
@@ -2152,9 +2245,16 @@ function fmCardHtml(a) {
     <div class="fm-field"><label>ДРР % (реклама)</label>
       <input type="number" id="fmf-${a.id}-drrPct" value="${+(a.drrPct||0)}" min="0" max="100" step="0.1"
         oninput="fmSet(${a.id},'drrPct',+this.value)" /></div>
+    <div class="fm-field"><label>Самовыкупы % от ДРР</label>
+      <input type="number" id="fmf-${a.id}-selfBuyoutPct" value="${+(a.selfBuyoutPct||0)}" min="0" max="100" step="1"
+        oninput="fmSet(${a.id},'selfBuyoutPct',+this.value)" /></div>
     <div class="fm-field"><label>Налог %</label>
       <input type="number" id="fmf-${a.id}-taxPct" value="${+(a.taxPct||0)}" min="0" max="100" step="0.1"
-        oninput="fmSet(${a.id},'taxPct',+this.value)" /></div>
+        oninput="fmSet(${a.id},'taxPct',+this.value)" />
+      <div style="display:flex;gap:4px;margin-top:4px">
+        <button class="fm-taxbase-tog${(a.taxBase||'price')==='price'?' active':''}" onclick="fmSetTaxBase(${a.id},'price')">от цены</button>
+        <button class="fm-taxbase-tog${(a.taxBase||'price')==='rcs'?' active':''}" onclick="fmSetTaxBase(${a.id},'rcs')">от Р/С</button>
+      </div></div>
     <div class="fm-field"><label>Эквайринг %</label>
       <input type="number" id="fmf-${a.id}-acquiringPct" value="${+(a.acquiringPct||0)}" min="0" max="100" step="0.1"
         oninput="fmSet(${a.id},'acquiringPct',+this.value)" /></div>
@@ -2259,6 +2359,18 @@ function fmTogglePlan(id) {
   else            { wrap.style.display = 'none'; }
 }
 
+function fmSetTaxBase(id, base) {
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  a.taxBase = base; fmSave(); fmUpdateCard(id);
+}
+function fmSetWeekPrice(id, w, val) {
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  if (!a.weeklyPrice) a.weeklyPrice = {};
+  const v = +val;
+  if (v > 0) a.weeklyPrice[w] = v; else delete a.weeklyPrice[w];
+  fmSave(); fmUpdatePlan(id);
+}
+
 // ── Plan mutations ──
 function fmTogglePlanWeek(id, w) {
   const a = FM.articles.find(x => x.id === id); if (!a) return;
@@ -2282,7 +2394,7 @@ function fmAutoDistribute(id) {
 }
 function fmResetPlan(id) {
   const a = FM.articles.find(x => x.id === id); if (!a) return;
-  a.weeklyPct = []; a.expandedWeeks = []; fmSave(); fmUpdatePlan(id);
+  a.weeklyPct = []; a.expandedWeeks = []; a.weeklyPrice = {}; fmSave(); fmUpdatePlan(id);
 }
 
 // ── Charts ──
