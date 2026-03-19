@@ -368,6 +368,46 @@
 
     .empty{text-align:center;padding:30px;color:var(--g);font-size:13px}
     @media(max-width:600px){.goods-layout{flex-direction:column}.filter-panel{width:100%}.daily-grid{grid-template-columns:1fr}}
+
+    /* ── FM: search ── */
+    .fm-search-inp{background:var(--card2);border:0.5px solid var(--b2);border-radius:9px;padding:6px 12px;font-size:12px;color:var(--t);font-family:inherit;min-width:200px;flex:1;max-width:300px}
+    .fm-search-inp:focus{outline:none;border-color:var(--wb)}
+
+    /* ── FM: collapse ── */
+    .fm-card-body{transition:none}
+    .fm-card.collapsed .fm-card-body{display:none}
+    .fm-collapsed-bar{display:none;align-items:center;gap:16px;padding:2px 0 6px;flex-wrap:wrap}
+    .fm-card.collapsed .fm-collapsed-bar{display:flex}
+    .fm-cbar-item{display:flex;flex-direction:column;gap:1px}
+    .fm-cbar-lbl{font-size:10px;color:var(--g)}
+    .fm-cbar-val{font-size:14px;font-weight:700;color:var(--t)}
+
+    /* ── FM: drag & drop cards ── */
+    .fm-card.fm-dragging{opacity:.35;border-color:var(--wb)!important}
+    .fm-card.fm-drag-over{border-top:3px solid var(--wb)!important}
+
+    /* ── FM: budget section ── */
+    .fm-budget-body{display:none;margin-top:10px;background:var(--bg);border-radius:10px;border:0.5px solid var(--b);overflow:hidden}
+    .fm-budget-body.open{display:block}
+    .fm-budget-row{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:0.5px solid var(--b);font-size:12px}
+    .fm-budget-row:last-child{border-bottom:none}
+    .fm-budget-row.total{background:var(--card2);font-weight:700;font-size:13px}
+    .fm-budget-row.profit-row{font-weight:700}
+    .fm-budget-lbl{color:var(--g)}
+    .fm-budget-val{font-weight:600;color:var(--t)}
+    .fm-budget-val.pos{color:#22c55e}.fm-budget-val.neg{color:#ef4444}
+
+    /* ── FM: week profit row ── */
+    .fm-ph-profit-row td{padding:5px 6px;text-align:center;font-weight:700;font-size:12px}
+    .fm-ph-profit-row .fm-ph-lbl{text-align:left;padding-left:10px}
+    .fm-profit-cell.pos{color:#22c55e}
+    .fm-profit-cell.neg{color:#ef4444}
+    /* week header tint */
+    .fm-ph-whdr.wk-profit{background:rgba(34,197,94,.12)!important}
+    .fm-ph-whdr.wk-loss{background:rgba(239,68,68,.1)!important}
+
+    /* ── FM: summary grid 5 cols ── */
+    .fm-summary-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))!important}
   </style>
 </head>
 <body>
@@ -516,6 +556,7 @@
     <div class="fm-title-row">
       <input class="fm-project-name" id="fm-project-name" value="Финансовая модель"
         oninput="FM.projectName=this.value;fmSave()" placeholder="Название проекта" />
+      <input class="fm-search-inp" id="fm-search" placeholder="🔍 Поиск по артикулам..." oninput="fmFilterArticles(this.value)" />
       <div class="fm-period-btns">
         <button class="fm-period-btn active" data-m="1" onclick="fmSetPeriod(1)">1 мес</button>
         <button class="fm-period-btn" data-m="2" onclick="fmSetPeriod(2)">2 мес</button>
@@ -543,6 +584,14 @@
         <div class="fm-sum-label">ROI</div>
         <div class="fm-sum-value" id="fm-sum-roi">—</div>
       </div>
+      <div class="fm-sum-card">
+        <div class="fm-sum-label">Вложения за период</div>
+        <div class="fm-sum-value" id="fm-sum-invest">—</div>
+      </div>
+      <div class="fm-sum-card">
+        <div class="fm-sum-label">Приход на Р/С</div>
+        <div class="fm-sum-value" id="fm-sum-receipt">—</div>
+      </div>
     </div>
   </div>
   <div class="fm-articles" id="fm-articles"></div>
@@ -565,6 +614,10 @@
       <div class="fm-chart-card">
         <div class="fm-chart-ttl">Прибыль по месяцам (1–6)</div>
         <div class="fm-chart-inner"><canvas id="fc-months"></canvas></div>
+      </div>
+      <div class="fm-chart-card" style="grid-column:1/-1">
+        <div class="fm-chart-ttl">Кэш-флоу по неделям — нарастающий итог прибыли</div>
+        <div class="fm-chart-inner" style="height:200px"><canvas id="fc-cashflow"></canvas></div>
       </div>
     </div>
   </div>
@@ -1770,6 +1823,8 @@ function fmNewArticle(overrides = {}) {
     // Section states
     batchOpen: false,
     planOpen: false,
+    budgetOpen: false,
+    collapsed: false,
     weeklyPct: [],            // [] = auto; [20,25,...] = manual %
     weeklyPrice: {},          // { week_index: price } — dynamic price per week
     expandedWeeks: [],        // week indices with day detail open
@@ -1878,6 +1933,8 @@ function fmLoad() {
     if (!a.weeklyPct)           a.weeklyPct      = [];
     if (!a.expandedWeeks)       a.expandedWeeks  = [];
     if (!a.weeklyPrice)         a.weeklyPrice    = {};
+    if (a.budgetOpen === undefined) a.budgetOpen = false;
+    if (a.collapsed  === undefined) a.collapsed  = false;
     if (a.selfBuyoutPct === undefined) a.selfBuyoutPct = 0;
     if (!a.taxBase)             a.taxBase        = 'price';
     a.editMode = false; // always start loaded articles in read mode
@@ -1972,9 +2029,15 @@ function fmPlanHtml(a, c) {
 
   /* ── thead row 2: week date headers (click = toggle day panel) ── */
   const weekHdrs = allWeeks.map(w => {
-    const isOpen = exWeeks.includes(w);
-    const sep    = isMonthSep(w) ? ' fm-ph-whdr-sep' : '';
-    const cls    = `fm-ph-whdr${sep}${isOpen ? ' wk-open' : ''}`;
+    const isOpen  = exWeeks.includes(w);
+    const sep     = isMonthSep(w) ? ' fm-ph-whdr-sep' : '';
+    // pre-calc weekly profit for header tint
+    const wBuyH   = c.buyouts * pcts[w] / 100;
+    const wPriceH = +(a.weeklyPrice?.[w] || a.price);
+    const wcH     = fmCalc(a, wPriceH);
+    const wProfH  = wBuyH * wcH.profitUnit;
+    const profCls = wProfH >= 0 ? ' wk-profit' : ' wk-loss';
+    const cls     = `fm-ph-whdr${sep}${isOpen ? ' wk-open' : ''}${profCls}`;
     return `<th class="${cls}" onclick="fmTogglePlanWeek(${a.id},${w})" title="${isOpen ? 'Скрыть дни' : 'Детализация по дням'}">
       ${fmWeekLabel(FM.startDate, w)}<br>
       <span style="font-size:9px;opacity:.7">нед ${w+1}&nbsp;${isOpen ? '▲' : '▼'}</span></th>`;
@@ -2022,6 +2085,16 @@ function fmPlanHtml(a, c) {
     const wRev   = wBuy * wPrice;
     const custom = !!a.weeklyPrice?.[w];
     return `<td id="fmpc-rev-${a.id}-${w}" class="fm-ph-num${msepClass(w)}"${custom?' style="color:#8b5cf6"':''}>${fmFmt(wRev,'rub')}</td>`;
+  }).join('');
+
+  /* ── profit per week row ── */
+  const profitCells = allWeeks.map(w => {
+    const wBuy    = c.buyouts * pcts[w] / 100;
+    const wPrice  = +(a.weeklyPrice?.[w] || a.price);
+    const wc      = fmCalc(a, wPrice);
+    const wProfit = wBuy * wc.profitUnit;
+    const cls     = wProfit >= 0 ? 'pos' : 'neg';
+    return `<td id="fmpc-prf-${a.id}-${w}" class="fm-profit-cell ${cls}${msepClass(w)}" style="padding:5px 6px;text-align:center">${fmFmt(wProfit,'rub')}</td>`;
   }).join('');
 
   /* ── tfoot: monthly totals ── */
@@ -2108,6 +2181,7 @@ function fmPlanHtml(a, c) {
         <tr class="fm-ph-buy-row"><td class="fm-ph-lbl">Выкупы</td>${buyCells}</tr>
         <tr class="fm-ph-pct-row"><td class="fm-ph-lbl" style="color:#8b5cf6">Цена ₽</td>${priceCells}</tr>
         <tr class="fm-ph-ord-row"><td class="fm-ph-lbl">Выручка</td>${revCells}</tr>
+        <tr class="fm-ph-profit-row"><td class="fm-ph-lbl" style="font-weight:700">Прибыль / нед</td>${profitCells}</tr>
       </tbody>
       <tfoot id="fmpc-tfoot-${a.id}">
         <tr><td class="fm-ph-lbl" style="font-size:9px;background:var(--card2)!important">Заказы / мес</td>${tfOrd}</tr>
@@ -2129,18 +2203,25 @@ function fmPlanHtml(a, c) {
 
 // ── Summary ──
 function fmUpdateSummary() {
-  let totRev = 0, totProfit = 0, totCosts = 0;
+  let totRev = 0, totProfit = 0, totCosts = 0, totInvest = 0, totReceipt = 0;
   FM.articles.forEach(a => {
     const c = fmCalc(a);
-    totRev += c.revenue; totProfit += c.profit;
-    totCosts += c.buyouts * (c.costUnit + c.logBuyout + c.commUnit + c.taxUnit + c.acquUnit + c.drrUnit);
+    const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther;
+    totRev     += c.revenue;
+    totProfit  += c.profit;
+    totReceipt += c.receiptTotal;
+    totCosts   += c.buyouts * (c.costUnit + c.logBuyout + c.commUnit + c.taxUnit + c.acquUnit + c.drrUnit);
+    // cash investments: procurement + extra costs + drr budget + self-buyouts
+    totInvest  += c.buyouts * c.costUnit + extraTotal + c.buyouts * (c.drrUnit + c.selfBuyoutUnit);
   });
   const totRoi = totCosts > 0 ? totProfit / totCosts * 100 : 0;
-  document.getElementById('fm-sum-rev').textContent    = fmFmt(totRev,    'rub');
-  document.getElementById('fm-sum-profit').textContent = fmFmt(totProfit, 'rub');
-  document.getElementById('fm-sum-roi').textContent    = fmFmt(totRoi,    'pct');
-  document.getElementById('fm-sum-profit').className   = 'fm-sum-value ' + (totProfit >= 0 ? 'pos' : 'neg');
-  document.getElementById('fm-sum-roi').className      = 'fm-sum-value ' + (totRoi    >= 0 ? 'pos' : 'neg');
+  document.getElementById('fm-sum-rev').textContent     = fmFmt(totRev,     'rub');
+  document.getElementById('fm-sum-profit').textContent  = fmFmt(totProfit,  'rub');
+  document.getElementById('fm-sum-roi').textContent     = fmFmt(totRoi,     'pct');
+  document.getElementById('fm-sum-invest').textContent  = fmFmt(totInvest,  'rub');
+  document.getElementById('fm-sum-receipt').textContent = fmFmt(totReceipt, 'rub');
+  document.getElementById('fm-sum-profit').className    = 'fm-sum-value ' + (totProfit >= 0 ? 'pos' : 'neg');
+  document.getElementById('fm-sum-roi').className       = 'fm-sum-value ' + (totRoi    >= 0 ? 'pos' : 'neg');
 }
 
 // ── Results HTML ──
@@ -2222,22 +2303,70 @@ function fmUpdateCard(id) {
   fmUpdatePlan(id);
 }
 
+// ── Budget section HTML ──
+function fmBudgetHtml(a, c) {
+  const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther;
+  const procurement   = c.buyouts * c.costUnit;
+  const drrBudget     = c.buyouts * c.drrUnit;
+  const selfBuyouts   = c.buyouts * c.selfBuyoutUnit;
+  const logisticsSend = +a.extraLogistics;
+  const packaging     = +a.extraPackaging;
+  const otherExtra    = +a.extraOther;
+  const totalInvest   = procurement + drrBudget + selfBuyouts + logisticsSend + packaging + otherExtra;
+  const pc = c.profit >= 0 ? 'pos' : 'neg';
+  const br = (lbl, val, cls) =>
+    `<div class="fm-budget-row"><span class="fm-budget-lbl">${lbl}</span><span class="fm-budget-val${cls?' '+cls:''}">${val}</span></div>`;
+  return `<div class="fm-budget-body${a.budgetOpen?' open':''}" id="fmbgt-${a.id}">
+    ${br('Закупка товара (' + Math.round(c.buyouts) + ' шт × ' + fmFmt(c.costUnit,'rub') + ')', fmFmt(procurement,'rub'))}
+    ${logisticsSend > 0 ? br('Логистика поставки', fmFmt(logisticsSend,'rub')) : ''}
+    ${packaging     > 0 ? br('Упаковка', fmFmt(packaging,'rub')) : ''}
+    ${otherExtra    > 0 ? br('Прочие расходы', fmFmt(otherExtra,'rub')) : ''}
+    ${drrBudget     > 0 ? br('ДРР (рекламный бюджет)', fmFmt(drrBudget,'rub')) : ''}
+    ${selfBuyouts   > 0 ? br('Самовыкупы', fmFmt(selfBuyouts,'rub')) : ''}
+    <div class="fm-budget-row total"><span class="fm-budget-lbl">ИТОГО вложения</span><span class="fm-budget-val">${fmFmt(totalInvest,'rub')}</span></div>
+    <div class="fm-budget-row" style="background:var(--card2)"><span class="fm-budget-lbl">Ожидаемая выручка</span><span class="fm-budget-val">${fmFmt(c.revenue,'rub')}</span></div>
+    <div class="fm-budget-row" style="background:var(--card2)"><span class="fm-budget-lbl">Ожидаемый приход на Р/С</span><span class="fm-budget-val">${fmFmt(c.receiptTotal,'rub')}</span></div>
+    <div class="fm-budget-row profit-row" style="background:var(--card2)"><span class="fm-budget-lbl">Ожидаемая прибыль</span><span class="fm-budget-val ${pc}">${fmFmt(c.profit,'rub')}</span></div>
+  </div>`;
+}
+
 // ── Card HTML ──
 function fmCardHtml(a) {
   const c = fmCalc(a);
   const slMin = Math.max(1, Math.round(c.breakEven * 0.4));
   const slMax = Math.round(Math.max(+a.price * 2.5, c.breakEven * 3, slMin + 500));
   const editMode = !!a.editMode;
-  return `<div class="fm-card ${c.profitUnit >= 0 ? 'profit-pos' : 'profit-neg'}" id="fmc-${a.id}">
+  const pc = c.profitUnit >= 0 ? 'pos' : 'neg';
+  const collapsedCls = a.collapsed ? ' collapsed' : '';
+  return `<div class="fm-card ${c.profitUnit >= 0 ? 'profit-pos' : 'profit-neg'}${collapsedCls}" id="fmc-${a.id}"
+    draggable="true"
+    ondragstart="fmDragStart(event,${a.id})"
+    ondragover="fmDragOver(event,${a.id})"
+    ondragleave="fmDragLeave(event,${a.id})"
+    ondrop="fmDrop(event,${a.id})"
+    ondragend="fmDragEnd(event,${a.id})">
   <div class="fm-card-header">
+    <button class="fm-card-edit-btn" style="padding:3px 7px;font-size:14px;line-height:1" onclick="fmToggleCollapse(${a.id})" title="${a.collapsed ? 'Развернуть' : 'Свернуть'}">${a.collapsed ? '▸' : '▾'}</button>
     <input class="fm-art-name" id="fmn-${a.id}" value="${fmEsc(a.name)}"
       oninput="fmSet(${a.id},'name',this.value)" placeholder="Название" />
     <span class="fm-warn${+a.price < c.breakEven ? ' show' : ''}" title="Цена ниже точки безубыточности">⚠ Убыток</span>
     <button class="fm-card-edit-btn${editMode?' done':''}" onclick="fmToggleCardEdit(${a.id})">${editMode ? '✓ Готово' : '✎ Изменить'}</button>
+    <button class="fm-card-edit-btn" onclick="fmDuplicate(${a.id})" title="Дублировать артикул">⎘ Копия</button>
     <div class="fm-del-wrapper">
       <button class="btn btn-danger btn-sm" onclick="fmConfirmDelete(${a.id})" title="Удалить артикул">✕</button>
     </div>
   </div>
+  <!-- Collapsed compact bar -->
+  <div class="fm-collapsed-bar">
+    <div class="fm-cbar-item"><span class="fm-cbar-lbl">Цена</span><span class="fm-cbar-val">${fmFmt(+a.price,'rub')}</span></div>
+    <div class="fm-cbar-item"><span class="fm-cbar-lbl">Тираж</span><span class="fm-cbar-val">${fmFmt(+a.batchSize,'n')} шт</span></div>
+    <div class="fm-cbar-item"><span class="fm-cbar-lbl">Прибыль / шт</span><span class="fm-cbar-val" style="color:${c.profitUnit>=0?'#22c55e':'#ef4444'}">${fmFmt(c.profitUnit,'rub')}</span></div>
+    <div class="fm-cbar-item"><span class="fm-cbar-lbl">Маржа</span><span class="fm-cbar-val" style="color:${c.margin>=0?'#22c55e':'#ef4444'}">${fmFmt(c.margin,'pct')}</span></div>
+    <div class="fm-cbar-item"><span class="fm-cbar-lbl">ROI</span><span class="fm-cbar-val" style="color:${c.roi>=0?'#22c55e':'#ef4444'}">${fmFmt(c.roi,'pct')}</span></div>
+    <div class="fm-cbar-item"><span class="fm-cbar-lbl">Прибыль за период</span><span class="fm-cbar-val" style="color:${c.profit>=0?'#22c55e':'#ef4444'}">${fmFmt(c.profit,'rub')}</span></div>
+  </div>
+  <!-- Full card body -->
+  <div class="fm-card-body">
   <div class="fm-price-row">${fmPriceRowInner(a, c)}</div>
   <div class="fm-fields-wrap fm-fields">${editMode ? fmFieldsHtml(a) : fmViewGridHtml(a, c)}</div>
   <div class="fm-results">${fmResultsHtml(a, c)}</div>
@@ -2263,12 +2392,18 @@ function fmCardHtml(a) {
     </div>
   </div>
 
+  <button class="fm-batch-toggle${a.budgetOpen?' open':''}" onclick="fmToggleBudget(${a.id})">
+    <span class="fm-barrow">▶</span> Бюджет партии
+  </button>
+  ${fmBudgetHtml(a, c)}
+
   <button class="fm-plan-toggle${a.planOpen?' open':''}" onclick="fmTogglePlan(${a.id})">
     <span class="fm-barrow">▶</span> Распределение по периоду
   </button>
   <div id="fmplnwrap-${a.id}" style="${a.planOpen?'':'display:none'}">
     ${a.planOpen ? fmPlanHtml(a, c) : ''}
   </div>
+  </div><!-- /fm-card-body -->
 </div>`;
 }
 
@@ -2468,17 +2603,31 @@ function fmRefreshPlanCalcs(id) {
   const msep = w => isMonthSep(w) ? ' fm-ph-cell-msep' : '';
 
   allWeeks.forEach(w => {
-    const wOrd = Math.round(c.orders  * pcts[w] / 100);
-    const wBuy = Math.round(c.buyouts * pcts[w] / 100);
+    const wBuyF   = c.buyouts * pcts[w] / 100;
+    const wOrd    = Math.round(c.orders  * pcts[w] / 100);
+    const wBuy    = Math.round(wBuyF);
     const wPrice  = +(a.weeklyPrice?.[w] || a.price);
     const custom  = !!a.weeklyPrice?.[w];
     const wRev    = wBuy * wPrice;
+    const wc      = fmCalc(a, wPrice);
+    const wProfit = wBuyF * wc.profitUnit;
     const oEl = document.getElementById(`fmpc-ord-${id}-${w}`);
     if (oEl) oEl.textContent = wOrd;
     const bEl = document.getElementById(`fmpc-buy-${id}-${w}`);
     if (bEl) bEl.textContent = wBuy;
     const rEl = document.getElementById(`fmpc-rev-${id}-${w}`);
     if (rEl) { rEl.textContent = fmFmt(wRev, 'rub'); rEl.style.color = custom ? '#8b5cf6' : ''; }
+    const pEl = document.getElementById(`fmpc-prf-${id}-${w}`);
+    if (pEl) {
+      pEl.textContent = fmFmt(wProfit, 'rub');
+      pEl.className = `fm-profit-cell ${wProfit >= 0 ? 'pos' : 'neg'}${isMonthSep(w) ? ' fm-ph-cell-msep' : ''}`;
+    }
+    // update week header tint
+    const thEl = document.querySelector(`#fmplnb-${id} .fm-ph-whdr:nth-child(${allWeeks.indexOf(w)+1})`);
+    if (thEl) {
+      thEl.classList.toggle('wk-profit', wProfit >= 0);
+      thEl.classList.toggle('wk-loss',   wProfit <  0);
+    }
   });
 
   // tfoot
@@ -2633,6 +2782,148 @@ function fmRenderCharts() {
     }]},
     options: { ...baseOpts('Прибыль ₽'), plugins: { legend: { display: false } } }
   });
+
+  // ── Cash flow chart (all articles, all weeks, cumulative) ──
+  const cfN = fmNumWeeks(FM.months);
+  const cfLabels = Array.from({length: cfN}, (_, w) => fmWeekLabel(FM.startDate, w));
+  // per week profit summed across all articles
+  const cfWeekProfits = Array.from({length: cfN}, (_, w) => {
+    return FM.articles.reduce((s, art) => {
+      const artC   = fmCalc(art);
+      const { pcts: artPcts } = fmEffPcts(art);
+      const wBuy   = artC.buyouts * artPcts[w] / 100;
+      const wPrice = +(art.weeklyPrice?.[w] || art.price);
+      const wc     = fmCalc(art, wPrice);
+      return s + wBuy * wc.profitUnit;
+    }, 0);
+  });
+  // cumulative
+  let running = 0;
+  const cfCumulative = cfWeekProfits.map(v => { running += v; return running; });
+
+  mk('fc-cashflow', {
+    type: 'bar',
+    data: {
+      labels: cfLabels,
+      datasets: [
+        {
+          label: 'Прибыль / нед',
+          data: cfWeekProfits,
+          backgroundColor: cfWeekProfits.map(v => v >= 0 ? 'rgba(34,197,94,.35)' : 'rgba(239,68,68,.35)'),
+          borderColor:     cfWeekProfits.map(v => v >= 0 ? '#22C55E' : '#EF4444'),
+          borderWidth: 1.5, borderRadius: 4, order: 2
+        },
+        {
+          label: 'Накопленная прибыль',
+          data: cfCumulative,
+          type: 'line',
+          borderColor: '#8B5CF6', borderWidth: 2, tension: 0.3,
+          pointRadius: 3, fill: false, order: 1,
+          segment: { borderColor: ctx => cfCumulative[ctx.p0DataIndex] >= 0 ? '#22C55E' : '#EF4444' }
+        }
+      ]
+    },
+    options: {
+      ...baseOpts('Прибыль ₽'),
+      plugins: {
+        legend: { display: true, labels: { color: tc, font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+// ── Duplicate article ──
+function fmDuplicate(id) {
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  const copy = JSON.parse(JSON.stringify(a));
+  copy.id = fmNextId++;
+  copy.name = a.name + ' (копия)';
+  copy.editMode = false;
+  copy.collapsed = false;
+  const idx = FM.articles.findIndex(x => x.id === id);
+  FM.articles.splice(idx + 1, 0, copy);
+  fmSave();
+  const container = document.getElementById('fm-articles');
+  const addBtn = container.lastElementChild;
+  const origCard = document.getElementById('fmc-' + id);
+  const tmp = document.createElement('div'); tmp.innerHTML = fmCardHtml(copy);
+  const newCard = tmp.firstElementChild;
+  if (origCard && origCard.nextSibling && origCard.nextSibling !== addBtn) {
+    container.insertBefore(newCard, origCard.nextSibling);
+  } else {
+    container.insertBefore(newCard, addBtn);
+  }
+  fmUpdateSummary(); fmUpdateChartSelect();
+}
+
+// ── Toggle collapse ──
+function fmToggleCollapse(id) {
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  a.collapsed = !a.collapsed; fmSave();
+  const card = document.getElementById('fmc-' + id); if (!card) return;
+  card.classList.toggle('collapsed', a.collapsed);
+  const btn = card.querySelector('.fm-card-header .fm-card-edit-btn');
+  if (btn) { btn.textContent = a.collapsed ? '▸' : '▾'; btn.title = a.collapsed ? 'Развернуть' : 'Свернуть'; }
+}
+
+// ── Toggle budget section ──
+function fmToggleBudget(id) {
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  a.budgetOpen = !a.budgetOpen; fmSave();
+  const card = document.getElementById('fmc-' + id); if (!card) return;
+  const btns = card.querySelectorAll('.fm-batch-toggle');
+  if (btns.length >= 2) btns[1].classList.toggle('open', a.budgetOpen);
+  const bgt = document.getElementById('fmbgt-' + id);
+  if (bgt) bgt.classList.toggle('open', a.budgetOpen);
+}
+
+// ── Search / filter articles ──
+function fmFilterArticles(query) {
+  const q = (query || '').trim().toLowerCase();
+  FM.articles.forEach(a => {
+    const card = document.getElementById('fmc-' + a.id);
+    if (!card) return;
+    const match = !q || a.name.toLowerCase().includes(q);
+    card.style.display = match ? '' : 'none';
+  });
+}
+
+// ── Drag & drop cards ──
+let fmDragId = null;
+function fmDragStart(e, id) {
+  fmDragId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  const card = document.getElementById('fmc-' + id);
+  if (card) card.classList.add('fm-dragging');
+}
+function fmDragOver(e, id) {
+  e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+  if (id === fmDragId) return;
+  document.querySelectorAll('.fm-card').forEach(c => c.classList.remove('fm-drag-over'));
+  const card = document.getElementById('fmc-' + id);
+  if (card) card.classList.add('fm-drag-over');
+}
+function fmDragLeave(e, id) {
+  const card = document.getElementById('fmc-' + id);
+  if (card) card.classList.remove('fm-drag-over');
+}
+function fmDragEnd(e, id) {
+  fmDragId = null;
+  document.querySelectorAll('.fm-card').forEach(c => {
+    c.classList.remove('fm-dragging'); c.classList.remove('fm-drag-over');
+  });
+}
+function fmDrop(e, targetId) {
+  e.preventDefault();
+  document.querySelectorAll('.fm-card').forEach(c => c.classList.remove('fm-drag-over'));
+  if (fmDragId === null || fmDragId === targetId) return;
+  const srcIdx  = FM.articles.findIndex(x => x.id === fmDragId);
+  const destIdx = FM.articles.findIndex(x => x.id === targetId);
+  if (srcIdx < 0 || destIdx < 0) return;
+  const [moved] = FM.articles.splice(srcIdx, 1);
+  FM.articles.splice(destIdx, 0, moved);
+  fmSave(); fmRenderFull();
+  fmDragId = null;
 }
 
 // Init finmodel
