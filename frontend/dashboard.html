@@ -373,6 +373,8 @@
     .fm-date-inp:focus{outline:none}
     .fm-date-arrow{color:var(--g);font-size:13px}
     .fm-date-end-lbl{font-size:13px;font-weight:600;color:var(--wb)}
+    .fm-art-period-row{display:flex;align-items:center;gap:8px;padding:8px 0 6px;border-bottom:0.5px solid var(--b2);margin-bottom:8px;flex-wrap:wrap}
+    .fm-art-period-lbl{font-size:12px;color:var(--g);font-weight:500}
 
     .empty{text-align:center;padding:30px;color:var(--g);font-size:13px}
     @media(max-width:600px){.goods-layout{flex-direction:column}.filter-panel{width:100%}.daily-grid{grid-template-columns:1fr}}
@@ -571,19 +573,6 @@
         <option value="">— кабинет —</option>
       </select>
       <button class="btn btn-danger" style="font-size:12px;padding:5px 12px" onclick="fmDeleteAll()">Удалить все</button>
-      <div class="fm-period-btns">
-        <button class="fm-period-btn active" data-m="1" onclick="fmSetPeriod(1)">1 мес</button>
-        <button class="fm-period-btn" data-m="2" onclick="fmSetPeriod(2)">2 мес</button>
-        <button class="fm-period-btn" data-m="3" onclick="fmSetPeriod(3)">3 мес</button>
-        <button class="fm-period-btn" data-m="4" onclick="fmSetPeriod(4)">4 мес</button>
-        <button class="fm-period-btn" data-m="5" onclick="fmSetPeriod(5)">5 мес</button>
-        <button class="fm-period-btn" data-m="6" onclick="fmSetPeriod(6)">6 мес</button>
-      </div>
-      <div class="fm-date-range">
-        <input type="date" id="fm-start-date" class="fm-date-inp" oninput="fmSetStartDate(this.value)" />
-        <span class="fm-date-arrow">→</span>
-        <span class="fm-date-end-lbl" id="fm-date-end">—</span>
-      </div>
     </div>
     <div class="fm-summary-grid">
       <div class="fm-sum-card">
@@ -1853,6 +1842,8 @@ function fmNewArticle(overrides = {}) {
     planOpen: false,
     budgetOpen: false,
     collapsed: false,
+    months: FM.months || 1,   // period in months (per-article)
+    startDate: FM.startDate || new Date().toISOString().slice(0, 10),
     weeklyPct: [],            // [] = auto; [20,25,...] = manual %
     weeklyPrice: {},          // { week_index: price } — dynamic price per week
     expandedWeeks: [],        // week indices with day detail open
@@ -1954,6 +1945,8 @@ function fmApplyDefaults(articles) {
     if (a.collapsed  === undefined) a.collapsed  = false;
     if (a.selfBuyoutPct === undefined) a.selfBuyoutPct = 0;
     if (!a.taxBase)             a.taxBase        = 'price';
+    if (!a.months)              a.months         = FM.months || 1;
+    if (!a.startDate)           a.startDate      = FM.startDate || new Date().toISOString().slice(0, 10);
     a.editMode = false;
   });
 }
@@ -2150,7 +2143,7 @@ function fmDayLabel(startStr, w, d) {
     base.getDate().toString().padStart(2,'0') + '.' + (base.getMonth()+1).toString().padStart(2,'0');
 }
 function fmEffPcts(a) {
-  const n = fmNumWeeks(FM.months);
+  const n = fmNumWeeks(a.months || FM.months || 1);
   const raw = Array.from({length: n}, (_, i) => +(a.weeklyPct[i] || 0));
   const sum = raw.reduce((s, v) => s + v, 0);
   if (sum <= 0) return { pcts: raw.map(() => 100 / n), auto: true,  sum: 100 };
@@ -2177,12 +2170,14 @@ function fmWeeksByMonth(startStr, months) {
 
 // ── Plan section HTML (horizontal table + day drill-down) ──
 function fmPlanHtml(a, c) {
-  const n = fmNumWeeks(FM.months);
+  const artMonths    = a.months    || FM.months    || 1;
+  const artStartDate = a.startDate || FM.startDate || new Date().toISOString().slice(0,10);
+  const n = fmNumWeeks(artMonths);
   const { pcts, auto, sum } = fmEffPcts(a);
   const sumOk  = Math.abs(sum - 100) < 0.5;
   const sumLbl = auto ? '≈ Равномерно (авто)' : 'Σ ' + sum.toFixed(1) + '%' + (sumOk ? ' ✓' : ' ≠ 100%');
   const sumCls = auto ? 'auto' : (sumOk ? 'ok' : 'err');
-  const mGroups  = fmWeeksByMonth(FM.startDate, FM.months);
+  const mGroups  = fmWeeksByMonth(artStartDate, artMonths);
   const allWeeks = mGroups.flatMap(g => g.weeks);
   const exWeeks  = a.expandedWeeks || [];
 
@@ -2210,7 +2205,7 @@ function fmPlanHtml(a, c) {
     const profCls = wProfH >= 0 ? ' wk-profit' : ' wk-loss';
     const cls     = `fm-ph-whdr${sep}${isOpen ? ' wk-open' : ''}${profCls}`;
     return `<th class="${cls}" onclick="fmTogglePlanWeek(${a.id},${w})" title="${isOpen ? 'Скрыть дни' : 'Детализация по дням'}">
-      ${fmWeekLabel(FM.startDate, w)}<br>
+      ${fmWeekLabel(artStartDate, w)}<br>
       <span style="font-size:9px;opacity:.7">нед ${w+1}&nbsp;${isOpen ? '▲' : '▼'}</span></th>`;
   }).join('');
 
@@ -2308,7 +2303,7 @@ function fmPlanHtml(a, c) {
         const wOrd = c.orders  * pcts[w] / 100;
         const wBuy = c.buyouts * pcts[w] / 100;
         const dayRows = Array.from({length:7}, (_,d) => {
-          const lbl  = fmDayLabel(FM.startDate, w, d);
+          const lbl  = fmDayLabel(artStartDate, w, d);
           const dOrd = (wOrd / 7).toFixed(1);
           const dBuy = (wBuy / 7).toFixed(1);
           const cls  = d >= 5 ? ' class="weekend"' : '';
@@ -2322,7 +2317,7 @@ function fmPlanHtml(a, c) {
         return `<div class="fm-day-panel">
           <div class="fm-day-panel-hdr">
             <span style="color:var(--wb);font-size:13px">◈</span>
-            <span class="fm-day-panel-ttl">Нед ${w+1}: ${fmWeekLabel(FM.startDate, w)}</span>
+            <span class="fm-day-panel-ttl">Нед ${w+1}: ${fmWeekLabel(artStartDate, w)}</span>
             <span class="fm-day-panel-sub">${Math.round(wOrd)} заказов · ${Math.round(wBuy)} выкупов</span>
             <button class="fm-plan-tbtn" style="margin-left:auto" onclick="fmTogglePlanWeek(${a.id},${w})">Скрыть ▲</button>
           </div>
@@ -2538,6 +2533,14 @@ function fmCardHtml(a) {
   </div>
   <!-- Full card body -->
   <div class="fm-card-body">
+  <div class="fm-art-period-row">
+    <span class="fm-art-period-lbl">Период:</span>
+    <div class="fm-period-btns">${[1,2,3,4,5,6].map(m=>`<button class="fm-period-btn${(a.months||1)===m?' active':''}" onclick="fmSetArtPeriod(${a.id},${m})">${m} мес</button>`).join('')}</div>
+    <span class="fm-art-period-lbl" style="margin-left:8px">С:</span>
+    <input type="date" class="fm-date-inp" value="${a.startDate||''}" oninput="fmSetArtStartDate(${a.id},this.value)" />
+    <span class="fm-date-arrow">→</span>
+    <span class="fm-date-end-lbl">${fmFmtDate(fmEndDate(a.startDate||'', a.months||1))}</span>
+  </div>
   <div class="fm-price-row">${fmPriceRowInner(a, c)}</div>
   <div class="fm-fields-wrap fm-fields">${editMode ? fmFieldsHtml(a) : fmViewGridHtml(a, c)}</div>
   <div class="fm-results">${fmResultsHtml(a, c)}</div>
@@ -2583,10 +2586,7 @@ function fmRenderFull() {
   fmSave();
   const pnEl = document.getElementById('fm-project-name');
   if (pnEl) pnEl.value = FM.projectName;
-  document.querySelectorAll('.fm-period-btn').forEach(b =>
-    b.classList.toggle('active', +b.dataset.m === FM.months));
   fmUpdateSummary();
-  fmUpdateDateRange();
   fmPopulateCabinetSel();
   const container = document.getElementById('fm-articles');
   container.innerHTML = fmVisibleArticles().map(a => fmCardHtml(a)).join('') +
@@ -2614,6 +2614,30 @@ function fmSetPrice(id, val) {
   fmSave(); fmUpdateCard(id); fmUpdateSummary(); fmScheduleCharts();
 }
 function fmSetPeriod(m) { FM.months = m; fmRenderFull(); }
+function fmSetArtPeriod(id, m) {
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  a.months = m; fmSave();
+  // Update period buttons in this card
+  const card = document.getElementById('fmc-' + id); if (!card) return;
+  card.querySelectorAll('.fm-period-btn').forEach(b => b.classList.toggle('active', +b.textContent.trim().charAt(0) === m));
+  // Update end date label
+  const endLbl = card.querySelector('.fm-art-period-row .fm-date-end-lbl');
+  if (endLbl) endLbl.textContent = fmFmtDate(fmEndDate(a.startDate || '', m));
+  // Re-render plan if open
+  fmUpdatePlan(id);
+  fmScheduleCharts();
+}
+function fmSetArtStartDate(id, val) {
+  const a = FM.articles.find(x => x.id === id); if (!a) return;
+  a.startDate = val; fmSave();
+  // Update end date label
+  const card = document.getElementById('fmc-' + id); if (!card) return;
+  const endLbl = card.querySelector('.fm-art-period-row .fm-date-end-lbl');
+  if (endLbl) endLbl.textContent = fmFmtDate(fmEndDate(val, a.months || 1));
+  // Re-render plan if open
+  fmUpdatePlan(id);
+  fmScheduleCharts();
+}
 
 function fmAddArticle() {
   if (typeof user !== 'undefined' && user?.role === 'admin' && !selectedManagerId) {
@@ -2775,7 +2799,9 @@ function fmRefreshPlanCalcs(id) {
   const sumEl = document.getElementById('fmpc-sum-' + id);
   if (sumEl) { sumEl.textContent = sumLbl; sumEl.className = 'fm-plan-sum ' + sumCls; }
 
-  const mGroups  = fmWeeksByMonth(FM.startDate, FM.months);
+  const artMonths2    = a.months    || FM.months    || 1;
+  const artStartDate2 = a.startDate || FM.startDate || new Date().toISOString().slice(0,10);
+  const mGroups  = fmWeeksByMonth(artStartDate2, artMonths2);
   const allWeeks = mGroups.flatMap(g => g.weeks);
   const isMonthSep = w => { const mi = mGroups.findIndex(g => g.weeks.includes(w)); return mGroups[mi].weeks.at(-1) === w && mi < mGroups.length - 1; };
   const msep = w => isMonthSep(w) ? ' fm-ph-cell-msep' : '';
@@ -2871,7 +2897,7 @@ function fmSetWeekPct(id, w, val) {
 }
 function fmAutoDistribute(id) {
   const a = FM.articles.find(x => x.id === id); if (!a) return;
-  const n = fmNumWeeks(FM.months), base = +(100/n).toFixed(2);
+  const n = fmNumWeeks(a.months || FM.months || 1), base = +(100/n).toFixed(2);
   a.weeklyPct = Array.from({length: n}, (_, i) =>
     i < n-1 ? base : +(100 - base*(n-1)).toFixed(2));
   fmSave(); fmUpdatePlan(id);
@@ -2949,7 +2975,8 @@ function fmRenderCharts() {
     options: baseOpts('ROI %')
   });
 
-  const buyoutsPerMonth = FM.months > 0 ? c.buyouts / FM.months : 0;
+  const artMonths = a.months || FM.months || 1;
+  const buyoutsPerMonth = artMonths > 0 ? c.buyouts / artMonths : 0;
   const mProfits = [1,2,3,4,5,6].map(m => buyoutsPerMonth * m * c.profitUnit);
   mk('fc-months', {
     type: 'bar',
@@ -2963,13 +2990,16 @@ function fmRenderCharts() {
   });
 
   // ── Cash flow chart (visible articles, all weeks, cumulative) ──
-  const cfN = fmNumWeeks(FM.months);
-  const cfLabels = Array.from({length: cfN}, (_, w) => fmWeekLabel(FM.startDate, w));
+  const cfMaxMonths = visible.length > 0 ? Math.max(...visible.map(art => art.months || FM.months || 1)) : (FM.months || 1);
+  const cfStartDate = (a.startDate || FM.startDate || new Date().toISOString().slice(0,10));
+  const cfN = fmNumWeeks(cfMaxMonths);
+  const cfLabels = Array.from({length: cfN}, (_, w) => fmWeekLabel(cfStartDate, w));
   // per week profit summed across visible articles
   const cfWeekProfits = Array.from({length: cfN}, (_, w) => {
     return visible.reduce((s, art) => {
       const artC   = fmCalc(art);
       const { pcts: artPcts } = fmEffPcts(art);
+      if (w >= artPcts.length) return s; // article has fewer weeks
       const wBuy   = artC.buyouts * artPcts[w] / 100;
       const wPrice = +(art.weeklyPrice?.[w] || art.price);
       const wc     = fmCalc(art, wPrice);
