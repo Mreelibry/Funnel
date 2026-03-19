@@ -239,6 +239,14 @@
     .rpt-warn{background:rgba(239,68,68,.15);color:#dc2626}
     .rpt-none{background:rgba(156,163,175,.15);color:#6b7280}
 
+    /* ── TOAST ── */
+    #toast-container{position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+    .toast{background:var(--card);border:0.5px solid var(--b2);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:500;color:var(--t);box-shadow:0 4px 20px rgba(0,0,0,.35);pointer-events:auto;opacity:0;transform:translateX(40px);transition:opacity .22s,transform .22s;max-width:280px}
+    .toast.show{opacity:1;transform:translateX(0)}
+    .toast.success{border-left:3px solid var(--green);color:var(--green)}
+    .toast.error{border-left:3px solid var(--red);color:var(--red)}
+    .toast.info{border-left:3px solid var(--wb)}
+
     /* ── ФИНМОДЕЛЬ ── */
     #page-finmodel{padding:16px 20px;max-width:1200px;margin:0 auto}
     .fm-topbar{margin-bottom:20px}
@@ -372,6 +380,8 @@
     /* ── FM: search ── */
     .fm-search-inp{background:var(--card2);border:0.5px solid var(--b2);border-radius:9px;padding:6px 12px;font-size:12px;color:var(--t);font-family:inherit;min-width:200px;flex:1;max-width:300px}
     .fm-search-inp:focus{outline:none;border-color:var(--wb)}
+    .fm-cab-sel{background:var(--card2);border:0.5px solid var(--b2);border-radius:9px;padding:6px 12px;font-size:12px;color:var(--t);font-family:inherit;cursor:pointer}
+    .fm-cab-sel:focus{outline:none;border-color:var(--wb)}
 
     /* ── FM: collapse ── */
     .fm-card-body{transition:none}
@@ -556,8 +566,11 @@
     <div class="fm-title-row">
       <input class="fm-project-name" id="fm-project-name" value="Финансовая модель"
         oninput="FM.projectName=this.value;fmSave()" placeholder="Название проекта" />
-      <span id="fm-save-ind" style="font-size:11px;color:var(--g);white-space:nowrap"></span>
       <input class="fm-search-inp" id="fm-search" placeholder="🔍 Поиск по артикулам..." oninput="fmFilterArticles(this.value)" />
+      <select id="fm-cabinet-sel" class="fm-cab-sel" onchange="fmSetCabinet(this.value)">
+        <option value="">— кабинет —</option>
+      </select>
+      <button class="btn btn-danger" style="font-size:12px;padding:5px 12px" onclick="fmDeleteAll()">Удалить все</button>
       <div class="fm-period-btns">
         <button class="fm-period-btn active" data-m="1" onclick="fmSetPeriod(1)">1 мес</button>
         <button class="fm-period-btn" data-m="2" onclick="fmSetPeriod(2)">2 мес</button>
@@ -1271,6 +1284,7 @@ async function loadCabinetsForUpload() {
     const sel = document.getElementById('upload-cab');
     sel.innerHTML = '<option value="">— кабинет —</option>';
     allCabinets.forEach(c => { sel.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
+    if (typeof fmPopulateCabinetSel === 'function') fmPopulateCabinetSel();
   } catch(e) { console.error(e); }
 }
 
@@ -1470,24 +1484,30 @@ function applyLocalDateFilter() {
 }
 
 function buildSummary(r) {
+  // Use raw Excel data as primary source, with key normalization + aliases
   const rawOrig = r.raw_data?.summary || {};
-  const raw = {};
-  Object.keys(rawOrig).forEach(k => { raw[k.replace(/[\u20A0-\u20CF]/g, '₽')] = rawOrig[k]; });
-  return {
-    'Показы':                 r.impressions   ?? raw['Показы'],
-    'CTR':                    r.ctr           ?? raw['CTR'],
-    'Переходы в карточку':    r.clicks        ?? raw['Переходы в карточку'],
-    'Положили в корзину':     r.added_to_cart ?? raw['Положили в корзину'],
-    'Заказали, шт':           r.ordered_qty   ?? raw['Заказали, шт'],
-    'Выкупили, шт':           r.bought_qty    ?? raw['Выкупили, шт'],
-    'Отменили, шт':           r.cancelled_qty ?? raw['Отменили, шт'],
-    'Конверсия в корзину, %': r.conv_to_cart  ?? raw['Конверсия в корзину, %'],
-    'Конверсия в заказ, %':   r.conv_to_order ?? raw['Конверсия в заказ, %'],
-    'Процент выкупа':         r.buyout_rate   ?? raw['Процент выкупа'],
-    'Заказали на сумму, ₽':  r.revenue       ?? raw['Заказали на сумму, ₽'],
-    'Средняя цена, ₽':       r.avg_price     ?? raw['Средняя цена, ₽'],
-    ...raw
-  };
+  const result = {};
+  Object.keys(rawOrig).forEach(k => {
+    const k2 = k.replace(/[\u20A0-\u20CF]/g, '₽');
+    result[k2] = rawOrig[k];
+    // Aliases so METRICS (which use short keys) can find values
+    if (k2 === 'CTR, %') result['CTR'] = rawOrig[k];
+    if (k2 === 'CTR, % (предыдущий период)') result['CTR (предыдущий период)'] = rawOrig[k];
+  });
+  // DB column fallbacks only when raw data is absent
+  if (result['Показы']                === undefined) result['Показы']                = r.impressions;
+  if (result['CTR']                   === undefined) result['CTR']                   = r.ctr;
+  if (result['Переходы в карточку']   === undefined) result['Переходы в карточку']   = r.clicks;
+  if (result['Положили в корзину']    === undefined) result['Положили в корзину']    = r.added_to_cart;
+  if (result['Заказали, шт']          === undefined) result['Заказали, шт']          = r.ordered_qty;
+  if (result['Выкупили, шт']          === undefined) result['Выкупили, шт']          = r.bought_qty;
+  if (result['Отменили, шт']          === undefined) result['Отменили, шт']          = r.cancelled_qty;
+  if (result['Конверсия в корзину, %'] === undefined) result['Конверсия в корзину, %'] = r.conv_to_cart;
+  if (result['Конверсия в заказ, %']  === undefined) result['Конверсия в заказ, %']  = r.conv_to_order;
+  if (result['Процент выкупа']        === undefined) result['Процент выкупа']        = r.buyout_rate;
+  if (result['Заказали на сумму, ₽'] === undefined) result['Заказали на сумму, ₽'] = r.revenue;
+  if (result['Средняя цена, ₽']      === undefined) result['Средняя цена, ₽']      = r.avg_price;
+  return result;
 }
 function buildGoods(r) {
   const goods = r.raw_data?.goods;
@@ -1803,7 +1823,7 @@ init();
 // ══════════════════════════════════════
 const FM_KEY = 'wb_finmodel';
 let fmNextId = 1;
-let FM = { projectName: 'Финансовая модель', months: 1, startDate: '', articles: [] };
+let FM = { projectName: 'Финансовая модель', months: 1, startDate: '', articles: [], cabinetId: null };
 let fmChartInst = {};
 let fmChartTimer = null;
 let fmSaveTimer  = null;
@@ -1938,12 +1958,26 @@ function fmApplyDefaults(articles) {
   });
 }
 
-// ── Показать индикатор сохранения ──
-function fmShowSaveInd(text, color) {
-  const ind = document.getElementById('fm-save-ind');
-  if (!ind) return;
-  ind.textContent = text; ind.style.color = color;
-  if (color !== 'var(--g)') setTimeout(() => { if (ind) ind.textContent = ''; }, 2500);
+// ── Toast уведомления ──
+function showToast(text, type = 'info') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = text;
+  container.appendChild(el);
+  requestAnimationFrame(() => { requestAnimationFrame(() => { el.classList.add('show'); }); });
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 250);
+  }, 2000);
+}
+
+// ── Показать индикатор сохранения (теперь через toast) ──
+function fmShowSaveInd(text, type) {
+  if (!text) return;
+  if (text === 'Сохранение...') return; // не показываем "сохранение" — тихое
+  showToast(text, type || 'info');
 }
 
 // ── Сохранение в БД (debounced) + резервная копия в localStorage ──
@@ -1962,15 +1996,16 @@ async function fmSaveToDB() {
   try {
     await API.put('/finmodels', {
       manager_id: mgrId,
+      cabinet_id: FM.cabinetId || null,
       name:       FM.projectName,
       months:     FM.months,
       start_date: FM.startDate || null,
       articles:   FM.articles
     });
-    fmShowSaveInd('✓ Сохранено', 'var(--green)');
+    fmShowSaveInd('✓ Сохранено', 'success');
   } catch(e) {
     console.error('fmSaveToDB:', e);
-    fmShowSaveInd('⚠ Ошибка сохранения', 'var(--red)');
+    fmShowSaveInd('⚠ Ошибка сохранения', 'error');
   }
 }
 
@@ -1988,8 +2023,6 @@ function fmLoad() {
 
 // ── Загрузка из БД ──
 async function fmLoadFromDB(mgrId) {
-  const ind = document.getElementById('fm-save-ind');
-  if (ind) { ind.textContent = 'Загрузка...'; ind.style.color = 'var(--g)'; }
   try {
     const q = mgrId ? `?manager_id=${mgrId}` : '';
     const data = await API.get('/finmodels' + q);
@@ -1997,13 +2030,14 @@ async function fmLoadFromDB(mgrId) {
       FM.projectName = data.name  || 'Финансовая модель';
       FM.months      = data.months || 1;
       FM.startDate   = data.start_date ? data.start_date.slice(0, 10) : new Date().toISOString().slice(0, 10);
+      FM.cabinetId   = data.cabinet_id || null;
       FM.articles    = data.articles;
       fmApplyDefaults(FM.articles);
       if (!FM.articles.length) FM.articles = [fmNewArticle({ name: 'Артикул 1' })];
       fmNextId = Math.max(1, ...FM.articles.map(a => a.id + 1));
       fmDbLoaded = true;
-      if (ind) ind.textContent = '';
       fmRender();
+      fmPopulateCabinetSel();
       return;
     }
   } catch(e) {
@@ -2011,7 +2045,31 @@ async function fmLoadFromDB(mgrId) {
   }
   // Fallback: localStorage
   if (!fmDbLoaded) { fmLoad(); fmRender(); }
-  if (ind) ind.textContent = '';
+  fmPopulateCabinetSel();
+}
+
+// ── Кабинет финмодели ──
+function fmPopulateCabinetSel() {
+  const sel = document.getElementById('fm-cabinet-sel');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— кабинет —</option>';
+  (allCabinets || []).forEach(c => {
+    sel.innerHTML += `<option value="${c.id}"${FM.cabinetId === c.id ? ' selected' : ''}>${c.name}</option>`;
+  });
+}
+function fmSetCabinet(val) {
+  FM.cabinetId = val || null;
+  fmSave();
+}
+
+// ── Удалить все артикулы ──
+function fmDeleteAll() {
+  if (!FM.articles.length) return;
+  if (!confirm('Удалить все артикулы? Это действие нельзя отменить.')) return;
+  FM.articles = [];
+  fmSave();
+  fmRenderFull();
+  showToast('Все артикулы удалены', 'info');
 }
 
 // ── Date helpers ──
@@ -2516,6 +2574,12 @@ function fmSetPrice(id, val) {
 function fmSetPeriod(m) { FM.months = m; fmRenderFull(); }
 
 function fmAddArticle() {
+  if (typeof user !== 'undefined' && user?.role === 'admin' && !selectedManagerId) {
+    showToast('Выберите менеджера', 'info'); return;
+  }
+  if (!FM.cabinetId) {
+    showToast('Выберите кабинет', 'info'); return;
+  }
   const a = fmNewArticle({ name: 'Артикул ' + (FM.articles.length + 1), editMode: true });
   FM.articles.push(a); fmSave();
   const container = document.getElementById('fm-articles');
@@ -3013,5 +3077,6 @@ showPage = function(name, el) {
   }
 };
 </script>
+<div id="toast-container"></div>
 </body>
 </html>
