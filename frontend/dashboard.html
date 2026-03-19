@@ -1856,7 +1856,6 @@ function fmNewArticle(overrides = {}) {
     weeklyPct: [],            // [] = auto; [20,25,...] = manual %
     weeklyPrice: {},          // { week_index: price } — dynamic price per week
     expandedWeeks: [],        // week indices with day detail open
-    cabinetId: null,          // cabinet this article belongs to
     ...overrides
   };
 }
@@ -1993,11 +1992,13 @@ async function fmSaveToDB() {
   const mgrId = (typeof user !== 'undefined' && user)
     ? (user.manager_id || (user.role === 'admin' ? (typeof selectedManagerId !== 'undefined' ? selectedManagerId : null) : null))
     : null;
-  if (!mgrId) { fmShowSaveInd('', ''); return; } // нет привязки — только localStorage
+  // Кабинет обязателен для сохранения (иначе не знаем, какой кабинет)
+  if (!FM.cabinetId) { fmShowSaveInd('', ''); return; }
+  if (!mgrId)        { fmShowSaveInd('', ''); return; }
   try {
     await API.put('/finmodels', {
       manager_id: mgrId,
-      cabinet_id: FM.cabinetId || null,
+      cabinet_id: FM.cabinetId,
       name:       FM.projectName,
       months:     FM.months,
       start_date: FM.startDate || null,
@@ -2058,30 +2059,57 @@ function fmPopulateCabinetSel() {
     sel.innerHTML += `<option value="${c.id}"${FM.cabinetId === c.id ? ' selected' : ''}>${c.name}</option>`;
   });
 }
-function fmSetCabinet(val) {
+async function fmSetCabinet(val) {
+  // 1. Сохранить текущий кабинет немедленно
+  clearTimeout(fmSaveTimer);
+  await fmSaveToDB();
+  // 2. Переключиться на новый кабинет
   FM.cabinetId = val || null;
-  fmSave();
-  fmRenderFull(); // re-render to show only this cabinet's articles
+  FM.articles  = [];
+  // 3. Загрузить финмодель нового кабинета из БД
+  if (FM.cabinetId) {
+    await fmLoadFromCabinet(FM.cabinetId);
+  } else {
+    fmRenderFull();
+  }
 }
 
-// Возвращает только статьи для текущего выбранного кабинета (или все, если кабинет не выбран)
-function fmVisibleArticles() {
-  if (!FM.cabinetId) return FM.articles;
-  return FM.articles.filter(a => a.cabinetId === FM.cabinetId);
-}
-
-// ── Удалить все (видимые) артикулы ──
-function fmDeleteAll() {
-  const visible = fmVisibleArticles();
-  if (!visible.length) return;
-  const msg = FM.cabinetId
-    ? `Удалить все артикулы этого кабинета (${visible.length} шт.)? Это нельзя отменить.`
-    : `Удалить все артикулы (${visible.length} шт.)? Это нельзя отменить.`;
-  if (!confirm(msg)) return;
-  const visIds = new Set(visible.map(a => a.id));
-  FM.articles = FM.articles.filter(a => !visIds.has(a.id));
-  fmSave();
+async function fmLoadFromCabinet(cabId) {
+  try {
+    const data = await API.get('/finmodels?cabinet_id=' + cabId);
+    if (data && Array.isArray(data.articles)) {
+      FM.projectName = data.name   || 'Финансовая модель';
+      FM.months      = data.months || 1;
+      FM.startDate   = data.start_date ? data.start_date.slice(0, 10) : new Date().toISOString().slice(0, 10);
+      FM.articles    = data.articles;
+      fmApplyDefaults(FM.articles);
+      fmNextId = Math.max(1, ...FM.articles.map(a => a.id + 1), 1);
+    }
+    // Нет данных → чистый старт для этого кабинета
+  } catch(e) { console.error('fmLoadFromCabinet:', e); }
   fmRenderFull();
+}
+
+// Артикулы текущего кабинета (FM.articles загружен уже отфильтрованным из БД)
+function fmVisibleArticles() {
+  return FM.articles;
+}
+
+// ── Удалить все артикулы ──
+async function fmDeleteAll() {
+  if (!FM.articles.length) return;
+  if (!confirm(`Удалить все артикулы (${FM.articles.length} шт.)? Это нельзя отменить.`)) return;
+  FM.articles = [];
+  clearTimeout(fmSaveTimer); // отменить дебаунс — сохраняем немедленно
+  try { localStorage.setItem(FM_KEY, JSON.stringify({...FM, _nid: fmNextId})); } catch(e) {}
+  await fmSaveToDB(); // немедленное сохранение в БД
+  // Рендер без вызова fmSave() — данные уже сохранены
+  const container = document.getElementById('fm-articles');
+  if (container) container.innerHTML =
+    `<button class="fm-add-btn" onclick="fmAddArticle()">＋ Добавить артикул</button>`;
+  fmUpdateSummary();
+  fmUpdateChartSelect();
+  fmScheduleCharts();
   showToast('Артикулы удалены', 'info');
 }
 
@@ -2594,8 +2622,7 @@ function fmAddArticle() {
   if (!FM.cabinetId) {
     showToast('Выберите кабинет', 'info'); return;
   }
-  const visCount = fmVisibleArticles().length;
-  const a = fmNewArticle({ name: 'Артикул ' + (visCount + 1), cabinetId: FM.cabinetId || null, editMode: true });
+  const a = fmNewArticle({ name: 'Артикул ' + (FM.articles.length + 1), editMode: true });
   FM.articles.push(a); fmSave();
   const container = document.getElementById('fm-articles');
   const addBtn = container.lastElementChild;

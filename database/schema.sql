@@ -91,12 +91,14 @@ CREATE TABLE IF NOT EXISTS finmodels (
   updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_finmodels_manager ON finmodels(manager_id);
-CREATE INDEX        IF NOT EXISTS idx_finmodels_updated ON finmodels(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_finmodels_manager ON finmodels(manager_id);
+CREATE INDEX IF NOT EXISTS idx_finmodels_updated ON finmodels(updated_at DESC);
 
--- Migrations for existing databases (safe to re-run with IF NOT EXISTS)
+-- Migrations for existing databases (safe to re-run)
 ALTER TABLE reports   ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id) ON DELETE SET NULL;
 ALTER TABLE finmodels ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id) ON DELETE SET NULL;
+-- One finmodel per cabinet (main UPSERT key)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_finmodels_cabinet ON finmodels(cabinet_id) WHERE cabinet_id IS NOT NULL;
 
 -- ──────────────────────────────────────────
 -- НАЧАЛЬНЫЕ ДАННЫЕ: Admin пользователь
