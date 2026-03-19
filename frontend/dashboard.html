@@ -375,6 +375,15 @@
     .fm-date-end-lbl{font-size:13px;font-weight:600;color:var(--wb)}
     .fm-art-period-row{display:flex;align-items:center;gap:8px;padding:8px 0 6px;border-bottom:0.5px solid var(--b2);margin-bottom:8px;flex-wrap:wrap}
     .fm-art-period-lbl{font-size:12px;color:var(--g);font-weight:500}
+    /* FM landing / onboarding */
+    .fm-landing{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;gap:16px}
+    .fm-landing-icon{font-size:48px;line-height:1}
+    .fm-landing-title{font-size:20px;font-weight:700;color:var(--t)}
+    .fm-landing-sub{font-size:14px;color:var(--g);max-width:420px;line-height:1.6}
+    .fm-landing-steps{background:var(--card);border:0.5px solid var(--b2);border-radius:14px;padding:18px 24px;text-align:left;max-width:420px;width:100%}
+    .fm-landing-steps li{font-size:13px;color:var(--t);margin-bottom:8px;padding-left:4px}
+    .fm-landing-steps li:last-child{margin-bottom:0}
+    .fm-landing-steps b{color:var(--wb)}
 
     .empty{text-align:center;padding:30px;color:var(--g);font-size:13px}
     @media(max-width:600px){.goods-layout{flex-direction:column}.filter-panel{width:100%}.daily-grid{grid-template-columns:1fr}}
@@ -1274,6 +1283,10 @@ async function loadCabinetsForUpload() {
     sel.innerHTML = '<option value="">— кабинет —</option>';
     allCabinets.forEach(c => { sel.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
     if (typeof fmPopulateCabinetSel === 'function') fmPopulateCabinetSel();
+    // Обновить лендинг финмодели если она активна
+    if (document.getElementById('page-finmodel')?.classList.contains('active')) {
+      if (typeof fmRenderFull === 'function') fmRenderFull();
+    }
   } catch(e) { console.error(e); }
 }
 
@@ -1282,10 +1295,17 @@ function onManagerChange() {
   loadCabinetsForUpload();
   loadReports();
   loadDailyReports();
-  // Если сейчас открыта Финмодель — перезагрузить данные выбранного менеджера
+  // Если сейчас открыта Финмодель — перезагрузить или обновить лендинг
   if (document.getElementById('page-finmodel')?.classList.contains('active')) {
-    fmDbLoaded = false;
-    fmLoadFromDB(selectedManagerId);
+    if (selectedManagerId) {
+      fmDbLoaded = false;
+      fmLoadFromDB(selectedManagerId);
+    } else {
+      // Переключились на "Все менеджеры" — показать лендинг без перезагрузки
+      FM.cabinetId = null;
+      FM.articles  = [];
+      fmRenderFull();
+    }
   }
 }
 
@@ -1985,22 +2005,31 @@ async function fmSaveToDB() {
   const mgrId = (typeof user !== 'undefined' && user)
     ? (user.manager_id || (user.role === 'admin' ? (typeof selectedManagerId !== 'undefined' ? selectedManagerId : null) : null))
     : null;
-  // Кабинет обязателен для сохранения (иначе не знаем, какой кабинет)
+  // Кабинет и менеджер обязательны для сохранения
   if (!FM.cabinetId) { fmShowSaveInd('', ''); return; }
   if (!mgrId)        { fmShowSaveInd('', ''); return; }
+  const payload = {
+    manager_id: mgrId,
+    cabinet_id: FM.cabinetId,
+    name:       FM.projectName,
+    months:     FM.months,
+    start_date: FM.startDate || null,
+    articles:   FM.articles
+  };
+  const doSave = () => API.put('/finmodels', payload);
   try {
-    await API.put('/finmodels', {
-      manager_id: mgrId,
-      cabinet_id: FM.cabinetId,
-      name:       FM.projectName,
-      months:     FM.months,
-      start_date: FM.startDate || null,
-      articles:   FM.articles
-    });
+    await doSave();
     fmShowSaveInd('✓ Сохранено', 'success');
   } catch(e) {
-    console.error('fmSaveToDB:', e);
-    fmShowSaveInd('⚠ Ошибка сохранения', 'error');
+    // Тихая повторная попытка через 2 секунды
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      await doSave();
+      fmShowSaveInd('✓ Сохранено', 'success');
+    } catch(e2) {
+      console.error('fmSaveToDB:', e2);
+      fmShowSaveInd('⚠ Ошибка сохранения', 'error');
+    }
   }
 }
 
@@ -2087,6 +2116,80 @@ async function fmLoadFromCabinet(cabId) {
 function fmVisibleArticles() {
   return FM.articles;
 }
+
+// ── Проверка: нужен ли лендинг вместо финмодели ──
+// Возвращает { type, title, sub, btnLabel, btnAction } или null
+function fmGetBlockReason() {
+  const isAdmin = user?.role === 'admin';
+  if (isAdmin && (!allManagers || allManagers.length === 0)) {
+    return {
+      type: 'no-managers',
+      icon: '👤',
+      title: 'Нет менеджеров',
+      sub: 'Чтобы начать работу с финансовой моделью, сначала добавьте менеджера.',
+      steps: null,
+      btnLabel: 'Добавить менеджера',
+      btnAction: () => window.location.href = 'admin.html'
+    };
+  }
+  if (isAdmin && !selectedManagerId) {
+    return {
+      type: 'select-manager',
+      icon: '👥',
+      title: 'Выберите менеджера',
+      sub: 'Финансовая модель привязана к менеджеру и кабинету. Выберите менеджера в верхнем меню.',
+      steps: ['Откройте выпадающий список «Все менеджеры» сверху', 'Выберите нужного менеджера', 'Затем выберите кабинет в этой форме'],
+      btnLabel: null, btnAction: null
+    };
+  }
+  if (!allCabinets || allCabinets.length === 0) {
+    return {
+      type: 'no-cabinets',
+      icon: '🗂️',
+      title: 'Нет кабинетов',
+      sub: 'Добавьте кабинет, чтобы привязать к нему финансовую модель.',
+      steps: null,
+      btnLabel: 'Добавить кабинет',
+      btnAction: () => {
+        const cabBtn = document.getElementById('nav-cabinets');
+        if (cabBtn) cabBtn.click();
+      }
+    };
+  }
+  if (!FM.cabinetId) {
+    return {
+      type: 'select-cabinet',
+      icon: '📂',
+      title: 'Выберите кабинет',
+      sub: 'Каждый кабинет имеет свою финансовую модель с отдельными артикулами.',
+      steps: [
+        'Выберите кабинет в выпадающем списке выше',
+        'Добавьте артикулы и настройте параметры',
+        'Укажите период и дату начала для каждого артикула'
+      ],
+      btnLabel: null, btnAction: null
+    };
+  }
+  return null;
+}
+
+function fmLandingHtml(reason) {
+  const stepsHtml = reason.steps
+    ? `<ul class="fm-landing-steps">${reason.steps.map(s => `<li>${s}</li>`).join('')}</ul>`
+    : '';
+  const btnHtml = reason.btnLabel
+    ? `<button class="btn" style="padding:10px 24px;font-size:14px;font-weight:600;background:var(--wb);color:#fff;border-radius:10px" onclick="fmLandingAction()">${reason.btnLabel}</button>`
+    : '';
+  return `<div class="fm-landing">
+    <div class="fm-landing-icon">${reason.icon}</div>
+    <div class="fm-landing-title">${reason.title}</div>
+    <div class="fm-landing-sub">${reason.sub}</div>
+    ${stepsHtml}
+    ${btnHtml}
+  </div>`;
+}
+let _fmLandingAction = null;
+function fmLandingAction() { if (_fmLandingAction) _fmLandingAction(); }
 
 // ── Удалить все артикулы ──
 async function fmDeleteAll() {
@@ -2586,9 +2689,26 @@ function fmRenderFull() {
   fmSave();
   const pnEl = document.getElementById('fm-project-name');
   if (pnEl) pnEl.value = FM.projectName;
-  fmUpdateSummary();
   fmPopulateCabinetSel();
+
   const container = document.getElementById('fm-articles');
+  const chartsSection = document.querySelector('#page-finmodel .fm-charts-section');
+
+  const blockReason = fmGetBlockReason();
+  if (blockReason) {
+    _fmLandingAction = blockReason.btnAction;
+    container.innerHTML = fmLandingHtml(blockReason);
+    if (chartsSection) chartsSection.style.display = 'none';
+    // Clear summary when not working
+    ['fm-sum-rev','fm-sum-profit','fm-sum-roi','fm-sum-invest','fm-sum-receipt'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '—';
+    });
+    return;
+  }
+
+  if (chartsSection) chartsSection.style.display = '';
+  fmUpdateSummary();
   container.innerHTML = fmVisibleArticles().map(a => fmCardHtml(a)).join('') +
     `<button class="fm-add-btn" onclick="fmAddArticle()">＋ Добавить артикул</button>`;
   fmScheduleCharts();
