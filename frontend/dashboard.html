@@ -2350,7 +2350,7 @@ function fmCardHtml(a) {
     <input class="fm-art-name" id="fmn-${a.id}" value="${fmEsc(a.name)}"
       oninput="fmSet(${a.id},'name',this.value)" placeholder="Название" />
     <span class="fm-warn${+a.price < c.breakEven ? ' show' : ''}" title="Цена ниже точки безубыточности">⚠ Убыток</span>
-    <button class="fm-card-edit-btn${editMode?' done':''}" onclick="fmToggleCardEdit(${a.id})">${editMode ? '✓ Готово' : '✎ Изменить'}</button>
+    <button class="fm-card-edit-btn fm-editmode-btn${editMode?' done':''}" onclick="fmToggleCardEdit(${a.id})">${editMode ? '✓ Готово' : '✎ Изменить'}</button>
     <button class="fm-card-edit-btn" onclick="fmDuplicate(${a.id})" title="Дублировать артикул">⎘ Копия</button>
     <div class="fm-del-wrapper">
       <button class="btn btn-danger btn-sm" onclick="fmConfirmDelete(${a.id})" title="Удалить артикул">✕</button>
@@ -2482,7 +2482,7 @@ function fmToggleCardEdit(id) {
   const card = document.getElementById('fmc-' + id); if (!card) return;
   const c = fmCalc(a);
   // Swap edit button label
-  const btn = card.querySelector('.fm-card-edit-btn');
+  const btn = card.querySelector('.fm-editmode-btn');
   if (btn) { btn.textContent = a.editMode ? '✓ Готово' : '✎ Изменить'; btn.classList.toggle('done', a.editMode); }
   // Swap fields view
   const fieldsWrap = card.querySelector('.fm-fields-wrap');
@@ -2862,7 +2862,7 @@ function fmToggleCollapse(id) {
   a.collapsed = !a.collapsed; fmSave();
   const card = document.getElementById('fmc-' + id); if (!card) return;
   card.classList.toggle('collapsed', a.collapsed);
-  const btn = card.querySelector('.fm-card-header .fm-card-edit-btn');
+  const btn = card.querySelector('.fm-card-header .fm-card-edit-btn:not(.fm-editmode-btn):not([onclick*="fmDuplicate"])');
   if (btn) { btn.textContent = a.collapsed ? '▸' : '▾'; btn.title = a.collapsed ? 'Развернуть' : 'Свернуть'; }
 }
 
