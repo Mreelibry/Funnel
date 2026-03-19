@@ -4,24 +4,40 @@ const { authenticate, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-// GET /api/finmodels
-// Менеджер — своя модель; Админ — своя или по ?manager_id=X
+// GET /api/finmodels?cabinet_id=X  — финмодель по кабинету (основной режим)
+// GET /api/finmodels?manager_id=X  — финмодель по менеджеру (legacy / admin)
 router.get('/', authenticate, async (req, res) => {
   try {
+    const { cabinet_id, manager_id } = req.query;
+
+    if (cabinet_id) {
+      // Загрузка по кабинету — доступно всем
+      const result = await db.query(
+        `SELECT f.*, m.name as manager_name
+         FROM finmodels f
+         JOIN managers m ON m.id = f.manager_id
+         WHERE f.cabinet_id = $1`,
+        [cabinet_id]
+      );
+      return res.json(result.rows[0] || null);
+    }
+
+    // Fallback: по менеджеру
     let mgrId;
     if (req.user.role === 'admin') {
-      mgrId = req.query.manager_id || null;
-      if (!mgrId) return res.json(null); // админ без выбранного менеджера
+      mgrId = manager_id || null;
+      if (!mgrId) return res.json(null);
     } else {
       mgrId = req.user.manager_id;
       if (!mgrId) return res.json(null);
     }
-
     const result = await db.query(
       `SELECT f.*, m.name as manager_name
        FROM finmodels f
        JOIN managers m ON m.id = f.manager_id
-       WHERE f.manager_id = $1`,
+       WHERE f.manager_id = $1
+       ORDER BY f.updated_at DESC
+       LIMIT 1`,
       [mgrId]
     );
     res.json(result.rows[0] || null);
@@ -67,25 +83,29 @@ router.put('/', authenticate, async (req, res) => {
     return res.status(400).json({ error: 'articles должен быть массивом' });
   }
 
+  if (!cabinet_id) {
+    return res.status(400).json({ error: 'Укажите cabinet_id' });
+  }
+
   try {
     const result = await db.query(
-      `INSERT INTO finmodels (manager_id, name, months, start_date, articles, cabinet_id)
+      `INSERT INTO finmodels (manager_id, cabinet_id, name, months, start_date, articles)
        VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (manager_id) DO UPDATE SET
+       ON CONFLICT (cabinet_id) DO UPDATE SET
+         manager_id = EXCLUDED.manager_id,
          name       = EXCLUDED.name,
          months     = EXCLUDED.months,
          start_date = EXCLUDED.start_date,
          articles   = EXCLUDED.articles,
-         cabinet_id = EXCLUDED.cabinet_id,
          updated_at = NOW()
        RETURNING *`,
       [
         mgrId,
+        cabinet_id,
         name || 'Финансовая модель',
         months || 1,
         start_date || null,
-        JSON.stringify(articles),
-        cabinet_id || null
+        JSON.stringify(articles)
       ]
     );
     res.json(result.rows[0]);

@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS managers (
 CREATE TABLE IF NOT EXISTS reports (
   id              UUID      PRIMARY KEY DEFAULT uuid_generate_v4(),
   manager_id      UUID      NOT NULL REFERENCES managers(id) ON DELETE CASCADE,
+  cabinet_id      UUID      REFERENCES cabinets(id) ON DELETE SET NULL,
   period_start    DATE      NOT NULL,
   period_end      DATE      NOT NULL,
   filename        TEXT,
@@ -90,11 +91,14 @@ CREATE TABLE IF NOT EXISTS finmodels (
   updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_finmodels_manager ON finmodels(manager_id);
-CREATE INDEX        IF NOT EXISTS idx_finmodels_updated ON finmodels(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_finmodels_manager ON finmodels(manager_id);
+CREATE INDEX IF NOT EXISTS idx_finmodels_updated ON finmodels(updated_at DESC);
 
--- cabinet_id binding (run if upgrading from a prior schema version)
+-- Migrations for existing databases (safe to re-run)
+ALTER TABLE reports   ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id) ON DELETE SET NULL;
 ALTER TABLE finmodels ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id) ON DELETE SET NULL;
+-- One finmodel per cabinet (main UPSERT key)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_finmodels_cabinet ON finmodels(cabinet_id) WHERE cabinet_id IS NOT NULL;
 
 -- ──────────────────────────────────────────
 -- НАЧАЛЬНЫЕ ДАННЫЕ: Admin пользователь

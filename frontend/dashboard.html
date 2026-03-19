@@ -1992,11 +1992,13 @@ async function fmSaveToDB() {
   const mgrId = (typeof user !== 'undefined' && user)
     ? (user.manager_id || (user.role === 'admin' ? (typeof selectedManagerId !== 'undefined' ? selectedManagerId : null) : null))
     : null;
-  if (!mgrId) { fmShowSaveInd('', ''); return; } // нет привязки — только localStorage
+  // Кабинет обязателен для сохранения (иначе не знаем, какой кабинет)
+  if (!FM.cabinetId) { fmShowSaveInd('', ''); return; }
+  if (!mgrId)        { fmShowSaveInd('', ''); return; }
   try {
     await API.put('/finmodels', {
       manager_id: mgrId,
-      cabinet_id: FM.cabinetId || null,
+      cabinet_id: FM.cabinetId,
       name:       FM.projectName,
       months:     FM.months,
       start_date: FM.startDate || null,
@@ -2052,24 +2054,63 @@ async function fmLoadFromDB(mgrId) {
 function fmPopulateCabinetSel() {
   const sel = document.getElementById('fm-cabinet-sel');
   if (!sel) return;
-  sel.innerHTML = '<option value="">— кабинет —</option>';
+  sel.innerHTML = '<option value="">Все кабинеты</option>';
   (allCabinets || []).forEach(c => {
     sel.innerHTML += `<option value="${c.id}"${FM.cabinetId === c.id ? ' selected' : ''}>${c.name}</option>`;
   });
 }
-function fmSetCabinet(val) {
+async function fmSetCabinet(val) {
+  // 1. Сохранить текущий кабинет немедленно
+  clearTimeout(fmSaveTimer);
+  await fmSaveToDB();
+  // 2. Переключиться на новый кабинет
   FM.cabinetId = val || null;
-  fmSave();
+  FM.articles  = [];
+  // 3. Загрузить финмодель нового кабинета из БД
+  if (FM.cabinetId) {
+    await fmLoadFromCabinet(FM.cabinetId);
+  } else {
+    fmRenderFull();
+  }
+}
+
+async function fmLoadFromCabinet(cabId) {
+  try {
+    const data = await API.get('/finmodels?cabinet_id=' + cabId);
+    if (data && Array.isArray(data.articles)) {
+      FM.projectName = data.name   || 'Финансовая модель';
+      FM.months      = data.months || 1;
+      FM.startDate   = data.start_date ? data.start_date.slice(0, 10) : new Date().toISOString().slice(0, 10);
+      FM.articles    = data.articles;
+      fmApplyDefaults(FM.articles);
+      fmNextId = Math.max(1, ...FM.articles.map(a => a.id + 1), 1);
+    }
+    // Нет данных → чистый старт для этого кабинета
+  } catch(e) { console.error('fmLoadFromCabinet:', e); }
+  fmRenderFull();
+}
+
+// Артикулы текущего кабинета (FM.articles загружен уже отфильтрованным из БД)
+function fmVisibleArticles() {
+  return FM.articles;
 }
 
 // ── Удалить все артикулы ──
-function fmDeleteAll() {
+async function fmDeleteAll() {
   if (!FM.articles.length) return;
-  if (!confirm('Удалить все артикулы? Это действие нельзя отменить.')) return;
+  if (!confirm(`Удалить все артикулы (${FM.articles.length} шт.)? Это нельзя отменить.`)) return;
   FM.articles = [];
-  fmSave();
-  fmRenderFull();
-  showToast('Все артикулы удалены', 'info');
+  clearTimeout(fmSaveTimer); // отменить дебаунс — сохраняем немедленно
+  try { localStorage.setItem(FM_KEY, JSON.stringify({...FM, _nid: fmNextId})); } catch(e) {}
+  await fmSaveToDB(); // немедленное сохранение в БД
+  // Рендер без вызова fmSave() — данные уже сохранены
+  const container = document.getElementById('fm-articles');
+  if (container) container.innerHTML =
+    `<button class="fm-add-btn" onclick="fmAddArticle()">＋ Добавить артикул</button>`;
+  fmUpdateSummary();
+  fmUpdateChartSelect();
+  fmScheduleCharts();
+  showToast('Артикулы удалены', 'info');
 }
 
 // ── Date helpers ──
@@ -2334,7 +2375,7 @@ function fmPlanHtml(a, c) {
 // ── Summary ──
 function fmUpdateSummary() {
   let totRev = 0, totProfit = 0, totCosts = 0, totInvest = 0, totReceipt = 0;
-  FM.articles.forEach(a => {
+  fmVisibleArticles().forEach(a => {
     const c = fmCalc(a);
     const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther;
     totRev     += c.revenue;
@@ -2546,8 +2587,9 @@ function fmRenderFull() {
     b.classList.toggle('active', +b.dataset.m === FM.months));
   fmUpdateSummary();
   fmUpdateDateRange();
+  fmPopulateCabinetSel();
   const container = document.getElementById('fm-articles');
-  container.innerHTML = FM.articles.map(a => fmCardHtml(a)).join('') +
+  container.innerHTML = fmVisibleArticles().map(a => fmCardHtml(a)).join('') +
     `<button class="fm-add-btn" onclick="fmAddArticle()">＋ Добавить артикул</button>`;
   fmScheduleCharts();
 }
@@ -2844,7 +2886,7 @@ function fmUpdateChartSelect() {
   const sel = document.getElementById('fm-chart-art');
   if (!sel) return;
   const prev = sel.value;
-  sel.innerHTML = FM.articles.map(a =>
+  sel.innerHTML = fmVisibleArticles().map(a =>
     `<option value="${a.id}" ${String(a.id) === prev ? 'selected' : ''}>${fmEsc(a.name)}</option>`
   ).join('');
 }
@@ -2852,7 +2894,8 @@ function fmUpdateChartSelect() {
 function fmRenderCharts() {
   fmUpdateChartSelect();
   const sel = document.getElementById('fm-chart-art');
-  const a = FM.articles.find(x => String(x.id) === sel?.value) || FM.articles[0];
+  const visible = fmVisibleArticles();
+  const a = visible.find(x => String(x.id) === sel?.value) || visible[0];
   if (!a) return;
 
   const c    = fmCalc(a);
@@ -2919,12 +2962,12 @@ function fmRenderCharts() {
     options: { ...baseOpts('Прибыль ₽'), plugins: { legend: { display: false } } }
   });
 
-  // ── Cash flow chart (all articles, all weeks, cumulative) ──
+  // ── Cash flow chart (visible articles, all weeks, cumulative) ──
   const cfN = fmNumWeeks(FM.months);
   const cfLabels = Array.from({length: cfN}, (_, w) => fmWeekLabel(FM.startDate, w));
-  // per week profit summed across all articles
+  // per week profit summed across visible articles
   const cfWeekProfits = Array.from({length: cfN}, (_, w) => {
-    return FM.articles.reduce((s, art) => {
+    return visible.reduce((s, art) => {
       const artC   = fmCalc(art);
       const { pcts: artPcts } = fmEffPcts(art);
       const wBuy   = artC.buyouts * artPcts[w] / 100;
@@ -3016,7 +3059,7 @@ function fmToggleBudget(id) {
 // ── Search / filter articles ──
 function fmFilterArticles(query) {
   const q = (query || '').trim().toLowerCase();
-  FM.articles.forEach(a => {
+  fmVisibleArticles().forEach(a => {
     const card = document.getElementById('fmc-' + a.id);
     if (!card) return;
     const match = !q || a.name.toLowerCase().includes(q);
