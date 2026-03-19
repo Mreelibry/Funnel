@@ -52,7 +52,7 @@ router.get('/all', authenticate, requireAdmin, async (req, res) => {
 // PUT /api/finmodels — upsert финмодели
 // Менеджер сохраняет свою; Админ может сохранить чужую (передаёт manager_id в теле)
 router.put('/', authenticate, async (req, res) => {
-  const { name, months, start_date, articles, manager_id } = req.body;
+  const { name, months, start_date, articles, manager_id, cabinet_id } = req.body;
 
   let mgrId;
   if (req.user.role === 'admin') {
@@ -69,13 +69,14 @@ router.put('/', authenticate, async (req, res) => {
 
   try {
     const result = await db.query(
-      `INSERT INTO finmodels (manager_id, name, months, start_date, articles)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO finmodels (manager_id, name, months, start_date, articles, cabinet_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (manager_id) DO UPDATE SET
          name       = EXCLUDED.name,
          months     = EXCLUDED.months,
          start_date = EXCLUDED.start_date,
          articles   = EXCLUDED.articles,
+         cabinet_id = EXCLUDED.cabinet_id,
          updated_at = NOW()
        RETURNING *`,
       [
@@ -83,7 +84,8 @@ router.put('/', authenticate, async (req, res) => {
         name || 'Финансовая модель',
         months || 1,
         start_date || null,
-        JSON.stringify(articles)
+        JSON.stringify(articles),
+        cabinet_id || null
       ]
     );
     res.json(result.rows[0]);

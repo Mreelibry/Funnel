@@ -93,6 +93,9 @@ CREATE TABLE IF NOT EXISTS finmodels (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_finmodels_manager ON finmodels(manager_id);
 CREATE INDEX        IF NOT EXISTS idx_finmodels_updated ON finmodels(updated_at DESC);
 
+-- cabinet_id binding (run if upgrading from a prior schema version)
+ALTER TABLE finmodels ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id) ON DELETE SET NULL;
+
 -- ──────────────────────────────────────────
 -- НАЧАЛЬНЫЕ ДАННЫЕ: Admin пользователь
 -- password = Admin123 (bcrypt hash)
