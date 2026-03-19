@@ -1856,6 +1856,7 @@ function fmNewArticle(overrides = {}) {
     weeklyPct: [],            // [] = auto; [20,25,...] = manual %
     weeklyPrice: {},          // { week_index: price } — dynamic price per week
     expandedWeeks: [],        // week indices with day detail open
+    cabinetId: null,          // cabinet this article belongs to
     ...overrides
   };
 }
@@ -2052,7 +2053,7 @@ async function fmLoadFromDB(mgrId) {
 function fmPopulateCabinetSel() {
   const sel = document.getElementById('fm-cabinet-sel');
   if (!sel) return;
-  sel.innerHTML = '<option value="">— кабинет —</option>';
+  sel.innerHTML = '<option value="">Все кабинеты</option>';
   (allCabinets || []).forEach(c => {
     sel.innerHTML += `<option value="${c.id}"${FM.cabinetId === c.id ? ' selected' : ''}>${c.name}</option>`;
   });
@@ -2060,16 +2061,28 @@ function fmPopulateCabinetSel() {
 function fmSetCabinet(val) {
   FM.cabinetId = val || null;
   fmSave();
+  fmRenderFull(); // re-render to show only this cabinet's articles
 }
 
-// ── Удалить все артикулы ──
+// Возвращает только статьи для текущего выбранного кабинета (или все, если кабинет не выбран)
+function fmVisibleArticles() {
+  if (!FM.cabinetId) return FM.articles;
+  return FM.articles.filter(a => a.cabinetId === FM.cabinetId);
+}
+
+// ── Удалить все (видимые) артикулы ──
 function fmDeleteAll() {
-  if (!FM.articles.length) return;
-  if (!confirm('Удалить все артикулы? Это действие нельзя отменить.')) return;
-  FM.articles = [];
+  const visible = fmVisibleArticles();
+  if (!visible.length) return;
+  const msg = FM.cabinetId
+    ? `Удалить все артикулы этого кабинета (${visible.length} шт.)? Это нельзя отменить.`
+    : `Удалить все артикулы (${visible.length} шт.)? Это нельзя отменить.`;
+  if (!confirm(msg)) return;
+  const visIds = new Set(visible.map(a => a.id));
+  FM.articles = FM.articles.filter(a => !visIds.has(a.id));
   fmSave();
   fmRenderFull();
-  showToast('Все артикулы удалены', 'info');
+  showToast('Артикулы удалены', 'info');
 }
 
 // ── Date helpers ──
@@ -2334,7 +2347,7 @@ function fmPlanHtml(a, c) {
 // ── Summary ──
 function fmUpdateSummary() {
   let totRev = 0, totProfit = 0, totCosts = 0, totInvest = 0, totReceipt = 0;
-  FM.articles.forEach(a => {
+  fmVisibleArticles().forEach(a => {
     const c = fmCalc(a);
     const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther;
     totRev     += c.revenue;
@@ -2546,8 +2559,9 @@ function fmRenderFull() {
     b.classList.toggle('active', +b.dataset.m === FM.months));
   fmUpdateSummary();
   fmUpdateDateRange();
+  fmPopulateCabinetSel();
   const container = document.getElementById('fm-articles');
-  container.innerHTML = FM.articles.map(a => fmCardHtml(a)).join('') +
+  container.innerHTML = fmVisibleArticles().map(a => fmCardHtml(a)).join('') +
     `<button class="fm-add-btn" onclick="fmAddArticle()">＋ Добавить артикул</button>`;
   fmScheduleCharts();
 }
@@ -2580,7 +2594,8 @@ function fmAddArticle() {
   if (!FM.cabinetId) {
     showToast('Выберите кабинет', 'info'); return;
   }
-  const a = fmNewArticle({ name: 'Артикул ' + (FM.articles.length + 1), editMode: true });
+  const visCount = fmVisibleArticles().length;
+  const a = fmNewArticle({ name: 'Артикул ' + (visCount + 1), cabinetId: FM.cabinetId || null, editMode: true });
   FM.articles.push(a); fmSave();
   const container = document.getElementById('fm-articles');
   const addBtn = container.lastElementChild;
@@ -2844,7 +2859,7 @@ function fmUpdateChartSelect() {
   const sel = document.getElementById('fm-chart-art');
   if (!sel) return;
   const prev = sel.value;
-  sel.innerHTML = FM.articles.map(a =>
+  sel.innerHTML = fmVisibleArticles().map(a =>
     `<option value="${a.id}" ${String(a.id) === prev ? 'selected' : ''}>${fmEsc(a.name)}</option>`
   ).join('');
 }
@@ -2852,7 +2867,8 @@ function fmUpdateChartSelect() {
 function fmRenderCharts() {
   fmUpdateChartSelect();
   const sel = document.getElementById('fm-chart-art');
-  const a = FM.articles.find(x => String(x.id) === sel?.value) || FM.articles[0];
+  const visible = fmVisibleArticles();
+  const a = visible.find(x => String(x.id) === sel?.value) || visible[0];
   if (!a) return;
 
   const c    = fmCalc(a);
@@ -2919,12 +2935,12 @@ function fmRenderCharts() {
     options: { ...baseOpts('Прибыль ₽'), plugins: { legend: { display: false } } }
   });
 
-  // ── Cash flow chart (all articles, all weeks, cumulative) ──
+  // ── Cash flow chart (visible articles, all weeks, cumulative) ──
   const cfN = fmNumWeeks(FM.months);
   const cfLabels = Array.from({length: cfN}, (_, w) => fmWeekLabel(FM.startDate, w));
-  // per week profit summed across all articles
+  // per week profit summed across visible articles
   const cfWeekProfits = Array.from({length: cfN}, (_, w) => {
-    return FM.articles.reduce((s, art) => {
+    return visible.reduce((s, art) => {
       const artC   = fmCalc(art);
       const { pcts: artPcts } = fmEffPcts(art);
       const wBuy   = artC.buyouts * artPcts[w] / 100;
@@ -3016,7 +3032,7 @@ function fmToggleBudget(id) {
 // ── Search / filter articles ──
 function fmFilterArticles(query) {
   const q = (query || '').trim().toLowerCase();
-  FM.articles.forEach(a => {
+  fmVisibleArticles().forEach(a => {
     const card = document.getElementById('fmc-' + a.id);
     if (!card) return;
     const match = !q || a.name.toLowerCase().includes(q);
