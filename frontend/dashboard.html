@@ -556,6 +556,7 @@
     <div class="fm-title-row">
       <input class="fm-project-name" id="fm-project-name" value="Финансовая модель"
         oninput="FM.projectName=this.value;fmSave()" placeholder="Название проекта" />
+      <span id="fm-save-ind" style="font-size:11px;color:var(--g);white-space:nowrap"></span>
       <input class="fm-search-inp" id="fm-search" placeholder="🔍 Поиск по артикулам..." oninput="fmFilterArticles(this.value)" />
       <div class="fm-period-btns">
         <button class="fm-period-btn active" data-m="1" onclick="fmSetPeriod(1)">1 мес</button>
@@ -1278,6 +1279,11 @@ function onManagerChange() {
   loadCabinetsForUpload();
   loadReports();
   loadDailyReports();
+  // Если сейчас открыта Финмодель — перезагрузить данные выбранного менеджера
+  if (document.getElementById('page-finmodel')?.classList.contains('active')) {
+    fmDbLoaded = false;
+    fmLoadFromDB(selectedManagerId);
+  }
 }
 
 // ── REPORTS ──
@@ -1800,6 +1806,8 @@ let fmNextId = 1;
 let FM = { projectName: 'Финансовая модель', months: 1, startDate: '', articles: [] };
 let fmChartInst = {};
 let fmChartTimer = null;
+let fmSaveTimer  = null;
+let fmDbLoaded   = false; // флаг: данные уже загружены из БД (не перезаписывать localStorage-мусором)
 
 function fmNewArticle(overrides = {}) {
   const id = fmNextId++;
@@ -1903,28 +1911,17 @@ function fmFmt(v, type) {
   return String(n);
 }
 function fmEsc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
-function fmSave() {
-  try { localStorage.setItem(FM_KEY, JSON.stringify({ ...FM, _nid: fmNextId })); } catch(e) {}
-}
-function fmLoad() {
-  try {
-    const d = JSON.parse(localStorage.getItem(FM_KEY) || 'null');
-    if (d) { fmNextId = d._nid || 1; delete d._nid; FM = d; }
-  } catch(e) {}
-  if (!FM.articles || !FM.articles.length) FM.articles = [fmNewArticle({ name: 'Артикул 1' })];
-  if (!FM.startDate) FM.startDate = new Date().toISOString().slice(0, 10);
-  FM.articles.forEach(a => {
-    // v2→v3: batchPurchase → costPerUnit
+// ── Применение дефолтов к артикулам (вызывается при загрузке) ──
+function fmApplyDefaults(articles) {
+  articles.forEach(a => {
     if (a.batchPurchase !== undefined && a.costPerUnit === undefined) {
       const old = (+a.batchPurchase + +(a.batchLogistics||0) + +(a.batchPackaging||0) + +(a.batchOther||0)) / Math.max(1, +a.batchSize||1);
       a.costPerUnit = Math.round(old); a.extraLogistics = 0; a.extraPackaging = 0; a.extraOther = 0;
       delete a.batchPurchase; delete a.batchLogistics; delete a.batchPackaging; delete a.batchOther;
     }
-    // v3→v4: ordersPerMonth + adCost/adType → drrPct + commission/tax/acquiring
     if (a.ordersPerMonth !== undefined) { delete a.ordersPerMonth; }
     if (a.adCost         !== undefined) { delete a.adCost; }
     if (a.adType         !== undefined) { delete a.adType; }
-    // v4→v5: remove totalBuyouts (now derived from batchSize)
     if (a.totalBuyouts   !== undefined) { delete a.totalBuyouts; }
     if (a.drrPct         === undefined) a.drrPct         = 10;
     if (a.commissionPct  === undefined) a.commissionPct  = 15;
@@ -1937,9 +1934,84 @@ function fmLoad() {
     if (a.collapsed  === undefined) a.collapsed  = false;
     if (a.selfBuyoutPct === undefined) a.selfBuyoutPct = 0;
     if (!a.taxBase)             a.taxBase        = 'price';
-    a.editMode = false; // always start loaded articles in read mode
+    a.editMode = false;
   });
+}
+
+// ── Показать индикатор сохранения ──
+function fmShowSaveInd(text, color) {
+  const ind = document.getElementById('fm-save-ind');
+  if (!ind) return;
+  ind.textContent = text; ind.style.color = color;
+  if (color !== 'var(--g)') setTimeout(() => { if (ind) ind.textContent = ''; }, 2500);
+}
+
+// ── Сохранение в БД (debounced) + резервная копия в localStorage ──
+function fmSave() {
+  try { localStorage.setItem(FM_KEY, JSON.stringify({ ...FM, _nid: fmNextId })); } catch(e) {}
+  clearTimeout(fmSaveTimer);
+  fmShowSaveInd('Сохранение...', 'var(--g)');
+  fmSaveTimer = setTimeout(fmSaveToDB, 1000);
+}
+
+async function fmSaveToDB() {
+  const mgrId = (typeof user !== 'undefined' && user)
+    ? (user.manager_id || (user.role === 'admin' ? (typeof selectedManagerId !== 'undefined' ? selectedManagerId : null) : null))
+    : null;
+  if (!mgrId) { fmShowSaveInd('', ''); return; } // нет привязки — только localStorage
+  try {
+    await API.put('/finmodels', {
+      manager_id: mgrId,
+      name:       FM.projectName,
+      months:     FM.months,
+      start_date: FM.startDate || null,
+      articles:   FM.articles
+    });
+    fmShowSaveInd('✓ Сохранено', 'var(--green)');
+  } catch(e) {
+    console.error('fmSaveToDB:', e);
+    fmShowSaveInd('⚠ Ошибка сохранения', 'var(--red)');
+  }
+}
+
+// ── Загрузка из localStorage (fallback) ──
+function fmLoad() {
+  try {
+    const d = JSON.parse(localStorage.getItem(FM_KEY) || 'null');
+    if (d) { fmNextId = d._nid || 1; delete d._nid; FM = d; }
+  } catch(e) {}
+  if (!FM.articles || !FM.articles.length) FM.articles = [fmNewArticle({ name: 'Артикул 1' })];
+  if (!FM.startDate) FM.startDate = new Date().toISOString().slice(0, 10);
+  fmApplyDefaults(FM.articles);
   fmNextId = Math.max(fmNextId, ...FM.articles.map(a => a.id + 1), 1);
+}
+
+// ── Загрузка из БД ──
+async function fmLoadFromDB(mgrId) {
+  const ind = document.getElementById('fm-save-ind');
+  if (ind) { ind.textContent = 'Загрузка...'; ind.style.color = 'var(--g)'; }
+  try {
+    const q = mgrId ? `?manager_id=${mgrId}` : '';
+    const data = await API.get('/finmodels' + q);
+    if (data && Array.isArray(data.articles)) {
+      FM.projectName = data.name  || 'Финансовая модель';
+      FM.months      = data.months || 1;
+      FM.startDate   = data.start_date ? data.start_date.slice(0, 10) : new Date().toISOString().slice(0, 10);
+      FM.articles    = data.articles;
+      fmApplyDefaults(FM.articles);
+      if (!FM.articles.length) FM.articles = [fmNewArticle({ name: 'Артикул 1' })];
+      fmNextId = Math.max(1, ...FM.articles.map(a => a.id + 1));
+      fmDbLoaded = true;
+      if (ind) ind.textContent = '';
+      fmRender();
+      return;
+    }
+  } catch(e) {
+    console.error('fmLoadFromDB:', e);
+  }
+  // Fallback: localStorage
+  if (!fmDbLoaded) { fmLoad(); fmRender(); }
+  if (ind) ind.textContent = '';
 }
 
 // ── Date helpers ──
@@ -2926,12 +2998,19 @@ function fmDrop(e, targetId) {
   fmDragId = null;
 }
 
-// Init finmodel
+// Init finmodel — предзаполнить из localStorage сразу, потом обновить из БД при открытии вкладки
 fmLoad();
 const _origShowPage = showPage;
 showPage = function(name, el) {
   _origShowPage(name, el);
-  if (name === 'finmodel') fmRender();
+  if (name === 'finmodel') {
+    // Загружаем из БД при каждом переходе на вкладку
+    const mgrId = (typeof user !== 'undefined' && user)
+      ? (user.manager_id || (user.role === 'admin' ? (typeof selectedManagerId !== 'undefined' ? selectedManagerId : null) : null))
+      : null;
+    fmDbLoaded = false;
+    fmLoadFromDB(mgrId);
+  }
 };
 </script>
 </body>
