@@ -76,6 +76,24 @@ CREATE INDEX IF NOT EXISTS idx_logs_user         ON logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_logs_created      ON logs(created_at DESC);
 
 -- ──────────────────────────────────────────
+-- ТАБЛИЦА: finmodels
+-- Одна финансовая модель на менеджера (upsert по manager_id)
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS finmodels (
+  id          UUID      PRIMARY KEY DEFAULT uuid_generate_v4(),
+  manager_id  UUID      NOT NULL REFERENCES managers(id) ON DELETE CASCADE,
+  name        TEXT      NOT NULL DEFAULT 'Финансовая модель',
+  months      INTEGER   NOT NULL DEFAULT 1,
+  start_date  DATE,
+  articles    JSONB     NOT NULL DEFAULT '[]',
+  created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_finmodels_manager ON finmodels(manager_id);
+CREATE INDEX        IF NOT EXISTS idx_finmodels_updated ON finmodels(updated_at DESC);
+
+-- ──────────────────────────────────────────
 -- НАЧАЛЬНЫЕ ДАННЫЕ: Admin пользователь
 -- password = Admin123 (bcrypt hash)
 -- ──────────────────────────────────────────
