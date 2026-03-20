@@ -76,9 +76,11 @@ function parseWBReport(buffer, filename) {
   if (filtSheet) {
     const rows = XLSX.utils.sheet_to_json(filtSheet, { header: 1, defval: '' });
     let hi = -1;
+    // Метрики-якоря: ищем строку содержащую хотя бы одну из них
+    const anchorMetrics = ['Показы', 'CTR', 'Переходы в карточку', 'Заказали, шт', 'Выкупили, шт', 'Конверсия в заказ'];
     for (let i = 0; i < rows.length; i++) {
-      // Ищем строку-заголовок: содержит "Показы" (точно или как подстроку)
-      if (rows[i].some(c => String(c).trim().includes('Показы'))) { hi = i; break; }
+      const cells = rows[i].map(c => String(c).trim());
+      if (anchorMetrics.some(m => cells.some(c => c.includes(m)))) { hi = i; break; }
     }
     if (hi >= 0) {
       const headers = rows[hi].map(c => String(c).trim().replace(/[\u20A0-\u20CF]/g, '₽'));
@@ -88,7 +90,7 @@ function parseWBReport(buffer, filename) {
       result.summary = obj;
       console.log('[WB parse] Summary keys:', Object.keys(obj).join(', '));
     } else {
-      console.log('[WB parse] No header row with "Показы" found in summary sheet');
+      console.log('[WB parse] No header row found in summary sheet');
     }
   } else {
     console.log('[WB parse] No summary sheet found');
