@@ -794,8 +794,10 @@ function tagHtml(d, title = '') {
 function parseSummary(ws) {
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
   let hi = -1;
+  const anchorMetrics = ['Показы', 'CTR', 'Переходы в карточку', 'Заказали, шт', 'Выкупили, шт', 'Конверсия в заказ'];
   for (let i = 0; i < rows.length; i++) {
-    if (rows[i].some(c => String(c).trim() === 'Показы')) { hi = i; break; }
+    const cells = rows[i].map(c => String(c).trim());
+    if (anchorMetrics.some(m => cells.some(c => c.includes(m)))) { hi = i; break; }
   }
   if (hi < 0) return null;
   const h = rows[hi].map(c => String(c).trim()), d = rows[hi + 1] || [], o = {};
@@ -1552,7 +1554,9 @@ async function uploadReport() {
   if (cabId) fd.append('cabinet_id', cabId);
   try {
     const res = await API.upload('/reports', fd);
-    setStatus(`✓ ${fmtDate(res.period_start)} — ${fmtDate(res.period_end)}`,'ok');
+    const dbg = res._debug;
+    const dbgStr = dbg ? (dbg.summary_found ? ` | сводка: ${dbg.summary_keys?.length} полей, показы=${dbg.impressions}` : ' | ⚠ сводка не найдена') : '';
+    setStatus(`✓ ${fmtDate(res.period_start)} — ${fmtDate(res.period_end)}${dbgStr}`,'ok');
     input.value = '';
     loadReports();
   } catch(e) { setStatus('✗ '+e.message,'err'); }

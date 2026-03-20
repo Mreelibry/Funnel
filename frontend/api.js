@@ -2,7 +2,9 @@
 
 const API_BASE = window.location.hostname === 'localhost'
   ? 'http://localhost:3000/api'
-  : '/api'; // production: nginx proxies /api to Node.js on localhost:3000
+  : window.location.hostname === 'mreelibry.github.io'
+    ? 'https://funnel-zn2f.onrender.com/api'
+    : '/api'; // production: nginx proxies /api to Node.js on localhost:3000
 
 function getToken()    { return localStorage.getItem('wb_token'); }
 function getUser()     { return JSON.parse(localStorage.getItem('wb_user') || 'null'); }
