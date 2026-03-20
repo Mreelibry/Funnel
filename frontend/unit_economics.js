@@ -36,22 +36,22 @@ function calcUE(p) {
   const n   = v => (v == null || v === '' || isNaN(+v)) ? 0 : +v;
   const div = (a, b) => (b === 0 || !isFinite(b)) ? 0 : a / b;
 
-  const currRate  = n(p.currency_rate) || 1;
-  const buyPrice  = n(p.purchase_price);
-  const batchQty  = n(p.batch_qty) || 1;
-  const priceSPP  = n(p.price_before_spp);
-  const commPct   = n(p.commission_pct) / 100;
-  const buyoutPct = n(p.buyout_pct) || 100;
-  const adPct     = n(p.ad_spend_pct) / 100;
-  const locIdx    = n(p.loc_index) || 1;
-  const sdIdx     = n(p.sales_dist_index);
-  const taxSystem = p.tax_system || 'Не считать налог';
-  const taxRate   = n(p.tax_rate) / 100;
-  const storage   = n(p.storage_cost);
-  const acceptance = n(p.acceptance_cost);
-  const whCoeff   = n(p.warehouse_coeff) || 1;
-  const extraExp  = n(p.extra_expenses);
-  const sppVal    = (p.spp != null && p.spp !== '') ? n(p.spp) / 100 : null;
+  const currRate   = n(p.currency_rate) || 1;
+  const buyPrice   = n(p.purchase_price);        // ₽/шт
+  const batchQty   = n(p.batch_qty) || 1;
+  const priceSPP   = n(p.price_before_spp);      // ₽/шт
+  const commPct    = n(p.commission_pct) / 100;
+  const buyoutPct  = n(p.buyout_pct) || 100;
+  const adPct      = n(p.ad_spend_pct) / 100;
+  const locIdx     = n(p.loc_index) || 1;
+  const sdIdx      = n(p.sales_dist_index);
+  const taxSystem  = p.tax_system || 'Не считать налог';
+  const taxRate    = n(p.tax_rate) / 100;
+  const storage    = n(p.storage_cost);          // ₽/шт
+  const acceptance = n(p.acceptance_cost);       // ₽/шт
+  const whCoeff    = n(p.warehouse_coeff) || 1;
+  const extraExp   = n(p.extra_expenses);        // ₽ на всю партию
+  const sppVal     = (p.spp != null && p.spp !== '') ? n(p.spp) / 100 : null;
 
   // Volume (litres)
   const L = n(p.length_cm), W = n(p.width_cm), H = n(p.height_cm);
@@ -61,7 +61,7 @@ function calcUE(p) {
   const commRub = commPct * buyPrice * batchQty;
   const batchCost = buyPrice * batchQty + commRub;
   const batchCostAfterShip = batchCost + extraExp;
-  const selfCost = div(batchCostAfterShip, batchQty);
+  const selfCost = div(batchCostAfterShip, batchQty); // ₽/шт
 
   // ── FBS Logistics ──
   let baseTariff = 46;
@@ -69,14 +69,16 @@ function calcUE(p) {
     if (volume <= row.max) { baseTariff = row.base; break; }
   }
   const addPerL = volume <= 1 ? 0 : 14;
-  const baseLogistics = addPerL > 0 ? baseTariff + (volume - 1) * addPerL : baseTariff;
+  // [5] Базовая стоимость логистики × коэф. склада
+  const baseLogisticsRaw = addPerL > 0 ? baseTariff + (volume - 1) * addPerL : baseTariff;
+  const baseLogistics    = baseLogisticsRaw * whCoeff;
 
   const deliveryCost = sdIdx > 0
     ? baseLogistics * locIdx + sdIdx * priceSPP + acceptance
     : baseLogistics * locIdx + acceptance;
 
   const logisticsReturns = buyoutPct > 0 ? (100 / buyoutPct - 1) * deliveryCost : 0;
-  const logisticsTotal = deliveryCost + logisticsReturns;
+  const logisticsTotal   = deliveryCost + logisticsReturns;
 
   // ── WB Deductions ──
   const wbCommRub      = commPct * priceSPP;
@@ -90,12 +92,14 @@ function calcUE(p) {
   const priceWithSPP    = sppVal !== null ? priceSPP * (1 - sppVal) : priceSPP;
   const incomeToAccount = priceSPP - wbCommRub - logisticsTotal - storage - acquiring * currRate;
 
-  // ── Taxes ──
+  // ── Taxes ── [7] добавлен режим "От прихода на р/с"
   let usnTax = 0;
   if (taxSystem === 'УСН-ДОХОДЫ') {
     usnTax = taxRate * priceWithSPP;
   } else if (taxSystem === 'УСН Д-Р') {
     usnTax = taxRate * Math.max(0, priceSPP - totalWb - selfCost);
+  } else if (taxSystem === 'От прихода на р/с') {
+    usnTax = taxRate * Math.max(0, incomeToAccount);
   }
   const totalTaxes    = usnTax;
   const totalTaxesPct = div(totalTaxes, priceSPP);
@@ -109,7 +113,7 @@ function calcUE(p) {
 
   return {
     volume, selfCost, batchCost, batchCostAfterShip, commRub,
-    baseTariff, baseLogistics, deliveryCost, logisticsReturns, logisticsTotal,
+    baseTariff, baseLogisticsRaw, baseLogistics, deliveryCost, logisticsReturns, logisticsTotal,
     wbCommRub, acquiring, advertisingRub, paidAcceptance,
     totalWb, totalWbPct,
     priceWithSPP, incomeToAccount,
@@ -121,18 +125,19 @@ function calcUE(p) {
 // ─── FORMATTING ──────────────────────────────────────────────────────────────
 
 const fmt = {
-  rub:  v => v == null ? '—' : (Math.round(v)).toLocaleString('ru') + ' ₽',
-  pct:  v => v == null ? '—' : (v * 100).toFixed(1) + '%',
-  num:  v => v == null ? '—' : v.toFixed(2),
-  vol:  v => v == null ? '—' : v.toFixed(3) + ' л',
+  rub: v => v == null ? '—' : Math.round(v).toLocaleString('ru') + ' ₽',
+  pct: v => v == null ? '—' : (v * 100).toFixed(1) + '%',
+  vol: v => v == null ? '—' : v.toFixed(3) + ' л',
 };
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
 
-let products  = [];
-let editId    = null;
-let charts    = {};
-let searchQ   = '';
+let products    = [];
+let managers    = [];   // список менеджеров (только для админа)
+let editId      = null;
+let charts      = {};
+let searchQ     = '';
+let filterMgrId = '';   // фильтр по менеджеру (только для админа)
 
 // ─── API ─────────────────────────────────────────────────────────────────────
 
@@ -145,26 +150,39 @@ async function loadProducts() {
   }
 }
 
-async function saveProduct(data) {
-  if (editId) {
-    return API.put('/unit-economics/' + editId, data);
-  } else {
-    return API.post('/unit-economics', data);
+async function loadManagers() {
+  try {
+    managers = await API.get('/managers');
+  } catch (e) {
+    managers = [];
   }
+}
+
+async function saveProduct(data) {
+  if (editId) return API.put('/unit-economics/' + editId, data);
+  return API.post('/unit-economics', data);
 }
 
 async function deleteProduct(id) {
   return API.delete('/unit-economics/' + id);
 }
 
+// ─── FILTERING ───────────────────────────────────────────────────────────────
+
+function getFiltered() {
+  return products.filter(p => {
+    if (searchQ && !p.name.toLowerCase().includes(searchQ.toLowerCase())) return false;
+    if (filterMgrId && p.manager_id !== filterMgrId) return false;
+    return true;
+  });
+}
+
 // ─── RENDER: CARDS ───────────────────────────────────────────────────────────
 
 function renderCards() {
-  const grid = document.getElementById('products-grid');
+  const grid  = document.getElementById('products-grid');
   const empty = document.getElementById('products-empty');
-  const filtered = products.filter(p =>
-    !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase())
-  );
+  const filtered = getFiltered();
 
   if (!filtered.length) {
     grid.innerHTML = '';
@@ -173,12 +191,16 @@ function renderCards() {
   }
   empty.style.display = 'none';
 
+  const user = getUser();
   grid.innerHTML = filtered.map(p => {
     const r = calcUE(p);
-    const profitColor = r.profitPerUnit >= 0 ? 'var(--green)' : 'var(--red)';
-    const marginColor = r.marginality >= 0 ? 'var(--green)' : 'var(--red)';
+    const profCol = r.profitPerUnit >= 0 ? 'var(--green)' : 'var(--red)';
+    const margCol = r.marginality >= 0 ? 'var(--green)' : 'var(--red)';
+    const mgrBadge = (user && user.role === 'admin' && p.manager_name)
+      ? `<div class="ue-card-mgr">${esc(p.manager_name)}</div>` : '';
     return `
     <div class="ue-card">
+      ${mgrBadge}
       <div class="ue-card-name" title="${esc(p.name)}">${esc(p.name)}</div>
       <div class="ue-card-metrics">
         <div class="ue-metric">
@@ -187,11 +209,11 @@ function renderCards() {
         </div>
         <div class="ue-metric">
           <div class="ue-metric-label">Прибыль / шт</div>
-          <div class="ue-metric-value" style="color:${profitColor}">${fmt.rub(r.profitPerUnit)}</div>
+          <div class="ue-metric-value" style="color:${profCol}">${fmt.rub(r.profitPerUnit)}</div>
         </div>
         <div class="ue-metric">
           <div class="ue-metric-label">Маржа</div>
-          <div class="ue-metric-value" style="color:${marginColor}">${fmt.pct(r.marginality)}</div>
+          <div class="ue-metric-value" style="color:${margCol}">${fmt.pct(r.marginality)}</div>
         </div>
         <div class="ue-metric">
           <div class="ue-metric-label">ROI</div>
@@ -199,7 +221,7 @@ function renderCards() {
         </div>
       </div>
       <div class="ue-card-sub">
-        Себестоимость: ${fmt.rub(r.selfCost)} &nbsp;·&nbsp; Партия: ${p.batch_qty} шт
+        Себестоим.: ${fmt.rub(r.selfCost)}/шт &nbsp;·&nbsp; Партия: ${p.batch_qty} шт
       </div>
       <div class="ue-card-actions">
         <button class="btn btn-ghost btn-sm" onclick="openEdit('${p.id}')">✏️ Редактировать</button>
@@ -222,53 +244,50 @@ function renderDashboard() {
 }
 
 function renderSummaryTable() {
-  const tbody = document.getElementById('summary-tbody');
-  const filtered = products.filter(p =>
-    !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase())
-  );
+  const tbody    = document.getElementById('summary-tbody');
+  const filtered = getFiltered();
 
   if (!filtered.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty">Нет данных</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="empty" style="text-align:center;padding:30px;color:var(--g)">Нет данных</td></tr>';
     return;
   }
 
+  const user = getUser();
+  const showMgr = user && user.role === 'admin';
+
   tbody.innerHTML = filtered.map(p => {
     const r = calcUE(p);
-    const profClass = r.profitPerUnit >= 0 ? 'pos' : 'neg';
-    const margClass = r.marginality >= 0 ? 'pos' : 'neg';
     return `<tr>
+      ${showMgr ? `<td style="color:var(--g);font-size:11px">${esc(p.manager_name || '—')}</td>` : ''}
       <td style="font-weight:600">${esc(p.name)}</td>
       <td>${fmt.rub(p.price_before_spp * p.currency_rate)}</td>
-      <td>${fmt.rub(r.selfCost)}</td>
-      <td>${fmt.rub(r.totalWb)}</td>
-      <td>${fmt.rub(r.totalTaxes)}</td>
-      <td class="${profClass}">${fmt.rub(r.profitPerUnit)}</td>
-      <td class="${margClass}">${fmt.pct(r.marginality)}</td>
+      <td>${fmt.rub(r.selfCost)}<span class="unit">/шт</span></td>
+      <td>${fmt.rub(r.totalWb)}<span class="unit">/шт</span></td>
+      <td>${fmt.rub(r.totalTaxes)}<span class="unit">/шт</span></td>
+      <td class="${r.profitPerUnit >= 0 ? 'pos' : 'neg'}">${fmt.rub(r.profitPerUnit)}<span class="unit">/шт</span></td>
+      <td class="${r.marginality >= 0 ? 'pos' : 'neg'}">${fmt.pct(r.marginality)}</td>
       <td class="${r.roi >= 0 ? 'pos' : 'neg'}">${fmt.pct(r.roi)}</td>
     </tr>`;
   }).join('');
 }
 
 function renderCharts() {
-  const filtered = products.filter(p =>
-    !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase())
-  );
+  const filtered = getFiltered();
+  const labels   = filtered.map(p => p.name.length > 16 ? p.name.slice(0, 14) + '…' : p.name);
+  const margins  = filtered.map(p => +(calcUE(p).marginality * 100).toFixed(1));
+  const profits  = filtered.map(p => +calcUE(p).profitPerBatch.toFixed(0));
 
-  const labels  = filtered.map(p => p.name.length > 16 ? p.name.slice(0, 14) + '…' : p.name);
-  const margins = filtered.map(p => +(calcUE(p).marginality * 100).toFixed(1));
-  const profits = filtered.map(p => +calcUE(p).profitPerBatch.toFixed(0));
-
-  const isDark = document.documentElement.classList.contains('dark');
+  const isDark    = document.documentElement.classList.contains('dark');
   const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
   const textColor = isDark ? '#9CA3AF' : '#666';
 
   const commonOpts = (yLabel) => ({
-    responsive: true,
-    maintainAspectRatio: false,
+    responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: {
       x: { ticks: { color: textColor, font: { size: 11 } }, grid: { color: gridColor } },
-      y: { ticks: { color: textColor, font: { size: 11 } }, grid: { color: gridColor }, title: { display: true, text: yLabel, color: textColor, font: { size: 11 } } },
+      y: { ticks: { color: textColor, font: { size: 11 } }, grid: { color: gridColor },
+           title: { display: true, text: yLabel, color: textColor, font: { size: 11 } } },
     },
   });
 
@@ -280,14 +299,7 @@ function renderCharts() {
   if (ctxM && filtered.length) {
     charts['chart-margin'] = new Chart(ctxM, {
       type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          data: margins,
-          backgroundColor: margins.map(v => v >= 0 ? 'rgba(22,163,74,0.7)' : 'rgba(220,38,38,0.7)'),
-          borderRadius: 5,
-        }],
-      },
+      data: { labels, datasets: [{ data: margins, backgroundColor: margins.map(v => v >= 0 ? 'rgba(22,163,74,0.7)' : 'rgba(220,38,38,0.7)'), borderRadius: 5 }] },
       options: commonOpts('%'),
     });
   }
@@ -296,14 +308,7 @@ function renderCharts() {
   if (ctxP && filtered.length) {
     charts['chart-profit'] = new Chart(ctxP, {
       type: 'bar',
-      data: {
-        labels,
-        datasets: [{
-          data: profits,
-          backgroundColor: profits.map(v => v >= 0 ? 'rgba(124,58,237,0.7)' : 'rgba(220,38,38,0.7)'),
-          borderRadius: 5,
-        }],
-      },
+      data: { labels, datasets: [{ data: profits, backgroundColor: profits.map(v => v >= 0 ? 'rgba(124,58,237,0.7)' : 'rgba(220,38,38,0.7)'), borderRadius: 5 }] },
       options: commonOpts('₽'),
     });
   }
@@ -331,6 +336,11 @@ function getFormData() {
       data[f] = el.value;
     }
   }
+  // manager_id для админа
+  const mgrEl = document.getElementById('m-manager_id');
+  if (mgrEl && mgrEl.style.display !== 'none') {
+    data.manager_id = mgrEl.value || null;
+  }
   return data;
 }
 
@@ -338,12 +348,11 @@ function setFormData(p) {
   for (const f of FIELDS) {
     const el = document.getElementById('m-' + f);
     if (!el) continue;
-    if (p[f] == null) {
-      el.value = el.tagName === 'SELECT' ? el.options[0]?.value ?? '' : '';
-    } else {
-      el.value = p[f];
-    }
+    el.value = (p[f] == null) ? (el.tagName === 'SELECT' ? el.options[0]?.value ?? '' : '') : p[f];
   }
+  // manager_id
+  const mgrEl = document.getElementById('m-manager_id');
+  if (mgrEl) mgrEl.value = p.manager_id || '';
   updateLiveResults();
 }
 
@@ -357,6 +366,8 @@ function resetForm() {
     if (!el) continue;
     el.value = defaults[f] ?? '';
   }
+  const mgrEl = document.getElementById('m-manager_id');
+  if (mgrEl) mgrEl.value = '';
   updateLiveResults();
 }
 
@@ -366,30 +377,32 @@ function updateLiveResults() {
 
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
-  set('r-volume',    fmt.vol(r.volume));
-  set('r-selfcost',  fmt.rub(r.selfCost));
-  set('r-comm-rub',  fmt.rub(r.commRub));
-  set('r-logistics', fmt.rub(r.logisticsTotal));
-  set('r-delivery',  fmt.rub(r.deliveryCost));
-  set('r-returns',   fmt.rub(r.logisticsReturns));
-  set('r-wb-comm',   fmt.rub(r.wbCommRub));
-  set('r-acquiring', fmt.rub(r.acquiring));
-  set('r-adv',       fmt.rub(r.advertisingRub));
-  set('r-storage-d', fmt.rub(+data.storage_cost || 0));
-  set('r-paid-acc',  fmt.rub(r.paidAcceptance));
-  set('r-totalwb',   fmt.rub(r.totalWb) + ' (' + fmt.pct(r.totalWbPct) + ')');
-  set('r-taxes',     fmt.rub(r.totalTaxes) + ' (' + fmt.pct(r.totalTaxesPct) + ')');
-  set('r-income',    fmt.rub(r.incomeToAccount));
-  set('r-costs',     fmt.rub(r.totalCostsPerUnit));
+  set('r-volume',       fmt.vol(r.volume));
+  set('r-selfcost',     fmt.rub(r.selfCost) + '/шт');
+  set('r-comm-rub',     fmt.rub(r.commRub));
+  set('r-batch-cost',   fmt.rub(r.batchCostAfterShip) + '/партию');
+  set('r-logistics',    fmt.rub(r.logisticsTotal) + '/шт');
+  set('r-delivery',     fmt.rub(r.deliveryCost) + '/шт');
+  set('r-returns',      fmt.rub(r.logisticsReturns) + '/шт');
+  set('r-base-log',     fmt.rub(r.baseLogisticsRaw) + '×' + (+data.warehouse_coeff||1).toFixed(2) + '=' + fmt.rub(r.baseLogistics));
+  set('r-wb-comm',      fmt.rub(r.wbCommRub) + '/шт');
+  set('r-acquiring',    fmt.rub(r.acquiring) + '/шт');
+  set('r-adv',          fmt.rub(r.advertisingRub) + '/шт');
+  set('r-storage-d',    fmt.rub(+data.storage_cost || 0) + '/шт');
+  set('r-paid-acc',     fmt.rub(r.paidAcceptance) + '/шт');
+  set('r-totalwb',      fmt.rub(r.totalWb) + '/шт (' + fmt.pct(r.totalWbPct) + ')');
+  set('r-taxes',        fmt.rub(r.totalTaxes) + '/шт (' + fmt.pct(r.totalTaxesPct) + ')');
+  set('r-income',       fmt.rub(r.incomeToAccount) + '/шт');
+  set('r-costs',        fmt.rub(r.totalCostsPerUnit) + '/шт');
 
   const profEl = document.getElementById('r-profit');
   if (profEl) {
-    profEl.textContent = fmt.rub(r.profitPerUnit) + ' / шт';
+    profEl.textContent = fmt.rub(r.profitPerUnit) + '/шт';
     profEl.style.color = r.profitPerUnit >= 0 ? 'var(--green)' : 'var(--red)';
   }
   const batchEl = document.getElementById('r-profit-batch');
   if (batchEl) {
-    batchEl.textContent = fmt.rub(r.profitPerBatch) + ' / партию';
+    batchEl.textContent = fmt.rub(r.profitPerBatch) + '/партию';
     batchEl.style.color = r.profitPerBatch >= 0 ? 'var(--green)' : 'var(--red)';
   }
   const margEl = document.getElementById('r-margin');
@@ -426,13 +439,17 @@ function closeModal() {
 
 async function submitForm() {
   const data = getFormData();
-  if (!data.name || !data.name.trim()) {
-    alert('Введите название товара');
+  if (!data.name || !data.name.trim()) { alert('Введите название товара'); return; }
+
+  // Валидация manager_id для админа при создании
+  const user = getUser();
+  if (!editId && user && user.role === 'admin' && !data.manager_id) {
+    alert('Выберите менеджера');
     return;
   }
+
   const btn = document.getElementById('modal-save-btn');
-  btn.disabled = true;
-  btn.textContent = 'Сохранение…';
+  btn.disabled = true; btn.textContent = 'Сохранение…';
   try {
     await saveProduct(data);
     await loadProducts();
@@ -442,8 +459,7 @@ async function submitForm() {
   } catch (e) {
     alert('Ошибка сохранения: ' + e.message);
   } finally {
-    btn.disabled = false;
-    btn.textContent = 'Сохранить';
+    btn.disabled = false; btn.textContent = 'Сохранить';
   }
 }
 
@@ -471,12 +487,36 @@ function confirmDelete(id, name) {
   }).catch(e => alert('Ошибка: ' + e.message));
 }
 
+// ─── MANAGERS UI ─────────────────────────────────────────────────────────────
+
+function fillManagerSelects() {
+  const opts = managers.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('');
+
+  // Селект в модале
+  const mgrEl = document.getElementById('m-manager_id');
+  if (mgrEl) {
+    mgrEl.innerHTML = '<option value="">— Выберите менеджера —</option>' + opts;
+    mgrEl.closest('.field').style.display = '';
+  }
+
+  // Фильтр на странице
+  const filterEl = document.getElementById('filter-manager');
+  if (filterEl) {
+    filterEl.innerHTML = '<option value="">Все менеджеры</option>' + opts;
+    filterEl.closest('.filter-mgr-wrap').style.display = '';
+  }
+
+  // Столбец в таблице
+  const thMgr = document.getElementById('th-manager');
+  if (thMgr) thMgr.style.display = '';
+}
+
 // ─── KTR HELPER ──────────────────────────────────────────────────────────────
 
 function applyKTR(locSharePct) {
   const row = KTR_TABLE.find(r => locSharePct >= r.min && locSharePct < r.max)
     || KTR_TABLE[KTR_TABLE.length - 1];
-  document.getElementById('m-loc_index').value   = row.ktr;
+  document.getElementById('m-loc_index').value        = row.ktr;
   document.getElementById('m-sales_dist_index').value = row.krp;
   updateLiveResults();
 }
@@ -497,12 +537,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   requireAuth();
 
   const user = getUser();
-  if (user) document.getElementById('nav-user-name').textContent = user.username || '';
+  if (user) {
+    document.getElementById('nav-user-name').textContent = user.username || '';
+    if (user.role === 'admin') {
+      document.getElementById('nav-admin').style.display = '';
+    }
+  }
 
-  // Theme
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'dark') document.documentElement.classList.add('dark');
+  // Tabs
+  document.getElementById('tab-products').addEventListener('click', () => switchTab('products'));
+  document.getElementById('tab-dash').addEventListener('click',     () => switchTab('dash'));
 
+  // Theme toggle
   document.getElementById('btn-theme').addEventListener('click', () => {
     const isDark = document.documentElement.classList.toggle('dark');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
@@ -511,10 +557,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('btn-logout').addEventListener('click', logout);
 
-  // Tabs
-  document.getElementById('tab-products').addEventListener('click', () => switchTab('products'));
-  document.getElementById('tab-dash').addEventListener('click', () => switchTab('dash'));
-
   // Search
   document.getElementById('search-input').addEventListener('input', e => {
     searchQ = e.target.value.trim();
@@ -522,18 +564,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (document.getElementById('tab-dash').classList.contains('on')) renderDashboard();
   });
 
+  // Manager filter (admin only)
+  document.getElementById('filter-manager').addEventListener('change', e => {
+    filterMgrId = e.target.value;
+    renderCards();
+    if (document.getElementById('tab-dash').classList.contains('on')) renderDashboard();
+  });
+
   // Add button
   document.getElementById('btn-add').addEventListener('click', openCreate);
 
-  // Modal close
+  // Modal
   document.getElementById('overlay').addEventListener('click', e => {
     if (e.target === document.getElementById('overlay')) closeModal();
   });
-  document.getElementById('modal-close').addEventListener('click', closeModal);
-  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-close').addEventListener('click',   closeModal);
+  document.getElementById('modal-cancel').addEventListener('click',  closeModal);
   document.getElementById('modal-save-btn').addEventListener('click', submitForm);
 
-  // Live calculation on all inputs
+  // Live recalc
   document.getElementById('modal-form').addEventListener('input', updateLiveResults);
 
   // KTR quick-fill
@@ -544,6 +593,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Load data
-  await loadProducts();
+  if (user && user.role === 'admin') {
+    await Promise.all([loadProducts(), loadManagers()]);
+    fillManagerSelects();
+  } else {
+    await loadProducts();
+  }
   renderCards();
 });
