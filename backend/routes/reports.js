@@ -261,7 +261,16 @@ router.post('/', authenticate, upload.single('file'), async (req, res) => {
         : `INSERT INTO reports (manager_id,period_start,period_end,filename,impressions,clicks,ctr,added_to_cart,ordered_qty,bought_qty,cancelled_qty,conv_to_cart,conv_to_order,buyout_rate,revenue,avg_price,raw_data) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
       vals
     );
-        res.status(201).json({ success: true, period_start: parsed.period_start, period_end: parsed.period_end });
+        res.status(201).json({
+          success: true,
+          period_start: parsed.period_start,
+          period_end:   parsed.period_end,
+          _debug: {
+            summary_found: !!parsed.summary,
+            summary_keys:  parsed.summary ? Object.keys(parsed.summary) : null,
+            impressions:   v('Показы'),
+          }
+        });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Ошибка при обработке файла' });

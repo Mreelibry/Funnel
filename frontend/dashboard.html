@@ -1552,7 +1552,9 @@ async function uploadReport() {
   if (cabId) fd.append('cabinet_id', cabId);
   try {
     const res = await API.upload('/reports', fd);
-    setStatus(`✓ ${fmtDate(res.period_start)} — ${fmtDate(res.period_end)}`,'ok');
+    const dbg = res._debug;
+    const dbgStr = dbg ? (dbg.summary_found ? ` | сводка: ${dbg.summary_keys?.length} полей, показы=${dbg.impressions}` : ' | ⚠ сводка не найдена') : '';
+    setStatus(`✓ ${fmtDate(res.period_start)} — ${fmtDate(res.period_end)}${dbgStr}`,'ok');
     input.value = '';
     loadReports();
   } catch(e) { setStatus('✗ '+e.message,'err'); }
