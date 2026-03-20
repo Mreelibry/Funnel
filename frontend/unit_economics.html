@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Юнит-экономика — WB Аналитика</title>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    :root{--wb:#7C3AED;--wb2:rgba(124,58,237,.09);--wb3:rgba(124,58,237,.18);--green:#16A34A;--red:#DC2626;--t:#111;--g:#666;--bg:#f5f4f8;--card:#fff;--b:rgba(0,0,0,.1)}
+    html.dark{--wb:#8B5CF6;--wb2:rgba(139,92,246,.1);--wb3:rgba(139,92,246,.2);--green:#22C55E;--red:#EF4444;--t:#F1F0F5;--g:#9CA3AF;--bg:#13111E;--card:#1E1B2E;--b:rgba(255,255,255,.07)}
+    html.dark body{background:var(--bg);color:var(--t)}
+    html.dark nav,html.dark .modal-box,html.dark .ue-card,html.dark .dash-card{background:var(--card);border-color:var(--b)}
+    html.dark .field input,html.dark .field select,html.dark .field textarea{background:#282440;border-color:rgba(255,255,255,.15);color:var(--t)}
+    html.dark thead th{background:var(--bg);color:var(--g)}
+    html.dark tbody td{border-color:rgba(255,255,255,.05)}
+    html.dark .btn-ghost{background:#282440;color:var(--g);border-color:rgba(255,255,255,.1)}
+    html.dark .results-panel{background:#1a1730;border-color:rgba(255,255,255,.07)}
+    html.dark .block-hint{background:#282440}
+    body{font-family:'Onest',sans-serif;background:var(--bg);color:var(--t);min-height:100vh}
+
+    /* ── NAV ── */
+    nav{background:var(--card);border-bottom:1px solid var(--b);padding:0 20px;display:flex;align-items:center;gap:12px;height:52px;position:sticky;top:0;z-index:50}
+    .nav-logo{width:28px;height:28px;border-radius:7px;background:var(--wb);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:11px;flex-shrink:0}
+    .nav-title{font-size:14px;font-weight:700;color:var(--t);white-space:nowrap}
+    .nav-links{display:flex;gap:2px;margin-left:8px}
+    .nav-link{padding:5px 12px;border-radius:8px;font-size:13px;color:var(--g);text-decoration:none;transition:background .15s;white-space:nowrap}
+    .nav-link:hover,.nav-link.active{background:var(--wb2);color:var(--wb);font-weight:500}
+    .nav-user{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--g)}
+    .btn-logout{border:none;background:none;cursor:pointer;font-size:13px;color:var(--g);font-family:inherit}
+    .btn-logout:hover{color:var(--red)}
+    .btn-theme{border:none;background:var(--wb2);border-radius:8px;padding:4px 9px;font-size:14px;cursor:pointer;line-height:1}
+
+    /* ── MAIN ── */
+    main{max-width:1200px;margin:0 auto;padding:24px 20px}
+    .page-header{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+    .page-title{font-size:20px;font-weight:700}
+    .search-wrap{margin-left:auto;display:flex;align-items:center;gap:8px}
+    .search-wrap input{border:0.5px solid var(--b);border-radius:9px;padding:7px 14px;font-size:13px;font-family:inherit;background:var(--card);color:var(--t);width:220px}
+    .search-wrap input:focus{outline:none;border-color:var(--wb)}
+
+    /* ── TABS ── */
+    .tabs{display:flex;gap:2px;border-bottom:1px solid var(--b);margin-bottom:20px}
+    .tab{padding:8px 18px;font-size:13px;font-family:inherit;border:none;background:none;color:var(--g);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s}
+    .tab.on{color:var(--wb);border-bottom-color:var(--wb);font-weight:600}
+
+    /* ── BUTTONS ── */
+    .btn{display:inline-flex;align-items:center;gap:5px;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:opacity .15s}
+    .btn:hover{opacity:.85}
+    .btn-sm{padding:5px 10px;font-size:12px}
+    .btn-primary{background:var(--wb);color:#fff}
+    .btn-danger{background:rgba(220,38,38,.1);color:var(--red)}
+    .btn-ghost{background:var(--bg);color:var(--g);border:0.5px solid var(--b)}
+
+    /* ── PRODUCT CARDS ── */
+    .products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+    .ue-card{background:var(--card);border:0.5px solid var(--b);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px}
+    .ue-card-name{font-size:15px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ue-card-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .ue-metric{background:var(--bg);border-radius:9px;padding:10px 12px}
+    .ue-metric-label{font-size:10px;color:var(--g);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+    .ue-metric-value{font-size:16px;font-weight:700;color:var(--t)}
+    .ue-card-sub{font-size:11px;color:var(--g)}
+    .ue-card-actions{display:flex;gap:6px;flex-wrap:wrap}
+    .empty-state{text-align:center;padding:60px 20px;color:var(--g);font-size:14px}
+    .empty-state .empty-icon{font-size:40px;margin-bottom:12px}
+
+    /* ── DASHBOARD ── */
+    .dash-card{background:var(--card);border:0.5px solid var(--b);border-radius:14px;overflow:hidden;margin-bottom:16px}
+    .dash-card-title{padding:14px 18px;font-size:13px;font-weight:600;border-bottom:0.5px solid var(--b)}
+    .dash-charts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .chart-wrap{height:220px;padding:14px}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead th{background:var(--bg);padding:9px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--g);text-transform:uppercase;letter-spacing:.04em;border-bottom:0.5px solid var(--b);white-space:nowrap}
+    tbody td{padding:10px 14px;border-bottom:0.5px solid rgba(0,0,0,.05);vertical-align:middle}
+    tbody tr:last-child td{border-bottom:none}
+    tbody tr:hover td{background:var(--wb2)}
+    .pos{color:var(--green)} .neg{color:var(--red)}
+
+    /* ── OVERLAY / MODAL ── */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-start;justify-content:center;z-index:100;padding:20px;overflow-y:auto}
+    .overlay.show{display:flex}
+    .modal-box{background:var(--card);border-radius:18px;width:100%;max-width:860px;box-shadow:0 24px 80px rgba(0,0,0,.25);margin:auto;display:flex;flex-direction:column}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:0.5px solid var(--b);flex-shrink:0}
+    .modal-header h2{font-size:17px;font-weight:700}
+    .modal-close{border:none;background:none;font-size:20px;color:var(--g);cursor:pointer;padding:4px;line-height:1}
+    .modal-body{padding:24px;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    .modal-footer{padding:16px 24px;border-top:0.5px solid var(--b);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
+
+    /* ── FORM ── */
+    .form-block{display:flex;flex-direction:column;gap:14px}
+    .block-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--wb);margin-bottom:2px}
+    .field{display:flex;flex-direction:column;gap:5px}
+    .field label{font-size:12px;font-weight:500;color:var(--g)}
+    .field input,.field select{border:0.5px solid var(--b);border-radius:9px;padding:8px 12px;font-size:13px;font-family:inherit;background:var(--card);color:var(--t);width:100%}
+    .field input:focus,.field select:focus{outline:none;border-color:var(--wb)}
+    .field-hint{font-size:10px;color:var(--g);margin-top:2px}
+    .row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    .row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .block-hint{background:var(--bg);border-radius:10px;padding:10px 12px;font-size:11px;color:var(--g);display:flex;align-items:flex-start;gap:8px}
+    .ktr-row{display:flex;gap:8px;align-items:flex-end}
+    .ktr-row .field{flex:1}
+    .ktr-row button{flex-shrink:0;height:36px;padding:0 12px;margin-bottom:0;align-self:flex-end}
+
+    /* ── RESULTS PANEL ── */
+    .results-col{grid-column:1 / -1}
+    .results-panel{background:#f8f7fc;border:0.5px solid var(--b);border-radius:12px;padding:16px}
+    .results-panel h3{font-size:13px;font-weight:700;margin-bottom:14px;color:var(--t)}
+    .results-main{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+    .rcard{border-radius:10px;padding:12px;background:var(--card);border:0.5px solid var(--b)}
+    .rcard-label{font-size:10px;color:var(--g);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+    .rcard-value{font-size:18px;font-weight:700;color:var(--t)}
+    .rcard-sub{font-size:11px;color:var(--g);margin-top:3px}
+    .results-detail{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .rrow{display:flex;justify-content:space-between;align-items:baseline;padding:5px 10px;border-radius:7px;font-size:12px}
+    .rrow:nth-child(odd){background:var(--bg)}
+    .rrow-label{color:var(--g)}
+    .rrow-val{font-weight:600;color:var(--t)}
+
+    @media(max-width:720px){
+      .modal-body{grid-template-columns:1fr}
+      .results-main{grid-template-columns:1fr 1fr}
+      .results-detail{grid-template-columns:1fr}
+      .dash-charts{grid-template-columns:1fr}
+    }
+    @media(max-width:480px){
+      .results-main{grid-template-columns:1fr}
+      .nav-links{display:none}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-logo">WB</div>
+  <span class="nav-title">WB Аналитика</span>
+  <div class="nav-links">
+    <a href="dashboard.html" class="nav-link">Аналитика</a>
+    <a href="unit_economics.html" class="nav-link active">Юнит-экономика</a>
+    <a href="admin.html" class="nav-link" id="nav-admin" style="display:none">Администрирование</a>
+  </div>
+  <div class="nav-user">
+    <span id="nav-user-name"></span>
+    <button class="btn-theme" id="btn-theme" title="Тема">🌙</button>
+    <button class="btn-logout" id="btn-logout">Выйти</button>
+  </div>
+</nav>
+
+<!-- ── MAIN ── -->
+<main>
+  <div class="page-header">
+    <h1 class="page-title">Юнит-экономика</h1>
+    <button class="btn btn-primary" id="btn-add">+ Добавить товар</button>
+    <div class="search-wrap">
+      <input type="search" id="search-input" placeholder="Поиск по названию…">
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab on" id="tab-products">Товары</button>
+    <button class="tab" id="tab-dash">Дашборд</button>
+  </div>
+
+  <!-- Pane: Products -->
+  <div id="pane-products">
+    <div id="products-empty" class="empty-state" style="display:none">
+      <div class="empty-icon">📦</div>
+      <div>Нет товаров. Нажмите «+ Добавить товар»</div>
+    </div>
+    <div id="products-grid" class="products-grid"></div>
+  </div>
+
+  <!-- Pane: Dashboard -->
+  <div id="pane-dash" style="display:none">
+    <div class="dash-card">
+      <div class="dash-card-title">Сводная таблица</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Товар</th>
+              <th>Цена продажи</th>
+              <th>Себестоимость</th>
+              <th>Удержания WB</th>
+              <th>Налоги</th>
+              <th>Прибыль / шт</th>
+              <th>Маржа</th>
+              <th>ROI</th>
+            </tr>
+          </thead>
+          <tbody id="summary-tbody">
+            <tr><td colspan="8" style="text-align:center;padding:30px;color:var(--g)">Нет данных</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="dash-charts">
+      <div class="dash-card">
+        <div class="dash-card-title">Маржинальность по товарам, %</div>
+        <div class="chart-wrap"><canvas id="chart-margin"></canvas></div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-title">Прибыль на партию, ₽</div>
+        <div class="chart-wrap"><canvas id="chart-profit"></canvas></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ── MODAL ── -->
+<div class="overlay" id="overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modal-title">Новый товар</h2>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+
+    <div class="modal-body" id="modal-form">
+
+      <!-- Блок 1: Основные параметры -->
+      <div class="form-block">
+        <div class="block-title">Основные параметры</div>
+
+        <div class="field">
+          <label>Название товара</label>
+          <input type="text" id="m-name" placeholder="Например: Кружка синяя 500мл">
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label>Курс валюты</label>
+            <input type="number" id="m-currency_rate" value="1" min="0.01" step="0.01" placeholder="1">
+            <span class="field-hint">1 = рубли, иначе CNY/USD/…</span>
+          </div>
+          <div class="field">
+            <label>Количество в партии, шт</label>
+            <input type="number" id="m-batch_qty" value="1" min="1" step="1">
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label>Цена закупки, ₽</label>
+            <input type="number" id="m-purchase_price" value="0" min="0" step="0.01">
+          </div>
+          <div class="field">
+            <label>Доп. расходы на партию, ₽</label>
+            <input type="number" id="m-extra_expenses" value="0" min="0" step="0.01">
+            <span class="field-hint">Таможня, упаковка, фото и пр.</span>
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label>Цена до СПП, ₽</label>
+            <input type="number" id="m-price_before_spp" value="0" min="0" step="0.01">
+            <span class="field-hint">Ваша цена на WB до скидки СПП</span>
+          </div>
+          <div class="field">
+            <label>СПП, % (необязательно)</label>
+            <input type="number" id="m-spp" min="0" max="99" step="0.1" placeholder="Пусто = без СПП">
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label>Система налогообложения</label>
+            <select id="m-tax_system">
+              <option value="Не считать налог">Не считать налог</option>
+              <option value="УСН-ДОХОДЫ">УСН — Доходы</option>
+              <option value="УСН Д-Р">УСН — Доходы минус Расходы</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Ставка налога, %</label>
+            <input type="number" id="m-tax_rate" value="0" min="0" max="20" step="0.1">
+            <span class="field-hint">Например: 6 для УСН-Д, 15 для УСН Д-Р</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Блок 2: Габариты и логистика -->
+      <div class="form-block">
+        <div class="block-title">Габариты и логистика</div>
+
+        <div class="field">
+          <label>Габариты упаковки (см)</label>
+          <div class="row-3">
+            <div class="field">
+              <label style="font-size:10px">Длина</label>
+              <input type="number" id="m-length_cm" value="0" min="0" step="0.1">
+            </div>
+            <div class="field">
+              <label style="font-size:10px">Ширина</label>
+              <input type="number" id="m-width_cm" value="0" min="0" step="0.1">
+            </div>
+            <div class="field">
+              <label style="font-size:10px">Высота</label>
+              <input type="number" id="m-height_cm" value="0" min="0" step="0.1">
+            </div>
+          </div>
+          <span class="field-hint">Объём: <b id="r-volume">0.000 л</b></span>
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label>Процент выкупа, %</label>
+            <input type="number" id="m-buyout_pct" value="100" min="1" max="100" step="0.1">
+            <span class="field-hint">Из справки WB по категории</span>
+          </div>
+          <div class="field">
+            <label>Приёмка товара, ₽</label>
+            <input type="number" id="m-acceptance_cost" value="0" min="0" step="0.01">
+          </div>
+        </div>
+
+        <div class="block-hint">
+          💡 Индексы рассчитываются из доли локализации (% местных заказов). Укажите долю и нажмите «Применить»:
+        </div>
+        <div class="ktr-row">
+          <div class="field">
+            <label>Доля локализации, %</label>
+            <input type="number" id="ktr-share" min="0" max="100" step="1" placeholder="0–100">
+          </div>
+          <button class="btn btn-ghost btn-sm" id="btn-ktr">Применить</button>
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label>Индекс локализации (КТР)</label>
+            <input type="number" id="m-loc_index" value="1" min="0.1" max="3" step="0.001">
+            <span class="field-hint">Коэффициент стоимости доставки</span>
+          </div>
+          <div class="field">
+            <label>Индекс распределения (КРП)</label>
+            <input type="number" id="m-sales_dist_index" value="0" min="0" max="0.1" step="0.0001">
+            <span class="field-hint">% от цены за распределение</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Блок 3: Комиссии и доп. расходы -->
+      <div class="form-block">
+        <div class="block-title">Комиссии и расходы WB</div>
+
+        <div class="row-2">
+          <div class="field">
+            <label>Комиссия WB, %</label>
+            <input type="number" id="m-commission_pct" value="0" min="0" max="50" step="0.1">
+            <span class="field-hint">Обычно 5–30% в зависимости от категории</span>
+          </div>
+          <div class="field">
+            <label>% затрат на рекламу</label>
+            <input type="number" id="m-ad_spend_pct" value="0" min="0" max="50" step="0.1">
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label>Хранение, ₽</label>
+            <input type="number" id="m-storage_cost" value="0" min="0" step="0.01">
+            <span class="field-hint">Стоимость хранения на складе WB</span>
+          </div>
+          <div class="field">
+            <label>Коэффициент склада</label>
+            <input type="number" id="m-warehouse_coeff" value="1" min="0.1" max="10" step="0.01">
+            <span class="field-hint">Для расчёта платной приёмки</span>
+          </div>
+        </div>
+
+        <div class="block-hint" style="margin-top:4px">
+          📋 Эквайринг 2,5% и платная приёмка (1,7 × объём × коэф. склада) рассчитываются автоматически.
+        </div>
+      </div>
+
+      <!-- Результаты расчёта -->
+      <div class="results-col">
+        <div class="results-panel">
+          <h3>Результаты расчёта</h3>
+
+          <div class="results-main">
+            <div class="rcard">
+              <div class="rcard-label">Прибыль</div>
+              <div class="rcard-value" id="r-profit">—</div>
+              <div class="rcard-sub" id="r-profit-batch">—</div>
+            </div>
+            <div class="rcard">
+              <div class="rcard-label">Маржинальность</div>
+              <div class="rcard-value" id="r-margin">—</div>
+            </div>
+            <div class="rcard">
+              <div class="rcard-label">ROI</div>
+              <div class="rcard-value" id="r-roi">—</div>
+            </div>
+            <div class="rcard">
+              <div class="rcard-label">Приход на р/с</div>
+              <div class="rcard-value" id="r-income">—</div>
+            </div>
+          </div>
+
+          <div class="results-detail">
+            <div>
+              <div class="rrow"><span class="rrow-label">Себестоимость / шт</span><span class="rrow-val" id="r-selfcost">—</span></div>
+              <div class="rrow"><span class="rrow-label">в т.ч. комиссия поставщика</span><span class="rrow-val" id="r-comm-rub">—</span></div>
+              <div class="rrow"><span class="rrow-label">Всего затрат / шт</span><span class="rrow-val" id="r-costs">—</span></div>
+            </div>
+            <div>
+              <div class="rrow"><span class="rrow-label">Логистика итог</span><span class="rrow-val" id="r-logistics">—</span></div>
+              <div class="rrow"><span class="rrow-label">— доставка</span><span class="rrow-val" id="r-delivery">—</span></div>
+              <div class="rrow"><span class="rrow-label">— возвраты</span><span class="rrow-val" id="r-returns">—</span></div>
+            </div>
+            <div>
+              <div class="rrow"><span class="rrow-label">Комиссия WB</span><span class="rrow-val" id="r-wb-comm">—</span></div>
+              <div class="rrow"><span class="rrow-label">Реклама</span><span class="rrow-val" id="r-adv">—</span></div>
+              <div class="rrow"><span class="rrow-label">Эквайринг</span><span class="rrow-val" id="r-acquiring">—</span></div>
+              <div class="rrow"><span class="rrow-label">Хранение</span><span class="rrow-val" id="r-storage-d">—</span></div>
+              <div class="rrow"><span class="rrow-label">Платная приёмка</span><span class="rrow-val" id="r-paid-acc">—</span></div>
+              <div class="rrow"><span class="rrow-label">Всего удержаний WB</span><span class="rrow-val" id="r-totalwb">—</span></div>
+              <div class="rrow"><span class="rrow-label">Налоги</span><span class="rrow-val" id="r-taxes">—</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /modal-body -->
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="modal-cancel">Отмена</button>
+      <button class="btn btn-primary" id="modal-save-btn">Сохранить</button>
+    </div>
+  </div><!-- /modal-box -->
+</div><!-- /overlay -->
+
+<script src="api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="unit_economics.js"></script>
+<script>
+  // Show admin link if admin
+  document.addEventListener('DOMContentLoaded', () => {
+    const user = getUser();
+    if (user && user.role === 'admin') {
+      document.getElementById('nav-admin').style.display = '';
+    }
+  });
+</script>
+</body>
+</html>
