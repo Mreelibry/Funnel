@@ -446,7 +446,7 @@
   </div>
   <div class="nav-right">
     <select id="mgr-select" style="display:none" onchange="onManagerChange()">
-      <option value="">Все менеджеры</option>
+      <option value="">—</option>
     </select>
     <button class="btn-theme" id="theme-btn" onclick="toggleTheme()" title="Сменить тему"></button>
     <span class="nav-username" id="nav-username">—</span>
@@ -484,7 +484,7 @@
   <div class="filter-bar" id="filter-bar" style="display:none;flex-wrap:wrap;gap:8px;align-items:center">
     <span class="filter-label">Кабинет:</span>
     <select id="funnel-cab-filter" style="font-size:11px;padding:4px 8px" onchange="onCabinetFilter()">
-      <option value="">Все кабинеты</option>
+      <option value="">—</option>
     </select>
     <span class="filter-label" style="margin-left:8px">Периоды:</span>
     <div class="periods-row" id="periods-row" style="margin:0"></div>
@@ -579,7 +579,7 @@
         oninput="FM.projectName=this.value;fmSave()" placeholder="Название проекта" />
       <input class="fm-search-inp" id="fm-search" placeholder="🔍 Поиск по артикулам..." oninput="fmFilterArticles(this.value)" />
       <select id="fm-cabinet-sel" class="fm-cab-sel" onchange="fmSetCabinet(this.value)">
-        <option value="">— кабинет —</option>
+        <option value="">—</option>
       </select>
       <button class="btn btn-danger" style="font-size:12px;padding:5px 12px" onclick="fmDeleteAll()">Удалить все</button>
     </div>
@@ -1280,9 +1280,19 @@ async function loadCabinetsForUpload() {
     const q   = mgr ? `?manager_id=${mgr}` : '';
     allCabinets = await API.get('/cabinets'+q);
     const sel = document.getElementById('upload-cab');
-    sel.innerHTML = '<option value="">— кабинет —</option>';
+    sel.innerHTML = '<option value="">—</option>';
     allCabinets.forEach(c => { sel.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
     if (typeof fmPopulateCabinetSel === 'function') fmPopulateCabinetSel();
+    // Автовыбор кабинета когда выбран менеджер и кабинеты загружены
+    if (mgr && allCabinets.length > 0 && typeof FM !== 'undefined' && !FM.cabinetId) {
+      const firstCab = allCabinets[0];
+      FM.cabinetId = firstCab.id;
+      const fmSel = document.getElementById('fm-cabinet-sel');
+      if (fmSel) fmSel.value = firstCab.id;
+      if (typeof fmLoadFromCabinet === 'function') {
+        await fmLoadFromCabinet(firstCab.id);
+      }
+    }
     // Обновить лендинг финмодели если она активна
     if (document.getElementById('page-finmodel')?.classList.contains('active')) {
       if (typeof fmRenderFull === 'function') fmRenderFull();
@@ -2076,7 +2086,7 @@ async function fmLoadFromDB(mgrId) {
 function fmPopulateCabinetSel() {
   const sel = document.getElementById('fm-cabinet-sel');
   if (!sel) return;
-  sel.innerHTML = '<option value="">Все кабинеты</option>';
+  sel.innerHTML = '<option value="">—</option>';
   (allCabinets || []).forEach(c => {
     sel.innerHTML += `<option value="${c.id}"${FM.cabinetId === c.id ? ' selected' : ''}>${c.name}</option>`;
   });
@@ -2138,7 +2148,7 @@ function fmGetBlockReason() {
       icon: '👥',
       title: 'Выберите менеджера',
       sub: 'Финансовая модель привязана к менеджеру и кабинету. Выберите менеджера в верхнем меню.',
-      steps: ['Откройте выпадающий список «Все менеджеры» сверху', 'Выберите нужного менеджера', 'Затем выберите кабинет в этой форме'],
+      steps: ['Откройте выпадающий список менеджеров («—») сверху', 'Выберите нужного менеджера', 'Затем выберите кабинет в этой форме'],
       btnLabel: null, btnAction: null
     };
   }

@@ -171,7 +171,7 @@ router.post('/', authenticate, upload.single('file'), async (req, res) => {
       parsed.period_start || new Date().toISOString().slice(0, 10),
       parsed.period_end   || new Date().toISOString().slice(0, 10),
       filename,
-      v('Показы'), v('Переходы в карточку'), v('CTR'), v('Положили в корзину'),
+      v('Показы'), v('Переходы в карточку'), v('CTR, %'), v('Положили в корзину'),
       v('Заказали, шт'), v('Выкупили, шт'), v('Отменили, шт'),
       v('Конверсия в корзину, %'), v('Конверсия в заказ, %'), v('Процент выкупа'),
       v('Заказали на сумму, ₽'), v('Средняя цена, ₽'),
