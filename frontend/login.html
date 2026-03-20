@@ -72,7 +72,7 @@
 
   const API = window.location.hostname === 'localhost'
     ? 'http://localhost:3000/api'
-    : 'https://funnel-zn2f.onrender.com/api'; // ← замените после деплоя
+    : '/api';
 
   // Если уже авторизован — редирект
   const token = localStorage.getItem('wb_token');
