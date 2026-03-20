@@ -38,9 +38,9 @@
     main{max-width:1200px;margin:0 auto;padding:24px 20px}
     .page-header{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap}
     .page-title{font-size:20px;font-weight:700}
-    .filter-mgr-wrap{display:none}
-    .filter-mgr-wrap select{border:0.5px solid var(--b);border-radius:9px;padding:7px 12px;font-size:13px;font-family:inherit;background:var(--card);color:var(--t)}
-    html.dark .filter-mgr-wrap select{background:#282440;border-color:rgba(255,255,255,.15);color:var(--t)}
+    .filter-mgr-wrap,.filter-cab-wrap{display:none}
+    .filter-mgr-wrap select,.filter-cab-wrap select{border:0.5px solid var(--b);border-radius:9px;padding:7px 12px;font-size:13px;font-family:inherit;background:var(--card);color:var(--t)}
+    html.dark .filter-mgr-wrap select,html.dark .filter-cab-wrap select{background:#282440;border-color:rgba(255,255,255,.15);color:var(--t)}
     .search-wrap{margin-left:auto}
     .search-wrap input{border:0.5px solid var(--b);border-radius:9px;padding:7px 14px;font-size:13px;font-family:inherit;background:var(--card);color:var(--t);width:220px}
     .search-wrap input:focus{outline:none;border-color:var(--wb)}
@@ -62,7 +62,9 @@
     /* ── PRODUCT CARDS ── */
     .products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
     .ue-card{background:var(--card);border:0.5px solid var(--b);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px}
-    .ue-card-mgr{font-size:11px;color:var(--wb);font-weight:600}
+    .ue-card-badges{display:flex;gap:5px;flex-wrap:wrap}
+    .ue-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;background:var(--wb2);color:var(--wb)}
+    .ue-badge.cab{background:rgba(22,163,74,.1);color:var(--green)}
     .ue-card-name{font-size:15px;font-weight:700;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .ue-card-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     .ue-metric{background:var(--bg);border-radius:9px;padding:10px 12px}
@@ -159,9 +161,13 @@
   <div class="page-header">
     <h1 class="page-title">Юнит-экономика</h1>
     <button class="btn btn-primary" id="btn-add">+ Добавить товар</button>
-    <!-- [3] Фильтр по менеджеру — виден только для админа -->
+    <!-- Фильтр по менеджеру — виден только для админа -->
     <div class="filter-mgr-wrap">
       <select id="filter-manager"><option value="">Все менеджеры</option></select>
+    </div>
+    <!-- Фильтр по кабинету -->
+    <div class="filter-cab-wrap">
+      <select id="filter-cabinet"><option value="">Все кабинеты</option></select>
     </div>
     <div class="search-wrap">
       <input type="search" id="search-input" placeholder="Поиск по названию…">
@@ -190,10 +196,13 @@
         <table>
           <thead>
             <tr>
-              <!-- [3] Столбец менеджера для админа -->
+              <!-- Столбец менеджера для админа -->
               <th id="th-manager" style="display:none">Менеджер</th>
+              <!-- Столбец кабинета -->
+              <th id="th-cabinet" style="display:none">Кабинет</th>
               <th>Товар</th>
-              <th>Цена продажи</th>
+              <th>Цена до СПП</th>
+              <th>Цена с СПП</th>
               <th>Себестоим./шт</th>
               <th>Удержания WB/шт</th>
               <th>Налоги/шт</th>
@@ -203,7 +212,7 @@
             </tr>
           </thead>
           <tbody id="summary-tbody">
-            <tr><td colspan="9" style="text-align:center;padding:30px;color:var(--g)">Нет данных</td></tr>
+            <tr><td colspan="10" style="text-align:center;padding:30px;color:var(--g)">Нет данных</td></tr>
           </tbody>
         </table>
       </div>
@@ -235,10 +244,16 @@
       <div class="form-block">
         <div class="block-title">Основные параметры</div>
 
-        <!-- [2] Выбор менеджера — только для админа -->
+        <!-- Выбор менеджера — только для админа -->
         <div class="field" style="display:none">
           <label>Менеджер</label>
           <select id="m-manager_id"><option value="">— Выберите менеджера —</option></select>
+        </div>
+
+        <!-- Выбор кабинета -->
+        <div class="field">
+          <label>Кабинет</label>
+          <select id="m-cabinet_id"><option value="">— Без кабинета —</option></select>
         </div>
 
         <div class="field">
@@ -332,16 +347,23 @@
             <span class="field-hint">Из справки WB по категории</span>
           </div>
           <div class="field">
-            <label>Приёмка товара, ₽/шт</label>
+            <label>Приёмка товара, ₽/партию</label>
             <input type="number" id="m-acceptance_cost" value="0" min="0" step="0.01">
+            <span class="field-hint">Общая сумма на партию ÷ кол-во = ₽/шт</span>
           </div>
         </div>
 
-        <!-- [4][5] Коэф. склада вынесен сюда и влияет на логистику -->
-        <div class="field">
-          <label>Коэффициент склада</label>
-          <input type="number" id="m-warehouse_coeff" value="1" min="0.1" max="10" step="0.01">
-          <span class="field-hint">Умножается на базовую стоимость логистики и на платную приёмку</span>
+        <div class="row-2">
+          <div class="field">
+            <label>Коэф. склада (логистика)</label>
+            <input type="number" id="m-wh_coeff_logistics" value="1" min="0.1" max="10" step="0.01">
+            <span class="field-hint">Умножается на базовый тариф FBS</span>
+          </div>
+          <div class="field">
+            <label>Коэф. склада (приёмка)</label>
+            <input type="number" id="m-warehouse_coeff" value="1" min="0.1" max="10" step="0.01">
+            <span class="field-hint">Умножается на платную приёмку (1,7×объём×коэф.)</span>
+          </div>
         </div>
 
         <div class="block-hint">
@@ -394,8 +416,8 @@
 
         <div class="block-hint">
           📋 Эквайринг 2,5% рассчитывается автоматически.<br>
-          Платная приёмка = 1,7 × объём × коэф. склада.<br>
-          Базовая логистика = тариф × коэф. склада × КТР.
+          Платная приёмка = 1,7 × объём × коэф. склада (приёмка).<br>
+          Базовая логистика = тариф × коэф. склада (логистика) × КТР.
         </div>
       </div>
 
@@ -424,6 +446,10 @@
             </div>
           </div>
 
+          <div style="display:flex;gap:10px;margin-bottom:12px;font-size:12px;color:var(--g)">
+            <span>Цена с СПП: <b id="r-price-spp" style="color:var(--t)">—</b></span>
+          </div>
+
           <div class="results-detail">
             <div>
               <div class="rrow"><span class="rrow-label">Себестоимость</span><span class="rrow-val" id="r-selfcost">—</span></div>
@@ -432,8 +458,8 @@
               <div class="rrow"><span class="rrow-label">Всего затрат</span><span class="rrow-val" id="r-costs">—</span></div>
             </div>
             <div>
-              <!-- [5] Показываем базовую логистику с коэф. -->
-              <div class="rrow"><span class="rrow-label">База × коэф. склада</span><span class="rrow-val" id="r-base-log">—</span></div>
+              <div class="rrow"><span class="rrow-label">Тариф × коэф. лог.</span><span class="rrow-val" id="r-base-log">—</span></div>
+              <div class="rrow"><span class="rrow-label">Приёмка на шт</span><span class="rrow-val" id="r-acceptance-u">—</span></div>
               <div class="rrow"><span class="rrow-label">Логистика итог</span><span class="rrow-val" id="r-logistics">—</span></div>
               <div class="rrow"><span class="rrow-label">— доставка</span><span class="rrow-val" id="r-delivery">—</span></div>
               <div class="rrow"><span class="rrow-label">— возвраты</span><span class="rrow-val" id="r-returns">—</span></div>

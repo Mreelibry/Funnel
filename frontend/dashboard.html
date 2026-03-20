@@ -297,6 +297,9 @@
     .fm-view-item:hover{background:rgba(255,255,255,.06)}
     .fm-view-lbl{font-size:10px;color:var(--g)}
     .fm-view-val{font-size:14px;font-weight:700;color:var(--t)}
+    .fm-drag-handle{cursor:grab;color:var(--g);font-size:16px;padding:2px 4px;opacity:.5;flex-shrink:0;user-select:none}
+    .fm-drag-handle:hover{opacity:1}
+    .fm-drag-handle:active{cursor:grabbing}
     .fm-card-edit-btn{background:none;border:1px solid var(--wb3);border-radius:6px;padding:3px 8px;color:var(--g);cursor:pointer;font-size:12px;transition:border-color .15s,color .15s}
     .fm-card-edit-btn:hover{border-color:#8b5cf6;color:#8b5cf6}
     .fm-card-edit-btn.done{border-color:#22c55e;color:#22c55e}
@@ -360,6 +363,22 @@
     .fm-day-tbl .weekend{opacity:.55}
     .fm-add-btn{background:var(--wb2);border:1.5px dashed var(--wb3);border-radius:14px;padding:18px;text-align:center;color:var(--wb);font-size:13px;font-weight:600;cursor:pointer;width:100%;font-family:inherit;transition:background .15s}
     .fm-add-btn:hover{background:var(--wb3)}
+    /* ── Label system ── */
+    .fm-labels-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:var(--card);border:0.5px solid var(--b);border-radius:12px}
+    .fm-labels-bar-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--g);flex-shrink:0}
+    .fm-label-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:opacity .15s}
+    .fm-label-chip:hover{opacity:.8}
+    .fm-label-chip .fm-chip-del{opacity:.5;font-size:10px;margin-left:2px;cursor:pointer}
+    .fm-label-chip .fm-chip-del:hover{opacity:1}
+    .fm-label-add-btn{background:none;border:1px dashed var(--wb3);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--wb);cursor:pointer;font-family:inherit}
+    .fm-label-add-btn:hover{background:var(--wb2)}
+    .fm-art-labels{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+    .fm-art-label-chip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;cursor:pointer;opacity:.85}
+    .fm-art-label-chip:hover{opacity:1}
+    .fm-group-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g);padding:8px 4px 4px;margin-top:6px}
+    .fm-label-filter-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    .fm-label-filter-chip{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid transparent;cursor:pointer;opacity:.6}
+    .fm-label-filter-chip.active{opacity:1;border-color:currentColor}
     .fm-charts-section{background:var(--card);border-radius:14px;border:0.5px solid var(--b);padding:18px 20px;margin-bottom:30px}
     .fm-charts-hdr{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
     .fm-charts-ttl{font-size:14px;font-weight:700;color:var(--t);flex:1}
@@ -1847,7 +1866,7 @@ init();
 // ══════════════════════════════════════
 const FM_KEY = 'wb_finmodel';
 let fmNextId = 1;
-let FM = { projectName: 'Финансовая модель', months: 1, startDate: '', articles: [], cabinetId: null };
+let FM = { projectName: 'Финансовая модель', months: 1, startDate: '', articles: [], cabinetId: null, labelDefs: [] };
 let fmChartInst = {};
 let fmChartTimer = null;
 let fmSaveTimer  = null;
@@ -1882,6 +1901,7 @@ function fmNewArticle(overrides = {}) {
     weeklyPct: [],            // [] = auto; [20,25,...] = manual %
     weeklyPrice: {},          // { week_index: price } — dynamic price per week
     expandedWeeks: [],        // week indices with day detail open
+    labels: [],               // array of label ids assigned to this article
     ...overrides
   };
 }
@@ -2030,7 +2050,8 @@ async function fmSaveToDB(silent = false) {
     name:       FM.projectName,
     months:     FM.months,
     start_date: FM.startDate || null,
-    articles:   JSON.parse(JSON.stringify(FM.articles))
+    articles:   JSON.parse(JSON.stringify(FM.articles)),
+    label_defs: Array.isArray(FM.labelDefs) ? FM.labelDefs : [],
   };
   const doSave = () => API.put('/finmodels', payload);
   try {
@@ -2072,6 +2093,7 @@ async function fmLoadFromDB(mgrId) {
       FM.months      = data.months || 1;
       FM.startDate   = data.start_date ? data.start_date.slice(0, 10) : new Date().toISOString().slice(0, 10);
       FM.cabinetId   = data.cabinet_id || null;
+      FM.labelDefs   = Array.isArray(data.label_defs) ? data.label_defs : [];
       FM.articles    = data.articles;
       fmApplyDefaults(FM.articles);
       if (!FM.articles.length) FM.articles = [fmNewArticle({ name: 'Артикул 1' })];
@@ -2572,9 +2594,19 @@ function fmUpdateCard(id) {
   }
   const res = card.querySelector('.fm-results');
   if (res) res.innerHTML = fmResultsHtml(a, c);
-  // Update price row (breakeven label + slider range)
+  // Update price row — guard against destroying focused price input / slider
   const priceRow = card.querySelector('.fm-price-row');
-  if (priceRow) priceRow.innerHTML = fmPriceRowInner(a, c);
+  if (priceRow) {
+    const ae = document.activeElement;
+    const priceFocused = ae && (ae.id === 'fmp-' + id || ae.id === 'fms-' + id);
+    if (priceFocused) {
+      // Only update breakeven hint to avoid destroying focused element
+      const beB = priceRow.querySelector('.fm-be-hint b');
+      if (beB) beB.textContent = fmFmt(c.breakEven, 'rub');
+    } else {
+      priceRow.innerHTML = fmPriceRowInner(a, c);
+    }
+  }
   // Update view grid if in read mode
   if (!a.editMode) {
     const fw = card.querySelector('.fm-fields-wrap');
@@ -2632,6 +2664,7 @@ function fmCardHtml(a) {
     ondrop="fmDrop(event,${a.id})"
     ondragend="fmDragEnd(event,${a.id})">
   <div class="fm-card-header">
+    <span class="fm-drag-handle" title="Перетащить">⠿</span>
     <button class="fm-card-edit-btn" style="padding:3px 7px;font-size:14px;line-height:1" onclick="fmToggleCollapse(${a.id})" title="${a.collapsed ? 'Развернуть' : 'Свернуть'}">${a.collapsed ? '▸' : '▾'}</button>
     <input class="fm-art-name" id="fmn-${a.id}" value="${fmEsc(a.name)}"
       oninput="fmSet(${a.id},'name',this.value)" placeholder="Название" />
@@ -2653,6 +2686,7 @@ function fmCardHtml(a) {
   </div>
   <!-- Full card body -->
   <div class="fm-card-body">
+  ${fmArtLabelsHtml(a)}
   <div class="fm-art-period-row">
     <span class="fm-art-period-lbl">Период:</span>
     <div class="fm-period-btns">${[1,2,3,4,5,6].map(m=>`<button class="fm-period-btn${(a.months||1)===m?' active':''}" onclick="fmSetArtPeriod(${a.id},${m})">${m} мес</button>`).join('')}</div>
@@ -2701,6 +2735,77 @@ function fmCardHtml(a) {
 </div>`;
 }
 
+// ── Label management ──
+let fmLabelFilter = null; // null = all, string = label id
+
+const LABEL_COLORS = ['#7C3AED','#2563EB','#059669','#D97706','#DC2626','#DB2777','#0891B2'];
+
+function fmGetLabel(id) { return FM.labelDefs.find(l => l.id === id); }
+
+function fmAddLabel() {
+  const name = prompt('Название ярлыка:');
+  if (!name || !name.trim()) return;
+  const id = 'lbl_' + Date.now();
+  const color = LABEL_COLORS[FM.labelDefs.length % LABEL_COLORS.length];
+  FM.labelDefs.push({ id, name: name.trim(), color });
+  fmSave(); fmSaveToDB(); fmRenderFull();
+}
+
+function fmDeleteLabel(id) {
+  FM.labelDefs = FM.labelDefs.filter(l => l.id !== id);
+  FM.articles.forEach(a => { if (a.labels) a.labels = a.labels.filter(lid => lid !== id); });
+  if (fmLabelFilter === id) fmLabelFilter = null;
+  fmSave(); fmSaveToDB(); fmRenderFull();
+}
+
+function fmToggleArticleLabel(artId, labelId) {
+  const a = FM.articles.find(x => x.id === artId); if (!a) return;
+  if (!a.labels) a.labels = [];
+  const idx = a.labels.indexOf(labelId);
+  if (idx >= 0) a.labels.splice(idx, 1); else a.labels.push(labelId);
+  fmSave(); fmSaveToDB();
+  fmUpdateCard(artId);
+  fmRenderLabelsBar();
+}
+
+function fmSetLabelFilter(id) {
+  fmLabelFilter = fmLabelFilter === id ? null : id;
+  fmRenderFull();
+}
+
+function fmLabelsBarHtml() {
+  if (!FM.labelDefs) FM.labelDefs = [];
+  const chips = FM.labelDefs.map(l =>
+    `<span class="fm-label-chip fm-label-filter-chip${fmLabelFilter===l.id?' active':''}"
+       style="background:${l.color}22;color:${l.color}"
+       onclick="fmSetLabelFilter('${l.id}')">${fmEsc(l.name)}
+       <span class="fm-chip-del" onclick="event.stopPropagation();fmDeleteLabel('${l.id}')">✕</span>
+     </span>`
+  ).join('');
+  return `<div class="fm-labels-bar">
+    <span class="fm-labels-bar-title">Ярлыки:</span>
+    ${chips}
+    <button class="fm-label-add-btn" onclick="fmAddLabel()">＋ Добавить</button>
+    ${fmLabelFilter ? `<button class="fm-label-add-btn" style="margin-left:auto" onclick="fmSetLabelFilter(null)">✕ Сбросить фильтр</button>` : ''}
+  </div>`;
+}
+
+function fmRenderLabelsBar() {
+  const el = document.getElementById('fm-labels-bar');
+  if (el) el.outerHTML = fmLabelsBarHtml().replace('<div class="fm-labels-bar">', '<div class="fm-labels-bar" id="fm-labels-bar">');
+}
+
+function fmArtLabelsHtml(a) {
+  if (!FM.labelDefs || !FM.labelDefs.length) return '';
+  const assigned = (a.labels || []).map(id => FM.labelDefs.find(l => l.id === id)).filter(Boolean);
+  const unassigned = FM.labelDefs.filter(l => !(a.labels || []).includes(l.id));
+  const all = [
+    ...assigned.map(l => `<span class="fm-art-label-chip" style="background:${l.color}33;color:${l.color}" onclick="fmToggleArticleLabel(${a.id},'${l.id}')" title="Снять ярлык">${fmEsc(l.name)} ✓</span>`),
+    ...unassigned.map(l => `<span class="fm-art-label-chip" style="background:var(--bg);color:var(--g);opacity:.5" onclick="fmToggleArticleLabel(${a.id},'${l.id}')" title="Добавить ярлык">+ ${fmEsc(l.name)}</span>`),
+  ];
+  return all.length ? `<div class="fm-art-labels">${all.join('')}</div>` : '';
+}
+
 // ── Full rebuild ──
 function fmRenderFull() {
   fmSave();
@@ -2726,7 +2831,24 @@ function fmRenderFull() {
 
   if (chartsSection) chartsSection.style.display = '';
   fmUpdateSummary();
-  container.innerHTML = fmVisibleArticles().map(a => fmCardHtml(a)).join('') +
+
+  // Labels bar
+  const labelsBarEl = document.getElementById('fm-labels-bar');
+  const labelsBarHtml = fmLabelsBarHtml().replace('<div class="fm-labels-bar">', '<div class="fm-labels-bar" id="fm-labels-bar">');
+  if (labelsBarEl) labelsBarEl.outerHTML = labelsBarHtml;
+  else {
+    const lbEl = document.createElement('div');
+    lbEl.innerHTML = labelsBarHtml;
+    container.parentNode.insertBefore(lbEl.firstChild, container);
+  }
+
+  // Filter articles by label if needed
+  let visible = fmVisibleArticles();
+  if (fmLabelFilter) {
+    visible = visible.filter(a => (a.labels || []).includes(fmLabelFilter));
+  }
+
+  container.innerHTML = visible.map(a => fmCardHtml(a)).join('') +
     `<button class="fm-add-btn" onclick="fmAddArticle()">＋ Добавить артикул</button>`;
   fmScheduleCharts();
 }
@@ -3237,6 +3359,10 @@ function fmFilterArticles(query) {
 // ── Drag & drop cards ──
 let fmDragId = null;
 function fmDragStart(e, id) {
+  // Only allow drag from the drag handle; block all interactive elements
+  if (e.target.closest('input, select, textarea, button, a')) {
+    e.preventDefault(); return;
+  }
   fmDragId = id;
   e.dataTransfer.effectAllowed = 'move';
   const card = document.getElementById('fmc-' + id);
