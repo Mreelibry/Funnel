@@ -44,7 +44,7 @@ async function apiFetch(path, options = {}) {
   }
 
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  if (!res.ok) throw new Error(data.detail || data.error || `HTTP ${res.status}`);
   return data;
 }
 
