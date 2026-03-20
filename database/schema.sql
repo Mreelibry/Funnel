@@ -94,6 +94,23 @@ CREATE TABLE IF NOT EXISTS finmodels (
 CREATE INDEX IF NOT EXISTS idx_finmodels_manager ON finmodels(manager_id);
 CREATE INDEX IF NOT EXISTS idx_finmodels_updated ON finmodels(updated_at DESC);
 
+-- ──────────────────────────────────────────
+-- ТАБЛИЦА: daily_reports
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS daily_reports (
+  id          UUID      PRIMARY KEY DEFAULT uuid_generate_v4(),
+  manager_id  UUID      NOT NULL REFERENCES managers(id) ON DELETE CASCADE,
+  report_date DATE      NOT NULL DEFAULT CURRENT_DATE,
+  tasks       JSONB     NOT NULL DEFAULT '[]',
+  notes       TEXT      NOT NULL DEFAULT '',
+  created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_manager ON daily_reports(manager_id);
+CREATE INDEX IF NOT EXISTS idx_daily_date    ON daily_reports(report_date DESC);
+
+-- ──────────────────────────────────────────
 -- Migrations for existing databases (safe to re-run)
 ALTER TABLE reports   ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id) ON DELETE SET NULL;
 ALTER TABLE finmodels ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id) ON DELETE SET NULL;

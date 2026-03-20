@@ -1727,7 +1727,7 @@ function openDailyModal() {
 function editDaily(r) {
   editingDailyId = r.id;
   document.getElementById('daily-modal-title').textContent = 'Редактировать отчёт';
-  document.getElementById('dr-date').value   = r.report_date;
+  document.getElementById('dr-date').value   = (r.report_date || '').slice(0, 10);
   document.getElementById('dr-notes').value  = r.notes || '';
   document.getElementById('task-rows').innerHTML = '';
   (r.tasks||[]).forEach(t => addTaskRow(t));
