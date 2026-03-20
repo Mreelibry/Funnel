@@ -91,7 +91,7 @@ router.put('/', authenticate, async (req, res) => {
     const result = await db.query(
       `INSERT INTO finmodels (manager_id, cabinet_id, name, months, start_date, articles)
        VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (cabinet_id) DO UPDATE SET
+       ON CONFLICT (cabinet_id) WHERE cabinet_id IS NOT NULL DO UPDATE SET
          manager_id = EXCLUDED.manager_id,
          name       = EXCLUDED.name,
          months     = EXCLUDED.months,

@@ -2011,26 +2011,28 @@ function fmSave() {
   fmSaveTimer = setTimeout(fmSaveToDB, 1000);
 }
 
-async function fmSaveToDB() {
+async function fmSaveToDB(silent = false) {
   const mgrId = (typeof user !== 'undefined' && user)
     ? (user.manager_id || (user.role === 'admin' ? (typeof selectedManagerId !== 'undefined' ? selectedManagerId : null) : null))
     : null;
   // Кабинет и менеджер обязательны для сохранения
   if (!FM.cabinetId) { fmShowSaveInd('', ''); return; }
   if (!mgrId)        { fmShowSaveInd('', ''); return; }
+  // Снимок данных на момент вызова (избегаем race condition при retry)
   const payload = {
     manager_id: mgrId,
     cabinet_id: FM.cabinetId,
     name:       FM.projectName,
     months:     FM.months,
     start_date: FM.startDate || null,
-    articles:   FM.articles
+    articles:   JSON.parse(JSON.stringify(FM.articles))
   };
   const doSave = () => API.put('/finmodels', payload);
   try {
     await doSave();
-    fmShowSaveInd('✓ Сохранено', 'success');
+    if (!silent) fmShowSaveInd('✓ Сохранено', 'success');
   } catch(e) {
+    if (silent) return; // при переключении — тихо игнорируем ошибку
     // Тихая повторная попытка через 2 секунды
     await new Promise(r => setTimeout(r, 2000));
     try {
@@ -2094,7 +2096,7 @@ function fmPopulateCabinetSel() {
 async function fmSetCabinet(val) {
   // 1. Сохранить текущий кабинет немедленно
   clearTimeout(fmSaveTimer);
-  await fmSaveToDB();
+  await fmSaveToDB(true); // silent=true — не показывать ошибку при переключении
   // 2. Переключиться на новый кабинет
   FM.cabinetId = val || null;
   FM.articles  = [];
