@@ -118,6 +118,39 @@ ALTER TABLE finmodels ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabine
 CREATE UNIQUE INDEX IF NOT EXISTS idx_finmodels_cabinet ON finmodels(cabinet_id) WHERE cabinet_id IS NOT NULL;
 
 -- ──────────────────────────────────────────
+-- ТАБЛИЦА: unit_economics
+-- Юнит-экономика — расчёт себестоимости и прибыли по товарам
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS unit_economics (
+  id               UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  manager_id       UUID          NOT NULL REFERENCES managers(id) ON DELETE CASCADE,
+  name             TEXT          NOT NULL DEFAULT 'Новый товар',
+  currency_rate    NUMERIC(12,4) NOT NULL DEFAULT 1,
+  purchase_price   NUMERIC(12,2) NOT NULL DEFAULT 0,
+  batch_qty        INTEGER       NOT NULL DEFAULT 1,
+  length_cm        NUMERIC(8,2)  NOT NULL DEFAULT 0,
+  width_cm         NUMERIC(8,2)  NOT NULL DEFAULT 0,
+  height_cm        NUMERIC(8,2)  NOT NULL DEFAULT 0,
+  commission_pct   NUMERIC(6,3)  NOT NULL DEFAULT 0,
+  price_before_spp NUMERIC(12,2) NOT NULL DEFAULT 0,
+  buyout_pct       NUMERIC(6,2)  NOT NULL DEFAULT 100,
+  ad_spend_pct     NUMERIC(6,3)  NOT NULL DEFAULT 0,
+  loc_index        NUMERIC(10,5) NOT NULL DEFAULT 1,
+  sales_dist_index NUMERIC(10,5) NOT NULL DEFAULT 0,
+  tax_system       TEXT          NOT NULL DEFAULT 'Не считать налог',
+  tax_rate         NUMERIC(6,3)  NOT NULL DEFAULT 0,
+  spp              NUMERIC(6,3),
+  acceptance_cost  NUMERIC(12,2) NOT NULL DEFAULT 0,
+  storage_cost     NUMERIC(12,2) NOT NULL DEFAULT 0,
+  warehouse_coeff  NUMERIC(8,4)  NOT NULL DEFAULT 1,
+  extra_expenses   NUMERIC(12,2) NOT NULL DEFAULT 0,
+  created_at       TIMESTAMP     NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_unit_econ_manager ON unit_economics(manager_id);
+
+-- ──────────────────────────────────────────
 -- НАЧАЛЬНЫЕ ДАННЫЕ: Admin пользователь
 -- password = Admin123 (bcrypt hash)
 -- ──────────────────────────────────────────
