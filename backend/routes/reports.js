@@ -12,42 +12,104 @@ function parseWBReport(buffer, filename) {
   const wb   = XLSX.read(buffer, { type: 'buffer' });
   const result = { summary: null, goods: [], period_start: null, period_end: null };
 
-  // Период из листа "Общая информация"
-  const infoSheet = wb.Sheets['Общая информация'];
+  // Нормализация имени листа для сравнения
+  const normSheet = name => name.trim().toLowerCase().replace(/\s+/g, ' ');
+
+  // Найти лист по нескольким возможным именам (или вернуть первый совпадающий)
+  const findSheet = (...names) => {
+    for (const n of names) {
+      const found = wb.SheetNames.find(s => normSheet(s) === normSheet(n));
+      if (found) return wb.Sheets[found];
+    }
+    return null;
+  };
+
+  // Лог всех листов для диагностики
+  console.log('[WB parse] Sheets:', wb.SheetNames.join(', '), '| File:', filename);
+
+  // ── Период ──
+  const infoSheet = findSheet('Общая информация', 'Информация', 'Info', 'Summary');
   if (infoSheet) {
     const rows = XLSX.utils.sheet_to_json(infoSheet, { header: 1, defval: '' });
-    for (const r of rows) {
-      const s = String(r[1] || '');
-      const m = s.match(/(\d{4}-\d{2}-\d{2})/g);
-      if (m && m.length >= 2) {
-        result.period_start = m[0];
-        result.period_end   = m[1];
+    // Ищем даты в любой ячейке любой строки (yyyy-mm-dd или dd.mm.yyyy)
+    const reISO  = /(\d{4}-\d{2}-\d{2})/g;
+    const reRU   = /(\d{2})\.(\d{2})\.(\d{4})/g;
+    const toISO  = (d, m, y) => `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    for (const row of rows) {
+      const allText = row.map(c => String(c || '')).join(' ');
+      // Формат yyyy-mm-dd
+      const mISO = [...allText.matchAll(reISO)].map(m => m[1]);
+      if (mISO.length >= 2) { result.period_start = mISO[0]; result.period_end = mISO[1]; break; }
+      // Формат dd.mm.yyyy
+      const mRU = [...allText.matchAll(reRU)].map(m => toISO(m[1], m[2], m[3]));
+      if (mRU.length >= 2) { result.period_start = mRU[0]; result.period_end = mRU[1]; break; }
+    }
+  }
+  // Fallback: искать даты во всех листах
+  if (!result.period_start) {
+    for (const sName of wb.SheetNames) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sName], { header: 1, defval: '' });
+      for (const row of rows) {
+        const allText = row.map(c => String(c || '')).join(' ');
+        const mISO = [...allText.matchAll(/(\d{4}-\d{2}-\d{2})/g)].map(m => m[1]);
+        if (mISO.length >= 2) { result.period_start = mISO[0]; result.period_end = mISO[1]; break; }
+      }
+      if (result.period_start) break;
+    }
+  }
+
+  // ── Сводка (ищем лист с заголовком "Показы") ──
+  const summarySheetNames = ['Фильтры', 'Сводка', 'Воронка', 'Статистика', 'Главная', 'Данные', 'Filters', 'Summary', 'Stats'];
+  // Сначала пробуем известные названия
+  let filtSheet = findSheet(...summarySheetNames);
+  // Если не нашли — сканируем все листы в поисках строки с "Показы"
+  if (!filtSheet) {
+    for (const sName of wb.SheetNames) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sName], { header: 1, defval: '' });
+      if (rows.some(r => r.some(c => String(c).includes('Показы')))) {
+        filtSheet = wb.Sheets[sName];
+        console.log('[WB parse] Summary found in sheet:', sName);
         break;
       }
     }
   }
-
-  // Сводные данные из листа "Фильтры"
-  const filtSheet = wb.Sheets['Фильтры'];
   if (filtSheet) {
     const rows = XLSX.utils.sheet_to_json(filtSheet, { header: 1, defval: '' });
     let hi = -1;
     for (let i = 0; i < rows.length; i++) {
-      if (rows[i].some(c => String(c).trim() === 'Показы')) { hi = i; break; }
+      // Ищем строку-заголовок: содержит "Показы" (точно или как подстроку)
+      if (rows[i].some(c => String(c).trim().includes('Показы'))) { hi = i; break; }
     }
     if (hi >= 0) {
-      const headers = rows[hi].map(c => String(c).trim());
+      const headers = rows[hi].map(c => String(c).trim().replace(/[\u20A0-\u20CF]/g, '₽'));
       const data    = rows[hi + 1] || [];
       const obj = {};
-      headers.forEach((k, i) => { if (k) obj[k.replace(/[\u20A0-\u20CF]/g, '₽')] = data[i]; });
+      headers.forEach((k, i) => { if (k) obj[k] = data[i]; });
       result.summary = obj;
+      console.log('[WB parse] Summary keys:', Object.keys(obj).join(', '));
+    } else {
+      console.log('[WB parse] No header row with "Показы" found in summary sheet');
     }
+  } else {
+    console.log('[WB parse] No summary sheet found');
   }
 
-  // Данные по товарам из листа "Товары"
-  const goodsSheet = wb.Sheets['Товары'];
-  if (goodsSheet) {
-    const rows = XLSX.utils.sheet_to_json(goodsSheet, { header: 1, defval: '' });
+  // ── Товары ──
+  const goodsSheet = findSheet('Товары', 'Товары WB', 'По товарам', 'Артикулы', 'Products', 'Goods', 'Items');
+  // Fallback: ищем лист с "Артикул" в первой строке
+  let resolvedGoodsSheet = goodsSheet;
+  if (!resolvedGoodsSheet) {
+    for (const sName of wb.SheetNames) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sName], { header: 1, defval: '' });
+      if (rows.some(r => String(r[0] || '').includes('Артикул'))) {
+        resolvedGoodsSheet = wb.Sheets[sName];
+        console.log('[WB parse] Goods found in sheet:', sName);
+        break;
+      }
+    }
+  }
+  if (resolvedGoodsSheet) {
+    const rows = XLSX.utils.sheet_to_json(resolvedGoodsSheet, { header: 1, defval: '' });
     let hi = -1;
     for (let i = 0; i < rows.length; i++) {
       if (String(rows[i][0]).includes('Артикул')) { hi = i; break; }
@@ -66,6 +128,21 @@ function parseWBReport(buffer, filename) {
 
   return result;
 }
+
+// ── GET /api/reports/debug/:id — диагностика raw_data (только admin) ──
+router.get('/debug/:id', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const r = await db.query('SELECT id, filename, raw_data FROM reports WHERE id = $1', [req.params.id]);
+    if (!r.rows[0]) return res.status(404).json({ error: 'Not found' });
+    const raw = r.rows[0].raw_data;
+    res.json({
+      filename: r.rows[0].filename,
+      summary_keys: raw?.summary ? Object.keys(raw.summary) : null,
+      summary_values: raw?.summary || null,
+      goods_count: raw?.goods?.length || 0,
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 
 // ── GET /api/reports ──
 // Admin → все или по manager_id; Manager → только свои
