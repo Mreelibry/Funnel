@@ -3,38 +3,14 @@ name: Deploy to Production
 on:
   push:
     branches:
-      - server
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Copy frontend files
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: 138.197.186.124
-          username: root
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "frontend/"
-          target: "/var/www/funnel/"
-          strip_components: 0
-
-      - name: Copy backend files
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: 138.197.186.124
-          username: root
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "backend/"
-          target: "/var/www/funnel/"
-          strip_components: 0
-          # .env и node_modules не трогаем — они на сервере
-
-      - name: Install dependencies & restart
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: 138.197.186.124
@@ -42,7 +18,14 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             set -e
+            cd /var/www/funnel
+
+            git fetch origin main
+            git reset --hard origin/main
+
             cd /var/www/funnel/backend
             npm install --omit=dev
+
             pm2 restart funnel-backend
+
             echo "✅ Deploy done"
