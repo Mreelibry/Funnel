@@ -10,22 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: 138.197.186.124
-          username: root
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            set -e
-            cd /var/www/funnel
-
-            git fetch origin main
-            git reset --hard origin/main
-
-            cd /var/www/funnel/backend
-            npm install --omit=dev
-
-            pm2 restart funnel-backend
-
-            echo "✅ Deploy done"
+      - name: Trigger deploy webhook
+        run: |
+          curl -f -X POST https://datametrics-manager.ibm.kg/deploy \
+            -H "Content-Type: application/json" \
+            -H "X-Hub-Signature-256: sha256=$(echo -n '{}' | openssl dgst -sha256 -hmac '${{ secrets.WEBHOOK_SECRET }}' | cut -d' ' -f2)" \
+            -d '{}'
