@@ -84,6 +84,11 @@ async function runMigrations() {
       updated_at       TIMESTAMP     NOT NULL DEFAULT NOW()
     )`,
     `CREATE INDEX IF NOT EXISTS idx_unit_econ_manager ON unit_economics(manager_id)`,
+    // Новые колонки юнит-экономики
+    `ALTER TABLE unit_economics ADD COLUMN IF NOT EXISTS wh_coeff_logistics NUMERIC(8,4) NOT NULL DEFAULT 1`,
+    `ALTER TABLE unit_economics ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id) ON DELETE SET NULL`,
+    // label_defs в финмоделях
+    `ALTER TABLE finmodels ADD COLUMN IF NOT EXISTS label_defs JSONB NOT NULL DEFAULT '[]'`,
   ];
   for (const sql of migrations) {
     try { await db.query(sql); }
