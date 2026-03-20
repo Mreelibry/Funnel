@@ -38,7 +38,7 @@ router.get('/', authenticate, async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ошибка сервера', detail: err.message });
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
@@ -73,7 +73,7 @@ router.post('/', authenticate, async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ошибка сервера', detail: err.message });
+    res.status(500).json({ error: 'Ошибка сервера' });
   }
 });
 
