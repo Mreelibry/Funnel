@@ -360,9 +360,9 @@
             <span class="field-hint">100% = без изменений; 150% = ×1,5 к тарифу FBS</span>
           </div>
           <div class="field">
-            <label>Коэф. склада (приёмка), %</label>
-            <input type="number" id="m-warehouse_coeff" value="100" min="1" max="500" step="1">
-            <span class="field-hint">100% = без изменений; 150% = ×1,5 к платной приёмке</span>
+            <label>Стоимость возврата, ₽/шт</label>
+            <input type="number" id="m-return_cost" value="0" min="0" step="0.01">
+            <span class="field-hint">0 = авто (тариф × КТР × коэф.)</span>
           </div>
         </div>
 
@@ -416,8 +416,8 @@
 
         <div class="block-hint">
           📋 Эквайринг 2,5% рассчитывается автоматически.<br>
-          Платная приёмка = 1,7 × объём × коэф. склада (приёмка).<br>
-          Базовая логистика = тариф × коэф. склада (логистика) × КТР.
+          Базовая логистика = тариф × коэф. склада % × КТР.<br>
+          Стоимость возврата: 0 = авто (тариф × коэф. × КТР, без КРП).
         </div>
       </div>
 
@@ -469,7 +469,6 @@
               <div class="rrow"><span class="rrow-label">Реклама</span><span class="rrow-val" id="r-adv">—</span></div>
               <div class="rrow"><span class="rrow-label">Эквайринг</span><span class="rrow-val" id="r-acquiring">—</span></div>
               <div class="rrow"><span class="rrow-label">Хранение</span><span class="rrow-val" id="r-storage-d">—</span></div>
-              <div class="rrow"><span class="rrow-label">Платная приёмка</span><span class="rrow-val" id="r-paid-acc">—</span></div>
               <div class="rrow"><span class="rrow-label">Всего удержаний WB</span><span class="rrow-val" id="r-totalwb">—</span></div>
               <div class="rrow"><span class="rrow-label">Налоги</span><span class="rrow-val" id="r-taxes">—</span></div>
             </div>
