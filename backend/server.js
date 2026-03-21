@@ -78,15 +78,19 @@ async function runMigrations() {
       spp              NUMERIC(6,3),
       acceptance_cost  NUMERIC(12,2) NOT NULL DEFAULT 0,
       storage_cost     NUMERIC(12,2) NOT NULL DEFAULT 0,
-      warehouse_coeff  NUMERIC(8,4)  NOT NULL DEFAULT 1,
+      warehouse_coeff  NUMERIC(8,2)  NOT NULL DEFAULT 100,
       extra_expenses   NUMERIC(12,2) NOT NULL DEFAULT 0,
       created_at       TIMESTAMP     NOT NULL DEFAULT NOW(),
       updated_at       TIMESTAMP     NOT NULL DEFAULT NOW()
     )`,
     `CREATE INDEX IF NOT EXISTS idx_unit_econ_manager ON unit_economics(manager_id)`,
     // Новые колонки юнит-экономики
-    `ALTER TABLE unit_economics ADD COLUMN IF NOT EXISTS wh_coeff_logistics NUMERIC(8,4) NOT NULL DEFAULT 1`,
+    `ALTER TABLE unit_economics ADD COLUMN IF NOT EXISTS wh_coeff_logistics NUMERIC(8,2) NOT NULL DEFAULT 100`,
     `ALTER TABLE unit_economics ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id) ON DELETE SET NULL`,
+    // Переход коэффициентов склада с множителя (1.0) на проценты (100):
+    // Если значение ≤ 10 — это старый формат (множитель), умножаем на 100
+    `UPDATE unit_economics SET warehouse_coeff   = warehouse_coeff   * 100 WHERE warehouse_coeff   <= 10`,
+    `UPDATE unit_economics SET wh_coeff_logistics = wh_coeff_logistics * 100 WHERE wh_coeff_logistics <= 10`,
     // label_defs в финмоделях
     `ALTER TABLE finmodels ADD COLUMN IF NOT EXISTS label_defs JSONB NOT NULL DEFAULT '[]'`,
   ];

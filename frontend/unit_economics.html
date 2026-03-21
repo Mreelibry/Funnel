@@ -355,14 +355,14 @@
 
         <div class="row-2">
           <div class="field">
-            <label>Коэф. склада (логистика)</label>
-            <input type="number" id="m-wh_coeff_logistics" value="1" min="0.1" max="10" step="0.01">
-            <span class="field-hint">Умножается на базовый тариф FBS</span>
+            <label>Коэф. склада (логистика), %</label>
+            <input type="number" id="m-wh_coeff_logistics" value="100" min="1" max="500" step="1">
+            <span class="field-hint">100% = без изменений; 150% = ×1,5 к тарифу FBS</span>
           </div>
           <div class="field">
-            <label>Коэф. склада (приёмка)</label>
-            <input type="number" id="m-warehouse_coeff" value="1" min="0.1" max="10" step="0.01">
-            <span class="field-hint">Умножается на платную приёмку (1,7×объём×коэф.)</span>
+            <label>Коэф. склада (приёмка), %</label>
+            <input type="number" id="m-warehouse_coeff" value="100" min="1" max="500" step="1">
+            <span class="field-hint">100% = без изменений; 150% = ×1,5 к платной приёмке</span>
           </div>
         </div>
 
