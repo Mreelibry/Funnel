@@ -45,7 +45,7 @@ router.post('/', authenticate, async (req, res) => {
     commission_pct, price_before_spp, buyout_pct,
     ad_spend_pct, loc_index, sales_dist_index,
     tax_system, tax_rate, spp,
-    acceptance_cost, storage_cost, warehouse_coeff, wh_coeff_logistics,
+    acceptance_cost, storage_cost, wh_coeff_logistics, return_cost,
     extra_expenses, cabinet_id,
   } = req.body;
 
@@ -57,7 +57,7 @@ router.post('/', authenticate, async (req, res) => {
         commission_pct, price_before_spp, buyout_pct,
         ad_spend_pct, loc_index, sales_dist_index,
         tax_system, tax_rate, spp,
-        acceptance_cost, storage_cost, warehouse_coeff, wh_coeff_logistics, extra_expenses
+        acceptance_cost, storage_cost, wh_coeff_logistics, return_cost, extra_expenses
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
       RETURNING *`,
       [
@@ -68,8 +68,8 @@ router.post('/', authenticate, async (req, res) => {
         ad_spend_pct || 0, loc_index || 1, sales_dist_index || 0,
         tax_system || 'Не считать налог', tax_rate || 0,
         (spp != null && spp !== '') ? spp : null,
-        acceptance_cost || 0, storage_cost || 0, warehouse_coeff || 1,
-        wh_coeff_logistics || 1, extra_expenses || 0,
+        acceptance_cost || 0, storage_cost || 0,
+        wh_coeff_logistics || 100, return_cost || 0, extra_expenses || 0,
       ]
     );
     res.json(result.rows[0]);
@@ -88,7 +88,7 @@ router.put('/:id', authenticate, async (req, res) => {
     commission_pct, price_before_spp, buyout_pct,
     ad_spend_pct, loc_index, sales_dist_index,
     tax_system, tax_rate, spp,
-    acceptance_cost, storage_cost, warehouse_coeff, wh_coeff_logistics,
+    acceptance_cost, storage_cost, wh_coeff_logistics, return_cost,
     extra_expenses, cabinet_id,
   } = req.body;
 
@@ -106,7 +106,7 @@ router.put('/:id', authenticate, async (req, res) => {
         commission_pct=$9, price_before_spp=$10, buyout_pct=$11,
         ad_spend_pct=$12, loc_index=$13, sales_dist_index=$14,
         tax_system=$15, tax_rate=$16, spp=$17,
-        acceptance_cost=$18, storage_cost=$19, warehouse_coeff=$20, wh_coeff_logistics=$21,
+        acceptance_cost=$18, storage_cost=$19, wh_coeff_logistics=$20, return_cost=$21,
         extra_expenses=$22, updated_at=NOW()
       WHERE id=$23 RETURNING *`,
       [
@@ -116,8 +116,8 @@ router.put('/:id', authenticate, async (req, res) => {
         ad_spend_pct, loc_index, sales_dist_index,
         tax_system, tax_rate,
         (spp != null && spp !== '') ? spp : null,
-        acceptance_cost, storage_cost, warehouse_coeff, wh_coeff_logistics || 1,
-        extra_expenses, id,
+        acceptance_cost, storage_cost, wh_coeff_logistics || 100,
+        return_cost || 0, extra_expenses, id,
       ]
     );
     res.json(result.rows[0]);

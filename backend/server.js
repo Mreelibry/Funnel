@@ -87,6 +87,7 @@ async function runMigrations() {
     // Новые колонки юнит-экономики
     `ALTER TABLE unit_economics ADD COLUMN IF NOT EXISTS wh_coeff_logistics NUMERIC(8,2) NOT NULL DEFAULT 100`,
     `ALTER TABLE unit_economics ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id) ON DELETE SET NULL`,
+    `ALTER TABLE unit_economics ADD COLUMN IF NOT EXISTS return_cost NUMERIC(12,2) NOT NULL DEFAULT 0`,
     // Переход коэффициентов склада с множителя (1.0) на проценты (100):
     // Если значение ≤ 10 — это старый формат (множитель), умножаем на 100
     `UPDATE unit_economics SET warehouse_coeff   = warehouse_coeff   * 100 WHERE warehouse_coeff   <= 10`,

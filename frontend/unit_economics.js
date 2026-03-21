@@ -48,13 +48,14 @@ function calcUE(p) {
   const taxSystem      = p.tax_system || 'Не считать налог';
   const taxRate        = n(p.tax_rate) / 100;
   const storage        = n(p.storage_cost);             // ₽/шт
-  // [*] Два разных коэффициента склада (в %: 100 = ×1.0, 150 = ×1.5):
-  const whCoeffAcc     = (n(p.warehouse_coeff) || 100) / 100;    // для платной приёмки
-  const whCoeffLog     = (n(p.wh_coeff_logistics) || 100) / 100; // для базовой логистики
+  // Коэф. склада для логистики (в %: 100 = ×1.0, 150 = ×1.5)
+  const whCoeffLog     = (n(p.wh_coeff_logistics) || 100) / 100;
   const extraExp       = n(p.extra_expenses);           // ₽ на всю партию
-  // [*] Приёмка товара — на всю партию, делим на batchQty для шт
+  // Приёмка — на всю партию, делим на batchQty для шт (отдельная статья)
   const acceptanceBatch = n(p.acceptance_cost);         // ₽/партию
   const acceptanceUnit  = div(acceptanceBatch, batchQty);
+  // Ручная стоимость возврата (если 0 — считаем как доставка без КРП)
+  const returnCostInput = n(p.return_cost);             // ₽/шт (вручную)
   const sppVal          = (p.spp != null && p.spp !== '') ? n(p.spp) / 100 : null;
 
   // Объём (литры)
@@ -80,8 +81,8 @@ function calcUE(p) {
   const forwardCost = sdIdx > 0
     ? baseLogistics * locIdx + sdIdx * priceSPP
     : baseLogistics * locIdx;
-  // Возврат (без КРП — не продажа)
-  const returnCost = baseLogistics * locIdx;
+  // Возврат: ручное значение или авто = доставка без КРП
+  const returnCost = returnCostInput > 0 ? returnCostInput : baseLogistics * locIdx;
 
   // Формула: (100/выкуп%) × доставка + (100/выкуп% − 1) × возврат
   const logisticsTotal = buyoutPct > 0
@@ -92,9 +93,7 @@ function calcUE(p) {
   const wbCommRub      = commPct * priceSPP;
   const acquiring      = 0.025 * priceSPP;
   const advertisingRub = adPct * priceSPP;
-  // Платная приёмка — отдельная статья расхода (коэф. приёмки)
-  const paidAcceptance = 1.7 * volume * whCoeffAcc;
-  const totalWb        = storage + logisticsTotal + acceptanceUnit + wbCommRub + acquiring + paidAcceptance + advertisingRub;
+  const totalWb        = storage + logisticsTotal + acceptanceUnit + wbCommRub + acquiring + advertisingRub;
   const totalWbPct     = div(totalWb, priceSPP);
 
   // ── Цена и приход ──
@@ -124,8 +123,8 @@ function calcUE(p) {
     volume, selfCost, batchCost, batchCostAfterShip, commRub,
     baseTariff, baseLogisticsRaw, baseLogistics,
     acceptanceBatch, acceptanceUnit,
-    forwardCost, returnCost, logisticsTotal,
-    wbCommRub, acquiring, advertisingRub, paidAcceptance,
+    forwardCost, returnCost, returnCostInput, logisticsTotal,
+    wbCommRub, acquiring, advertisingRub,
     totalWb, totalWbPct,
     priceWithSPP, incomeToAccount,
     usnTax, totalTaxes, totalTaxesPct,
@@ -321,8 +320,8 @@ const FIELDS = [
   'name','currency_rate','purchase_price','batch_qty','price_before_spp','spp',
   'tax_system','tax_rate',
   'length_cm','width_cm','height_cm','buyout_pct','loc_index','sales_dist_index',
-  'acceptance_cost','wh_coeff_logistics',
-  'commission_pct','ad_spend_pct','storage_cost','warehouse_coeff','extra_expenses',
+  'acceptance_cost','wh_coeff_logistics','return_cost',
+  'commission_pct','ad_spend_pct','storage_cost','extra_expenses',
 ];
 
 function getFormData() {
@@ -359,7 +358,7 @@ function setFormData(p) {
 function resetForm() {
   const defaults = {
     currency_rate: 1, batch_qty: 1, buyout_pct: 100, loc_index: 1,
-    warehouse_coeff: 100, wh_coeff_logistics: 100, tax_system: 'Не считать налог',
+    wh_coeff_logistics: 100, tax_system: 'Не считать налог',
   };
   for (const f of FIELDS) {
     const el = document.getElementById('m-' + f);
@@ -393,7 +392,6 @@ function updateLiveResults() {
   set('r-acquiring',    fmt.rub(r.acquiring) + '/шт');
   set('r-adv',          fmt.rub(r.advertisingRub) + '/шт');
   set('r-storage-d',    fmt.rub(+data.storage_cost || 0) + '/шт');
-  set('r-paid-acc',     fmt.rub(r.paidAcceptance) + '/шт');
   set('r-totalwb',      fmt.rub(r.totalWb) + '/шт (' + fmt.pct(r.totalWbPct) + ')');
   set('r-taxes',        fmt.rub(r.totalTaxes) + '/шт (' + fmt.pct(r.totalTaxesPct) + ')');
   set('r-income',       fmt.rub(r.incomeToAccount) + '/шт');
