@@ -48,9 +48,9 @@ function calcUE(p) {
   const taxSystem      = p.tax_system || 'Не считать налог';
   const taxRate        = n(p.tax_rate) / 100;
   const storage        = n(p.storage_cost);             // ₽/шт
-  // [*] Два разных коэффициента склада:
-  const whCoeffAcc     = n(p.warehouse_coeff) || 1;    // для платной приёмки
-  const whCoeffLog     = n(p.wh_coeff_logistics) || 1; // для базовой логистики
+  // [*] Два разных коэффициента склада (в %: 100 = ×1.0, 150 = ×1.5):
+  const whCoeffAcc     = (n(p.warehouse_coeff) || 100) / 100;    // для платной приёмки
+  const whCoeffLog     = (n(p.wh_coeff_logistics) || 100) / 100; // для базовой логистики
   const extraExp       = n(p.extra_expenses);           // ₽ на всю партию
   // [*] Приёмка товара — на всю партию, делим на batchQty для шт
   const acceptanceBatch = n(p.acceptance_cost);         // ₽/партию
@@ -356,7 +356,7 @@ function setFormData(p) {
 function resetForm() {
   const defaults = {
     currency_rate: 1, batch_qty: 1, buyout_pct: 100, loc_index: 1,
-    warehouse_coeff: 1, wh_coeff_logistics: 1, tax_system: 'Не считать налог',
+    warehouse_coeff: 100, wh_coeff_logistics: 100, tax_system: 'Не считать налог',
   };
   for (const f of FIELDS) {
     const el = document.getElementById('m-' + f);
@@ -385,7 +385,7 @@ function updateLiveResults() {
   set('r-delivery',     fmt.rub(r.deliveryCost) + '/шт');
   set('r-returns',      fmt.rub(r.logisticsReturns) + '/шт');
   set('r-acceptance-u', fmt.rub(r.acceptanceUnit) + '/шт');
-  set('r-base-log',     fmt.rub(r.baseLogisticsRaw) + '×' + (+data.wh_coeff_logistics||1).toFixed(2) + '=' + fmt.rub(r.baseLogistics));
+  set('r-base-log',     fmt.rub(r.baseLogisticsRaw) + ' × ' + (+data.wh_coeff_logistics||100).toFixed(0) + '% = ' + fmt.rub(r.baseLogistics));
   set('r-wb-comm',      fmt.rub(r.wbCommRub) + '/шт');
   set('r-acquiring',    fmt.rub(r.acquiring) + '/шт');
   set('r-adv',          fmt.rub(r.advertisingRub) + '/шт');

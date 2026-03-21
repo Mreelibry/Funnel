@@ -142,8 +142,9 @@ CREATE TABLE IF NOT EXISTS unit_economics (
   spp              NUMERIC(6,3),
   acceptance_cost  NUMERIC(12,2) NOT NULL DEFAULT 0,
   storage_cost     NUMERIC(12,2) NOT NULL DEFAULT 0,
-  warehouse_coeff  NUMERIC(8,4)  NOT NULL DEFAULT 1,
-  extra_expenses   NUMERIC(12,2) NOT NULL DEFAULT 0,
+  warehouse_coeff     NUMERIC(8,2)  NOT NULL DEFAULT 100,  -- в %: 100=×1.0, 150=×1.5
+  wh_coeff_logistics  NUMERIC(8,2)  NOT NULL DEFAULT 100,  -- в %: 100=×1.0, 150=×1.5
+  extra_expenses      NUMERIC(12,2) NOT NULL DEFAULT 0,
   created_at       TIMESTAMP     NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMP     NOT NULL DEFAULT NOW()
 );
