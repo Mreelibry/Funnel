@@ -62,8 +62,8 @@ function calcUE(p) {
   const L = n(p.length_cm), W = n(p.width_cm), H = n(p.height_cm);
   const volume = (L / 100) * (W / 100) * (H / 100) * 1000;
 
-  // ── Себестоимость ── (всё в ₽: buyPrice × курс)
-  const buyPriceRub  = buyPrice * currRate;              // цена товара в ₽/шт
+  // ── Себестоимость ── (в валюте покупки, без пересчёта курсом)
+  const buyPriceRub  = buyPrice;                         // цена товара ₽/шт (не умножаем на курс)
   const extraPerUnit = div(extraExp, batchQty);          // доп. расходы/шт
   const selfCost     = buyPriceRub + extraPerUnit;       // полная себест./шт (для "Всего затрат")
   const batchCost    = buyPriceRub * batchQty;           // стоимость товаров партии
