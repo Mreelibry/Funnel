@@ -63,10 +63,11 @@ function calcUE(p) {
   const volume = (L / 100) * (W / 100) * (H / 100) * 1000;
 
   // ── Себестоимость ── (всё в ₽: buyPrice × курс)
-  const buyPriceRub        = buyPrice * currRate;            // закупочная цена в ₽
-  const batchCost          = buyPriceRub * batchQty;         // партия без доп. расходов
-  const batchCostAfterShip = batchCost + extraExp;           // партия с доп. расходами
-  const selfCost           = div(batchCostAfterShip, batchQty); // ₽/шт
+  const buyPriceRub  = buyPrice * currRate;              // цена товара в ₽/шт
+  const extraPerUnit = div(extraExp, batchQty);          // доп. расходы/шт
+  const selfCost     = buyPriceRub + extraPerUnit;       // полная себест./шт (для "Всего затрат")
+  const batchCost    = buyPriceRub * batchQty;           // стоимость товаров партии
+  const batchCostAfterShip = batchCost + extraExp;       // партия с доп. расходами
 
   // ── FBS Логистика ──
   let baseTariff = 46;
@@ -114,8 +115,8 @@ function calcUE(p) {
   const totalTaxesPct = div(totalTaxes, priceSPP);
 
   // ── Итог ──
-  // ЧП = Приход на р/с − Эквайринг − Налог − Себестоимость − Реклама
-  const profitPerUnit  = incomeToAccount - acquiring - totalTaxes - selfCost - advertisingRub;
+  // ЧП = Приход − Эквайринг − Налог − Товар/шт − Реклама − Доп.расходы/шт
+  const profitPerUnit  = incomeToAccount - acquiring - totalTaxes - buyPriceRub - advertisingRub - extraPerUnit;
   const profitPerBatch = profitPerUnit * batchQty;
   const marginality    = div(profitPerUnit, priceSPP);
   const roi            = selfCost > 0 ? div(profitPerUnit, selfCost) : 0;
@@ -123,7 +124,7 @@ function calcUE(p) {
   const totalCostsPerUnit = selfCost + totalWb + totalTaxes;
 
   return {
-    volume, buyPriceRub, selfCost, batchCost, batchCostAfterShip,
+    volume, buyPriceRub, extraPerUnit, selfCost, batchCost, batchCostAfterShip,
     baseTariff, baseLogisticsRaw, baseLogistics,
     acceptanceBatch, acceptanceUnit,
     forwardCost, returnCost, returnCostInput, logisticsTotal,
@@ -383,7 +384,8 @@ function updateLiveResults() {
 
   set('r-volume',       fmt.vol(r.volume));
   set('r-price-spp',    fmt.rub(r.priceWithSPP));
-  set('r-selfcost',     fmt.rub(r.selfCost) + '/шт');
+  set('r-selfcost',     fmt.rub(r.buyPriceRub) + '/шт');          // только товар
+  set('r-extra-unit',   fmt.rub(r.extraPerUnit) + '/шт');         // доп. расходы
   set('r-batch-cost',   fmt.rub(r.batchCostAfterShip) + '/партию');
   set('r-logistics',    fmt.rub(r.logisticsTotal) + '/шт');
   set('r-forward',      fmt.rub(r.forwardCost) + '/шт');
