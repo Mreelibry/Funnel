@@ -81,8 +81,8 @@ function calcUE(p) {
   const forwardCost = sdIdx > 0
     ? baseLogistics * locIdx + sdIdx * priceSPP
     : baseLogistics * locIdx;
-  // Возврат: ручное значение или авто = доставка без КРП
-  const returnCost = returnCostInput > 0 ? returnCostInput : baseLogistics * locIdx;
+  // Возврат: ручное значение или авто = чистый тариф × КТР (без коэф. склада)
+  const returnCost = returnCostInput > 0 ? returnCostInput : baseLogisticsRaw * locIdx;
 
   // Формула: (100/выкуп%) × доставка + (100/выкуп% − 1) × возврат
   const logisticsTotal = buyoutPct > 0
