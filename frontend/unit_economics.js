@@ -90,6 +90,9 @@ function calcUE(p) {
     ? (100 / buyoutPct) * forwardCost + (100 / buyoutPct - 1) * returnCost
     : forwardCost;
 
+  // ── Цена после СПП ──
+  const priceWithSPP    = sppVal !== null ? priceSPP * (1 - sppVal) : priceSPP;
+
   // ── Удержания WB ──
   const acquiringPct   = (n(p.acquiring_pct) || 2.5) / 100;
   const wbCommRub      = commPct * priceSPP;
@@ -97,9 +100,6 @@ function calcUE(p) {
   const advertisingRub = adPct * priceSPP;
   const totalWb        = storage + logisticsTotal + acceptanceUnit + wbCommRub + acquiring + advertisingRub;
   const totalWbPct     = div(totalWb, priceSPP);
-
-  // ── Цена и приход ──
-  const priceWithSPP    = sppVal !== null ? priceSPP * (1 - sppVal) : priceSPP;
   // Приход на р/с = (Цена до СПП − Логистика − Приёмка − Хранение − Комиссия WB) × Курс
   const incomeToAccount = (priceSPP - logisticsTotal - acceptanceUnit - storage - wbCommRub) * currRate;
 
