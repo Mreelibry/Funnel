@@ -73,25 +73,28 @@ function calcUE(p) {
     if (volume <= row.max) { baseTariff = row.base; break; }
   }
   const addPerL = volume <= 1 ? 0 : 14;
-  const baseLogisticsRaw  = addPerL > 0 ? baseTariff + (volume - 1) * addPerL : baseTariff;
-  // [5] Базовая стоимость логистики × коэф. склада для логистики
-  const baseLogistics     = baseLogisticsRaw * whCoeffLog;
+  const baseLogisticsRaw = addPerL > 0 ? baseTariff + (volume - 1) * addPerL : baseTariff;
+  const baseLogistics    = baseLogisticsRaw * whCoeffLog;
 
-  const deliveryCost = sdIdx > 0
-    ? baseLogistics * locIdx + sdIdx * priceSPP + acceptanceUnit
-    : baseLogistics * locIdx + acceptanceUnit;
+  // Доставка покупателю (с КРП, если указан)
+  const forwardCost = sdIdx > 0
+    ? baseLogistics * locIdx + sdIdx * priceSPP
+    : baseLogistics * locIdx;
+  // Возврат (без КРП — не продажа)
+  const returnCost = baseLogistics * locIdx;
 
-  // Логистика возвратов (с учётом % выкупа)
-  const logisticsReturns = buyoutPct > 0 ? (100 / buyoutPct - 1) * deliveryCost : 0;
-  const logisticsTotal   = deliveryCost + logisticsReturns; // ₽/шт
+  // Формула: (100/выкуп%) × доставка + (100/выкуп% − 1) × возврат
+  const logisticsTotal = buyoutPct > 0
+    ? (100 / buyoutPct) * forwardCost + (100 / buyoutPct - 1) * returnCost
+    : forwardCost;
 
   // ── Удержания WB ──
   const wbCommRub      = commPct * priceSPP;
   const acquiring      = 0.025 * priceSPP;
   const advertisingRub = adPct * priceSPP;
-  // [*] Платная приёмка — коэф. склада для приёмки
+  // Платная приёмка — отдельная статья расхода (коэф. приёмки)
   const paidAcceptance = 1.7 * volume * whCoeffAcc;
-  const totalWb        = storage + logisticsTotal + wbCommRub + acquiring + paidAcceptance + advertisingRub;
+  const totalWb        = storage + logisticsTotal + acceptanceUnit + wbCommRub + acquiring + paidAcceptance + advertisingRub;
   const totalWbPct     = div(totalWb, priceSPP);
 
   // ── Цена и приход ──
@@ -121,7 +124,7 @@ function calcUE(p) {
     volume, selfCost, batchCost, batchCostAfterShip, commRub,
     baseTariff, baseLogisticsRaw, baseLogistics,
     acceptanceBatch, acceptanceUnit,
-    deliveryCost, logisticsReturns, logisticsTotal,
+    forwardCost, returnCost, logisticsTotal,
     wbCommRub, acquiring, advertisingRub, paidAcceptance,
     totalWb, totalWbPct,
     priceWithSPP, incomeToAccount,
@@ -382,8 +385,8 @@ function updateLiveResults() {
   set('r-comm-rub',     fmt.rub(r.commRub));
   set('r-batch-cost',   fmt.rub(r.batchCostAfterShip) + '/партию');
   set('r-logistics',    fmt.rub(r.logisticsTotal) + '/шт');
-  set('r-delivery',     fmt.rub(r.deliveryCost) + '/шт');
-  set('r-returns',      fmt.rub(r.logisticsReturns) + '/шт');
+  set('r-forward',      fmt.rub(r.forwardCost) + '/шт');
+  set('r-return-cost',  fmt.rub(r.returnCost) + '/шт');
   set('r-acceptance-u', fmt.rub(r.acceptanceUnit) + '/шт');
   set('r-base-log',     fmt.rub(r.baseLogisticsRaw) + ' × ' + (+data.wh_coeff_logistics||100).toFixed(0) + '% = ' + fmt.rub(r.baseLogistics));
   set('r-wb-comm',      fmt.rub(r.wbCommRub) + '/шт');
