@@ -94,6 +94,8 @@ async function runMigrations() {
     `UPDATE unit_economics SET wh_coeff_logistics = wh_coeff_logistics * 100 WHERE wh_coeff_logistics <= 10`,
     // label_defs в финмоделях
     `ALTER TABLE finmodels ADD COLUMN IF NOT EXISTS label_defs JSONB NOT NULL DEFAULT '[]'`,
+    // % эквайринга (вручную, по умолчанию 2.5%)
+    `ALTER TABLE unit_economics ADD COLUMN IF NOT EXISTS acquiring_pct NUMERIC(6,3) NOT NULL DEFAULT 2.5`,
   ];
   for (const sql of migrations) {
     try { await db.query(sql); }

@@ -91,8 +91,9 @@ function calcUE(p) {
     : forwardCost;
 
   // ── Удержания WB ──
+  const acquiringPct   = (n(p.acquiring_pct) || 2.5) / 100;
   const wbCommRub      = commPct * priceSPP;
-  const acquiring      = 0.025 * priceSPP;
+  const acquiring      = acquiringPct * priceWithSPP;
   const advertisingRub = adPct * priceSPP;
   const totalWb        = storage + logisticsTotal + acceptanceUnit + wbCommRub + acquiring + advertisingRub;
   const totalWbPct     = div(totalWb, priceSPP);
@@ -325,7 +326,7 @@ const FIELDS = [
   'tax_system','tax_rate',
   'length_cm','width_cm','height_cm','buyout_pct','loc_index','sales_dist_index',
   'acceptance_cost','wh_coeff_logistics','return_cost',
-  'commission_pct','ad_spend_pct','storage_cost','extra_expenses',
+  'commission_pct','acquiring_pct','ad_spend_pct','storage_cost','extra_expenses',
 ];
 
 function getFormData() {
@@ -362,7 +363,7 @@ function setFormData(p) {
 function resetForm() {
   const defaults = {
     currency_rate: 1, batch_qty: 1, buyout_pct: 100, loc_index: 1,
-    wh_coeff_logistics: 100, tax_system: 'Не считать налог',
+    wh_coeff_logistics: 100, acquiring_pct: 2.5, tax_system: 'Не считать налог',
   };
   for (const f of FIELDS) {
     const el = document.getElementById('m-' + f);
