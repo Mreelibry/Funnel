@@ -98,8 +98,8 @@ function calcUE(p) {
 
   // ── Цена и приход ──
   const priceWithSPP    = sppVal !== null ? priceSPP * (1 - sppVal) : priceSPP;
-  // Приход на р/с = (Цена до СПП − Логистика − Хранение − Комиссия WB) × Курс
-  const incomeToAccount = (priceSPP - logisticsTotal - storage - wbCommRub) * currRate;
+  // Приход на р/с = (Цена до СПП − Логистика − Приёмка − Хранение − Комиссия WB) × Курс
+  const incomeToAccount = (priceSPP - logisticsTotal - acceptanceUnit - storage - wbCommRub) * currRate;
 
   // ── Налоги ──
   let usnTax = 0;
@@ -113,12 +113,14 @@ function calcUE(p) {
   const totalTaxes    = usnTax;
   const totalTaxesPct = div(totalTaxes, priceSPP);
 
-  // ── Итог (всё в ₽) ──
-  const totalCostsPerUnit = selfCost + totalWb + totalTaxes;
-  const profitPerUnit  = priceSPP - totalCostsPerUnit;
+  // ── Итог ──
+  // ЧП = Приход на р/с − Эквайринг − Налог − Себестоимость − Реклама
+  const profitPerUnit  = incomeToAccount - acquiring - totalTaxes - selfCost - advertisingRub;
   const profitPerBatch = profitPerUnit * batchQty;
   const marginality    = div(profitPerUnit, priceSPP);
   const roi            = selfCost > 0 ? div(profitPerUnit, selfCost) : 0;
+  // Всего затрат (для отображения)
+  const totalCostsPerUnit = selfCost + totalWb + totalTaxes;
 
   return {
     volume, buyPriceRub, selfCost, batchCost, batchCostAfterShip,
