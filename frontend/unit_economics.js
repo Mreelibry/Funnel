@@ -98,7 +98,8 @@ function calcUE(p) {
 
   // ── Цена и приход ──
   const priceWithSPP    = sppVal !== null ? priceSPP * (1 - sppVal) : priceSPP;
-  const incomeToAccount = priceSPP - wbCommRub - logisticsTotal - storage - acquiring;
+  // Приход на р/с = (Цена до СПП − Логистика − Хранение − Комиссия WB) × Курс
+  const incomeToAccount = (priceSPP - logisticsTotal - storage - wbCommRub) * currRate;
 
   // ── Налоги ──
   let usnTax = 0;
