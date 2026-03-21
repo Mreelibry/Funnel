@@ -62,11 +62,11 @@ function calcUE(p) {
   const L = n(p.length_cm), W = n(p.width_cm), H = n(p.height_cm);
   const volume = (L / 100) * (W / 100) * (H / 100) * 1000;
 
-  // ── Себестоимость ──
-  const commRub = commPct * buyPrice * batchQty;
-  const batchCost = buyPrice * batchQty + commRub;
-  const batchCostAfterShip = batchCost + extraExp;
-  const selfCost = div(batchCostAfterShip, batchQty); // ₽/шт
+  // ── Себестоимость ── (всё в ₽: buyPrice × курс)
+  const buyPriceRub        = buyPrice * currRate;            // закупочная цена в ₽
+  const batchCost          = buyPriceRub * batchQty;         // партия без доп. расходов
+  const batchCostAfterShip = batchCost + extraExp;           // партия с доп. расходами
+  const selfCost           = div(batchCostAfterShip, batchQty); // ₽/шт
 
   // ── FBS Логистика ──
   let baseTariff = 46;
@@ -98,7 +98,7 @@ function calcUE(p) {
 
   // ── Цена и приход ──
   const priceWithSPP    = sppVal !== null ? priceSPP * (1 - sppVal) : priceSPP;
-  const incomeToAccount = priceSPP - wbCommRub - logisticsTotal - storage - acquiring * currRate;
+  const incomeToAccount = priceSPP - wbCommRub - logisticsTotal - storage - acquiring;
 
   // ── Налоги ──
   let usnTax = 0;
@@ -112,15 +112,15 @@ function calcUE(p) {
   const totalTaxes    = usnTax;
   const totalTaxesPct = div(totalTaxes, priceSPP);
 
-  // ── Итог ──
+  // ── Итог (всё в ₽) ──
   const totalCostsPerUnit = selfCost + totalWb + totalTaxes;
-  const profitPerUnit  = (priceSPP - totalCostsPerUnit) * currRate;
+  const profitPerUnit  = priceSPP - totalCostsPerUnit;
   const profitPerBatch = profitPerUnit * batchQty;
-  const marginality    = div(profitPerUnit, priceSPP * currRate);
-  const roi            = selfCost > 0 ? div(profitPerUnit, selfCost * currRate) : 0;
+  const marginality    = div(profitPerUnit, priceSPP);
+  const roi            = selfCost > 0 ? div(profitPerUnit, selfCost) : 0;
 
   return {
-    volume, selfCost, batchCost, batchCostAfterShip, commRub,
+    volume, buyPriceRub, selfCost, batchCost, batchCostAfterShip,
     baseTariff, baseLogisticsRaw, baseLogistics,
     acceptanceBatch, acceptanceUnit,
     forwardCost, returnCost, returnCostInput, logisticsTotal,
@@ -381,7 +381,6 @@ function updateLiveResults() {
   set('r-volume',       fmt.vol(r.volume));
   set('r-price-spp',    fmt.rub(r.priceWithSPP));
   set('r-selfcost',     fmt.rub(r.selfCost) + '/шт');
-  set('r-comm-rub',     fmt.rub(r.commRub));
   set('r-batch-cost',   fmt.rub(r.batchCostAfterShip) + '/партию');
   set('r-logistics',    fmt.rub(r.logisticsTotal) + '/шт');
   set('r-forward',      fmt.rub(r.forwardCost) + '/шт');
