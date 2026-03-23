@@ -1388,15 +1388,30 @@ function populateCabinetFilter() {
   });
 }
 
+let reportsPage = 0;
+const REPORTS_PER_PAGE = 5;
+
 function renderReportsList() {
   const el = document.getElementById('reports-list');
   if (!reportsFromDB.length) { el.innerHTML = ''; return; }
+  const total = reportsFromDB.length;
+  const totalPages = Math.ceil(total / REPORTS_PER_PAGE);
+  if (reportsPage >= totalPages) reportsPage = totalPages - 1;
+  const pageItems = reportsFromDB.slice(reportsPage * REPORTS_PER_PAGE, (reportsPage + 1) * REPORTS_PER_PAGE);
+
+  const paginationHtml = totalPages > 1 ? `
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 12px;border-top:0.5px solid var(--b)">
+      <button class="btn btn-sm" onclick="reportsPage--;renderReportsList()" ${reportsPage===0?'disabled':''} style="padding:4px 10px">←</button>
+      <span style="color:var(--g2);font-size:13px">${reportsPage+1} / ${totalPages}</span>
+      <button class="btn btn-sm" onclick="reportsPage++;renderReportsList()" ${reportsPage===totalPages-1?'disabled':''} style="padding:4px 10px">→</button>
+    </div>` : '';
+
   el.innerHTML = `<div class="card" style="margin-bottom:4px"><div class="card-head">
-    <span class="card-title">Загруженные отчёты (${reportsFromDB.length})</span></div>
+    <span class="card-title">Загруженные отчёты (${total})</span></div>
     <div style="overflow-x:auto"><table class="rtable">
       <thead><tr><th>Период</th><th>Менеджер</th><th>Кабинет</th><th>Файл</th><th>Загружен</th>
       ${user?.role==='admin'?'<th></th>':''}</tr></thead>
-      <tbody>${reportsFromDB.map(r=>`<tr>
+      <tbody>${pageItems.map(r=>`<tr>
         <td style="font-weight:600;color:var(--wb)">${fmtPeriod(r.period_start,r.period_end)}</td>
         <td>${r.manager_name}</td>
         <td>${(r.cabinet_name||r.cabinet_id)?`<span class="cab-chip">${r.cabinet_name||'Кабинет'}</span>`:'—'}</td>
@@ -1404,7 +1419,9 @@ function renderReportsList() {
         <td style="color:var(--g2);font-size:11px">${new Date(r.created_at).toLocaleDateString('ru')}</td>
         ${user?.role==='admin'?`<td><button class="btn btn-danger btn-sm" onclick="deleteReport('${r.id}')">Удалить</button></td>`:''}
       </tr>`).join('')}</tbody>
-    </table></div></div>`;
+    </table></div>
+    ${paginationHtml}
+    </div>`;
 }
 
 function buildWeeksFromDB() {
@@ -1588,7 +1605,7 @@ function setStatus(txt,cls){
 
 async function deleteReport(id) {
   if (!confirm('Удалить отчёт?')) return;
-  try { await API.delete('/reports/'+id); loadReports(); }
+  try { await API.delete('/reports/'+id); reportsPage = 0; loadReports(); }
   catch(e) { alert(e.message); }
 }
 
