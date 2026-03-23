@@ -2020,8 +2020,9 @@ function fmCalc(a, priceOverride) {
   const commUnit  = price * commPct / 100;
   const acquUnit  = price * acquPct  / 100;
   const drrUnit   = price * drrPct   / 100;
-  // Оплата на Р/С (per buyout): цена − комиссия − реклама − логистика − эквайринг
-  const receipt   = price - commUnit - drrUnit - logBuyout - acquUnit;
+  // Оплата на Р/С (per buyout): цена − комиссия − логистика − эквайринг
+  // ДРР НЕ вычитается здесь — реклама WB оплачивается отдельно (отдельный бюджет)
+  const receipt   = price - commUnit - logBuyout - acquUnit;
   // Налог: от суммы продажи или от оплаты на Р/С
   const taxBase   = a.taxBase || 'price';
   const taxUnit   = taxBase === 'rcs'
@@ -2030,8 +2031,8 @@ function fmCalc(a, priceOverride) {
   // Самовыкупы: % от ДРР-бюджета (внешние расходы)
   const selfBuyoutPct  = +(a.selfBuyoutPct || 0);
   const selfBuyoutUnit = drrUnit * selfBuyoutPct / 100;
-  // Прибыль за 1 выкуп
-  const profitUnit = receipt - taxUnit - costUnit - extraPerUnit - selfBuyoutUnit;
+  // Прибыль за 1 выкуп: приход − реклама − налог − себестоимость − доп.расходы − самовыкупы
+  const profitUnit = receipt - drrUnit - taxUnit - costUnit - extraPerUnit - selfBuyoutUnit;
   const margin     = price > 0 ? profitUnit / price * 100 : 0;
   // ROI: прибыль / все расходы
   const allCosts   = costUnit + extraPerUnit + selfBuyoutUnit + logBuyout + commUnit + acquUnit + drrUnit + taxUnit;
@@ -2042,7 +2043,8 @@ function fmCalc(a, priceOverride) {
   const fixedCosts = logBuyout + costUnit + extraPerUnit;
   let breakEven;
   if (taxBase === 'rcs') {
-    const A = (1 - cfrac - dfrac - afrac) * (1 - tfrac) - sbfrac;
+    // receipt = price*(1-cfrac-afrac) - logBuyout; tax = receipt*tfrac; drr отдельно
+    const A = (1 - cfrac - afrac) * (1 - tfrac) - dfrac - sbfrac;
     const B = logBuyout * (1 - tfrac) + costUnit + extraPerUnit;
     breakEven = A > 0.01 ? B / A : 0;
   } else {
