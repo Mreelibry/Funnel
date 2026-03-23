@@ -671,6 +671,30 @@
   </div>
 </div>
 
+<!-- ═══ MODAL: Доступ к кабинету ═══ -->
+<div class="overlay" id="cab-access-modal">
+  <div class="modal" style="max-width:420px">
+    <h2>Доступ к кабинету</h2>
+    <div style="font-size:13px;color:var(--g);margin-bottom:14px" id="cab-access-title"></div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--g2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Менеджеры с доступом</div>
+      <div id="cab-access-list" style="display:flex;flex-direction:column;gap:6px;min-height:32px"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="cab-access-add-select" style="flex:1;background:var(--card2);border:0.5px solid var(--b);border-radius:8px;color:var(--t);padding:8px 10px;font-size:13px">
+        <option value="">— добавить менеджера —</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="grantCabAccess()">Добавить</button>
+    </div>
+
+    <div class="modal-footer" style="margin-top:18px">
+      <button class="btn btn-ghost" onclick="closeAccessModal()">Закрыть</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL: Полный просмотр отчёта ═══ -->
 <div class="overlay" id="daily-view-modal" style="align-items:flex-start;padding:20px;overflow-y:auto">
   <div class="modal" style="max-width:800px;width:100%;margin:auto">
@@ -1632,7 +1656,10 @@ async function loadCabinets() {
           <div class="cab-meta">${c.manager_name || '—'}</div>
           ${cabReportBadge(c.id)}
         </div>
-        <button class="btn btn-danger btn-sm" onclick="deleteCabinet('${c.id}')">Удалить</button>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          ${user?.role==='admin' ? `<button class="btn btn-sm" style="background:var(--wb3);color:var(--wb);border:0.5px solid var(--wb)" onclick="openAccessModal('${c.id}','${c.name.replace(/'/g,"\\'")}')">Доступ</button>` : ''}
+          ${user?.role==='admin' ? `<button class="btn btn-danger btn-sm" onclick="deleteCabinet('${c.id}')">Удалить</button>` : ''}
+        </div>
       </div>`).join('');
   } catch(e) { console.error(e); }
 }
@@ -1658,6 +1685,58 @@ async function deleteCabinet(id) {
   if (!confirm('Удалить кабинет?')) return;
   try { await API.delete('/cabinets/'+id); loadCabinets(); loadCabinetsForUpload(); }
   catch(e) { alert(e.message); }
+}
+
+// ── Cabinet Access ──
+let accessCabId = null;
+
+async function openAccessModal(cabId, cabName) {
+  accessCabId = cabId;
+  document.getElementById('cab-access-title').textContent = cabName;
+  document.getElementById('cab-access-modal').classList.add('show');
+  await renderAccessList();
+  // Заполнить select всеми менеджерами
+  const managers = await API.get('/managers');
+  const sel = document.getElementById('cab-access-add-select');
+  sel.innerHTML = '<option value="">— добавить менеджера —</option>' +
+    managers.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+}
+
+function closeAccessModal() {
+  document.getElementById('cab-access-modal').classList.remove('show');
+  accessCabId = null;
+}
+
+async function renderAccessList() {
+  const list = document.getElementById('cab-access-list');
+  list.innerHTML = '<div style="color:var(--g2);font-size:12px">Загрузка...</div>';
+  const managers = await API.get('/cabinets/'+accessCabId+'/access');
+  if (!managers.length) {
+    list.innerHTML = '<div style="color:var(--g2);font-size:12px">Нет дополнительных менеджеров</div>';
+    return;
+  }
+  list.innerHTML = managers.map(m => `
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--card2);border-radius:8px;padding:7px 10px">
+      <span style="font-size:13px;color:var(--t)">${m.name}</span>
+      <button class="btn btn-danger btn-sm" style="padding:3px 8px;font-size:11px" onclick="revokeCabAccess('${m.id}')">✕</button>
+    </div>`).join('');
+}
+
+async function grantCabAccess() {
+  const mgrId = document.getElementById('cab-access-add-select').value;
+  if (!mgrId) return;
+  try {
+    await API.post('/cabinets/'+accessCabId+'/access', { manager_id: mgrId });
+    document.getElementById('cab-access-add-select').value = '';
+    await renderAccessList();
+  } catch(e) { alert(e.message); }
+}
+
+async function revokeCabAccess(mgrId) {
+  try {
+    await API.delete('/cabinets/'+accessCabId+'/access/'+mgrId);
+    await renderAccessList();
+  } catch(e) { alert(e.message); }
 }
 
 // ── DAILY REPORTS ──
@@ -1827,7 +1906,7 @@ async function deleteDaily(id) {
 }
 
 // Закрытие модалок по клику вне
-['cab-modal','daily-modal','daily-view-modal'].forEach(id => {
+['cab-modal','cab-access-modal','daily-modal','daily-view-modal'].forEach(id => {
   document.getElementById(id).addEventListener('click', e => {
     if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
   });
