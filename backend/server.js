@@ -96,6 +96,13 @@ async function runMigrations() {
     `ALTER TABLE finmodels ADD COLUMN IF NOT EXISTS label_defs JSONB NOT NULL DEFAULT '[]'`,
     // % эквайринга (вручную, по умолчанию 2.5%)
     `ALTER TABLE unit_economics ADD COLUMN IF NOT EXISTS acquiring_pct NUMERIC(6,3) NOT NULL DEFAULT 2.5`,
+    // Таблица доступа менеджеров к кабинетам (many-to-many)
+    `CREATE TABLE IF NOT EXISTS cabinet_access (
+      cabinet_id UUID NOT NULL REFERENCES cabinets(id) ON DELETE CASCADE,
+      manager_id UUID NOT NULL REFERENCES managers(id) ON DELETE CASCADE,
+      granted_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (cabinet_id, manager_id)
+    )`,
   ];
   for (const sql of migrations) {
     try { await db.query(sql); }
