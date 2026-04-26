@@ -253,6 +253,8 @@
     .fm-title-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
     .fm-project-name{font-size:18px;font-weight:700;color:var(--t);background:transparent;border:none;border-bottom:1.5px solid transparent;padding:2px 6px;min-width:160px;font-family:inherit}
     .fm-project-name:focus{outline:none;border-bottom-color:var(--wb)}
+    .fm-platform-badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--wb3);color:var(--wb);letter-spacing:.5px;flex-shrink:0}
+    .fm-platform-badge[data-p="ozon"]{background:#0052c522;color:#0052c5}
     .fm-period-btns{display:flex;gap:3px;background:var(--card);border-radius:10px;padding:3px;border:0.5px solid var(--b)}
     .fm-period-btn{background:none;border:none;padding:5px 12px;border-radius:7px;font-size:13px;font-weight:600;color:var(--g);cursor:pointer;transition:all .15s;font-family:inherit}
     .fm-period-btn.active{background:var(--wb);color:#fff}
@@ -460,7 +462,8 @@
     <button class="nav-tab active" onclick="showPage('funnel',this)">Воронка</button>
     <button class="nav-tab" onclick="showPage('daily',this)">Ежедневный</button>
     <button class="nav-tab" id="nav-cabinets" onclick="showPage('cabinets',this)" style="display:none">Кабинеты</button>
-    <button class="nav-tab" onclick="showPage('finmodel',this)">Финмодель</button>
+    <button class="nav-tab" onclick="fmSwitchAndShow('wb',this)">Финмодель WB</button>
+    <button class="nav-tab" onclick="fmSwitchAndShow('ozon',this)">Финмодель Озон</button>
     <a class="nav-tab" href="unit_economics.html">Юнит-экономика</a>
     <a class="nav-tab" href="admin.html" id="nav-admin" style="display:none">Управление</a>
   </div>
@@ -595,6 +598,7 @@
 <div class="page" id="page-finmodel">
   <div class="fm-topbar">
     <div class="fm-title-row">
+      <span id="fm-platform-badge" class="fm-platform-badge" data-p="wb">WB</span>
       <input class="fm-project-name" id="fm-project-name" value="Финансовая модель"
         oninput="FM.projectName=this.value;fmSave()" placeholder="Название проекта" />
       <input class="fm-search-inp" id="fm-search" placeholder="🔍 Поиск по артикулам..." oninput="fmFilterArticles(this.value)" />
@@ -1960,13 +1964,15 @@ init();
 // ══════════════════════════════════════
 // ФИНМОДЕЛЬ (v3 — plan + cost rework)
 // ══════════════════════════════════════
-const FM_KEY = 'wb_finmodel';
+let fmActivePlatform = 'wb';
+function fmActiveKey() { return fmActivePlatform === 'ozon' ? 'oz_finmodel' : 'wb_finmodel'; }
 let fmNextId = 1;
 let FM = { projectName: 'Финансовая модель', months: 1, startDate: '', articles: [], cabinetId: null, labelDefs: [] };
 let fmChartInst = {};
 let fmChartTimer = null;
 let fmSaveTimer  = null;
 let fmDbLoaded   = false; // флаг: данные уже загружены из БД (не перезаписывать localStorage-мусором)
+let fmSkipDbLoad = false; // флаг: пропустить загрузку из БД при следующем переходе (при переключении платформы)
 
 function fmNewArticle(overrides = {}) {
   const id = fmNextId++;
@@ -1987,6 +1993,7 @@ function fmNewArticle(overrides = {}) {
     extraLogistics: 3000,     // batch delivery logistics
     extraPackaging: 1000,     // packaging
     extraOther: 0,
+    extraAcceptance: 0,       // приёмка на склад
     // Section states
     batchOpen: false,
     planOpen: false,
@@ -2008,7 +2015,7 @@ function fmCalc(a, priceOverride) {
   // batchSize = target buyouts; orders = how many to send to achieve that buyout count
   const buyouts   = Math.max(0, +a.batchSize);
   const orders    = Math.round(buyouts / buyRate);
-  const extraTotal   = +a.extraLogistics + +a.extraPackaging + +a.extraOther;
+  const extraTotal   = +a.extraLogistics + +a.extraPackaging + +a.extraOther + +(a.extraAcceptance||0);
   const extraPerUnit = extraTotal / Math.max(1, buyouts);
   const costUnit  = +a.costPerUnit;           // direct cost per unit (display)
   const logOrder  = +a.sendCost + (1 - buyRate) * +a.returnCost;
@@ -2097,6 +2104,7 @@ function fmApplyDefaults(articles) {
     if (a.budgetOpen === undefined) a.budgetOpen = false;
     if (a.collapsed  === undefined) a.collapsed  = false;
     if (a.selfBuyoutPct === undefined) a.selfBuyoutPct = 0;
+    if (a.extraAcceptance === undefined) a.extraAcceptance = 0;
     if (!a.taxBase)             a.taxBase        = 'price';
     if (!a.months)              a.months         = FM.months || 1;
     if (!a.startDate)           a.startDate      = FM.startDate || new Date().toISOString().slice(0, 10);
@@ -2128,7 +2136,7 @@ function fmShowSaveInd(text, type) {
 
 // ── Сохранение в БД (debounced) + резервная копия в localStorage ──
 function fmSave() {
-  try { localStorage.setItem(FM_KEY, JSON.stringify({ ...FM, _nid: fmNextId })); } catch(e) {}
+  try { localStorage.setItem(fmActiveKey(), JSON.stringify({ ...FM, _nid: fmNextId })); } catch(e) {}
   clearTimeout(fmSaveTimer);
   fmShowSaveInd('Сохранение...', 'var(--g)');
   fmSaveTimer = setTimeout(fmSaveToDB, 1000);
@@ -2172,7 +2180,7 @@ async function fmSaveToDB(silent = false) {
 // ── Загрузка из localStorage (fallback) ──
 function fmLoad() {
   try {
-    const d = JSON.parse(localStorage.getItem(FM_KEY) || 'null');
+    const d = JSON.parse(localStorage.getItem(fmActiveKey()) || 'null');
     if (d) { fmNextId = d._nid || 1; delete d._nid; FM = d; }
   } catch(e) {}
   if (!FM.articles || !FM.articles.length) FM.articles = [fmNewArticle({ name: 'Артикул 1' })];
@@ -2612,7 +2620,7 @@ function fmUpdateSummary() {
   let totRev = 0, totProfit = 0, totCosts = 0, totInvest = 0, totReceipt = 0;
   fmVisibleArticles().forEach(a => {
     const c = fmCalc(a);
-    const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther;
+    const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther + +(a.extraAcceptance||0);
     totRev     += c.revenue;
     totProfit  += c.profit;
     totReceipt += c.receiptTotal;
@@ -2710,6 +2718,11 @@ function fmUpdateCard(id) {
     const fw = card.querySelector('.fm-fields-wrap');
     if (fw) fw.innerHTML = fmViewGridHtml(a, c);
   }
+  // Sync tax-base toggle active states (edit mode doesn't re-render the fields)
+  card.querySelectorAll('.fm-taxbase-tog').forEach(btn => {
+    const isRcs = btn.textContent.trim() === 'от Р/С';
+    btn.classList.toggle('active', (a.taxBase || 'price') === (isRcs ? 'rcs' : 'price'));
+  });
   // Extra-cost amortisation display
   const epuEl = card.querySelector('.fm-epu-val');
   if (epuEl) epuEl.textContent = fmFmt(c.extraPerUnit, 'rub');
@@ -2721,14 +2734,15 @@ function fmUpdateCard(id) {
 
 // ── Budget section HTML ──
 function fmBudgetHtml(a, c) {
-  const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther;
+  const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther + +(a.extraAcceptance||0);
   const procurement   = c.buyouts * c.costUnit;
   const drrBudget     = c.buyouts * c.drrUnit;
   const selfBuyouts   = c.buyouts * c.selfBuyoutUnit;
   const logisticsSend = +a.extraLogistics;
   const packaging     = +a.extraPackaging;
   const otherExtra    = +a.extraOther;
-  const totalInvest   = procurement + drrBudget + selfBuyouts + logisticsSend + packaging + otherExtra;
+  const acceptance    = +(a.extraAcceptance||0);
+  const totalInvest   = procurement + drrBudget + selfBuyouts + logisticsSend + packaging + otherExtra + acceptance;
   const pc = c.profit >= 0 ? 'pos' : 'neg';
   const br = (lbl, val, cls) =>
     `<div class="fm-budget-row"><span class="fm-budget-lbl">${lbl}</span><span class="fm-budget-val${cls?' '+cls:''}">${val}</span></div>`;
@@ -2737,6 +2751,7 @@ function fmBudgetHtml(a, c) {
     ${logisticsSend > 0 ? br('Логистика поставки', fmFmt(logisticsSend,'rub')) : ''}
     ${packaging     > 0 ? br('Упаковка', fmFmt(packaging,'rub')) : ''}
     ${otherExtra    > 0 ? br('Прочие расходы', fmFmt(otherExtra,'rub')) : ''}
+    ${acceptance    > 0 ? br('Приёмка', fmFmt(acceptance,'rub')) : ''}
     ${drrBudget     > 0 ? br('ДРР (рекламный бюджет)', fmFmt(drrBudget,'rub')) : ''}
     ${selfBuyouts   > 0 ? br('Самовыкупы', fmFmt(selfBuyouts,'rub')) : ''}
     <div class="fm-budget-row total"><span class="fm-budget-lbl">ИТОГО вложения</span><span class="fm-budget-val">${fmFmt(totalInvest,'rub')}</span></div>
@@ -2811,6 +2826,9 @@ function fmCardHtml(a) {
       <div class="fm-field"><label>Прочие расходы</label>
         <input type="number" id="fmf-${a.id}-extraOther" value="${+a.extraOther}" min="0"
           oninput="fmSet(${a.id},'extraOther',+this.value)" /></div>
+      <div class="fm-field"><label>Приёмка ₽</label>
+        <input type="number" id="fmf-${a.id}-extraAcceptance" value="${+(a.extraAcceptance||0)}" min="0"
+          oninput="fmSet(${a.id},'extraAcceptance',+this.value)" /></div>
     </div>
     <div class="fm-batch-cst">
       Доп. расходы / ед: <b class="fm-epu-val">${fmFmt(c.extraPerUnit,'rub')}</b>
@@ -2909,6 +2927,8 @@ function fmRenderFull() {
   fmSave();
   const pnEl = document.getElementById('fm-project-name');
   if (pnEl) pnEl.value = FM.projectName;
+  const badge = document.getElementById('fm-platform-badge');
+  if (badge) { badge.textContent = fmActivePlatform === 'ozon' ? 'Озон' : 'WB'; badge.dataset.p = fmActivePlatform; }
   fmPopulateCabinetSel();
 
   const container = document.getElementById('fm-articles');
@@ -3496,12 +3516,34 @@ function fmDrop(e, targetId) {
   fmDragId = null;
 }
 
+function fmSwitchAndShow(platform, el) {
+  if (fmActivePlatform !== platform) {
+    // Persist current platform state before switching
+    try { localStorage.setItem(fmActiveKey(), JSON.stringify({ ...FM, _nid: fmNextId })); } catch(e) {}
+    fmActivePlatform = platform;
+    FM = {
+      projectName: platform === 'ozon' ? 'Финансовая модель Озон' : 'Финансовая модель',
+      months: 1, startDate: '', articles: [], cabinetId: null, labelDefs: []
+    };
+    fmNextId = 1;
+    fmDbLoaded = false;
+    fmLoad(); // load new platform from localStorage
+    fmSkipDbLoad = true; // don't let showPage override overwrite with wrong platform DB data
+  }
+  showPage('finmodel', el);
+}
+
 // Init finmodel — предзаполнить из localStorage сразу, потом обновить из БД при открытии вкладки
 fmLoad();
 const _origShowPage = showPage;
 showPage = function(name, el) {
   _origShowPage(name, el);
   if (name === 'finmodel') {
+    if (fmSkipDbLoad) {
+      fmSkipDbLoad = false;
+      fmRender();
+      return;
+    }
     // Загружаем из БД при каждом переходе на вкладку
     const mgrId = (typeof user !== 'undefined' && user)
       ? (user.manager_id || (user.role === 'admin' ? (typeof selectedManagerId !== 'undefined' ? selectedManagerId : null) : null))
