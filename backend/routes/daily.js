@@ -60,7 +60,7 @@ router.post('/', authenticate, async (req, res) => {
       [
         mgrId,
         report_date || new Date().toISOString().slice(0, 10),
-        JSON.stringify(tasks || []),
+        JSON.stringify(tasks || []),  // JSONB column accepts JSON string
         notes || ''
       ]
     );
@@ -81,6 +81,18 @@ router.post('/', authenticate, async (req, res) => {
 router.put('/:id', authenticate, async (req, res) => {
   const { tasks, notes } = req.body;
   try {
+    // Managers can only edit their own reports
+    const ownerCheck = req.user.role === 'admin'
+      ? 'id = $2'
+      : 'id = $2 AND manager_id = $3';
+    const ownerVals = req.user.role === 'admin'
+      ? [req.params.id]
+      : [req.params.id, req.user.manager_id];
+    const existing = await db.query(
+      `SELECT id FROM daily_reports WHERE ${ownerCheck}`, ownerVals
+    );
+    if (!existing.rows[0]) return res.status(403).json({ error: 'Нет доступа' });
+
     const result = await db.query(
       `UPDATE daily_reports SET tasks = $1, notes = $2, updated_at = NOW()
        WHERE id = $3 RETURNING *`,
@@ -95,7 +107,16 @@ router.put('/:id', authenticate, async (req, res) => {
 // DELETE /api/daily/:id
 router.delete('/:id', authenticate, async (req, res) => {
   try {
-    await db.query('DELETE FROM daily_reports WHERE id = $1', [req.params.id]);
+    const ownerCheck = req.user.role === 'admin'
+      ? 'id = $1'
+      : 'id = $1 AND manager_id = $2';
+    const ownerVals = req.user.role === 'admin'
+      ? [req.params.id]
+      : [req.params.id, req.user.manager_id];
+    const result = await db.query(
+      `DELETE FROM daily_reports WHERE ${ownerCheck} RETURNING id`, ownerVals
+    );
+    if (!result.rows[0]) return res.status(403).json({ error: 'Нет доступа' });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Ошибка сервера' });

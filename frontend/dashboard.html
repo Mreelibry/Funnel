@@ -253,6 +253,8 @@
     .fm-title-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
     .fm-project-name{font-size:18px;font-weight:700;color:var(--t);background:transparent;border:none;border-bottom:1.5px solid transparent;padding:2px 6px;min-width:160px;font-family:inherit}
     .fm-project-name:focus{outline:none;border-bottom-color:var(--wb)}
+    .fm-platform-badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--wb3);color:var(--wb);letter-spacing:.5px;flex-shrink:0}
+    .fm-platform-badge[data-p="ozon"]{background:#0052c522;color:#0052c5}
     .fm-period-btns{display:flex;gap:3px;background:var(--card);border-radius:10px;padding:3px;border:0.5px solid var(--b)}
     .fm-period-btn{background:none;border:none;padding:5px 12px;border-radius:7px;font-size:13px;font-weight:600;color:var(--g);cursor:pointer;transition:all .15s;font-family:inherit}
     .fm-period-btn.active{background:var(--wb);color:#fff}
@@ -297,6 +299,9 @@
     .fm-view-item:hover{background:rgba(255,255,255,.06)}
     .fm-view-lbl{font-size:10px;color:var(--g)}
     .fm-view-val{font-size:14px;font-weight:700;color:var(--t)}
+    .fm-drag-handle{cursor:grab;color:var(--g);font-size:16px;padding:2px 4px;opacity:.5;flex-shrink:0;user-select:none}
+    .fm-drag-handle:hover{opacity:1}
+    .fm-drag-handle:active{cursor:grabbing}
     .fm-card-edit-btn{background:none;border:1px solid var(--wb3);border-radius:6px;padding:3px 8px;color:var(--g);cursor:pointer;font-size:12px;transition:border-color .15s,color .15s}
     .fm-card-edit-btn:hover{border-color:#8b5cf6;color:#8b5cf6}
     .fm-card-edit-btn.done{border-color:#22c55e;color:#22c55e}
@@ -360,6 +365,22 @@
     .fm-day-tbl .weekend{opacity:.55}
     .fm-add-btn{background:var(--wb2);border:1.5px dashed var(--wb3);border-radius:14px;padding:18px;text-align:center;color:var(--wb);font-size:13px;font-weight:600;cursor:pointer;width:100%;font-family:inherit;transition:background .15s}
     .fm-add-btn:hover{background:var(--wb3)}
+    /* ── Label system ── */
+    .fm-labels-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px;background:var(--card);border:0.5px solid var(--b);border-radius:12px}
+    .fm-labels-bar-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--g);flex-shrink:0}
+    .fm-label-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:opacity .15s}
+    .fm-label-chip:hover{opacity:.8}
+    .fm-label-chip .fm-chip-del{opacity:.5;font-size:10px;margin-left:2px;cursor:pointer}
+    .fm-label-chip .fm-chip-del:hover{opacity:1}
+    .fm-label-add-btn{background:none;border:1px dashed var(--wb3);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--wb);cursor:pointer;font-family:inherit}
+    .fm-label-add-btn:hover{background:var(--wb2)}
+    .fm-art-labels{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+    .fm-art-label-chip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;cursor:pointer;opacity:.85}
+    .fm-art-label-chip:hover{opacity:1}
+    .fm-group-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--g);padding:8px 4px 4px;margin-top:6px}
+    .fm-label-filter-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    .fm-label-filter-chip{padding:3px 12px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid transparent;cursor:pointer;opacity:.6}
+    .fm-label-filter-chip.active{opacity:1;border-color:currentColor}
     .fm-charts-section{background:var(--card);border-radius:14px;border:0.5px solid var(--b);padding:18px 20px;margin-bottom:30px}
     .fm-charts-hdr{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
     .fm-charts-ttl{font-size:14px;font-weight:700;color:var(--t);flex:1}
@@ -441,7 +462,9 @@
     <button class="nav-tab active" onclick="showPage('funnel',this)">Воронка</button>
     <button class="nav-tab" onclick="showPage('daily',this)">Ежедневный</button>
     <button class="nav-tab" id="nav-cabinets" onclick="showPage('cabinets',this)" style="display:none">Кабинеты</button>
-    <button class="nav-tab" onclick="showPage('finmodel',this)">Финмодель</button>
+    <button class="nav-tab" onclick="fmSwitchAndShow('wb',this)">Финмодель WB</button>
+    <button class="nav-tab" onclick="fmSwitchAndShow('ozon',this)">Финмодель Озон</button>
+    <a class="nav-tab" href="unit_economics.html">Юнит-экономика</a>
     <a class="nav-tab" href="admin.html" id="nav-admin" style="display:none">Управление</a>
   </div>
   <div class="nav-right">
@@ -575,6 +598,7 @@
 <div class="page" id="page-finmodel">
   <div class="fm-topbar">
     <div class="fm-title-row">
+      <span id="fm-platform-badge" class="fm-platform-badge" data-p="wb">WB</span>
       <input class="fm-project-name" id="fm-project-name" value="Финансовая модель"
         oninput="FM.projectName=this.value;fmSave()" placeholder="Название проекта" />
       <input class="fm-search-inp" id="fm-search" placeholder="🔍 Поиск по артикулам..." oninput="fmFilterArticles(this.value)" />
@@ -647,6 +671,30 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeCabModal()">Отмена</button>
       <button class="btn btn-primary" onclick="saveCabinet()">Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Доступ к кабинету ═══ -->
+<div class="overlay" id="cab-access-modal">
+  <div class="modal" style="max-width:420px">
+    <h2>Доступ к кабинету</h2>
+    <div style="font-size:13px;color:var(--g);margin-bottom:14px" id="cab-access-title"></div>
+
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--g2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Менеджеры с доступом</div>
+      <div id="cab-access-list" style="display:flex;flex-direction:column;gap:6px;min-height:32px"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="cab-access-add-select" style="flex:1;background:var(--card2);border:0.5px solid var(--b);border-radius:8px;color:var(--t);padding:8px 10px;font-size:13px">
+        <option value="">— добавить менеджера —</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="grantCabAccess()">Добавить</button>
+    </div>
+
+    <div class="modal-footer" style="margin-top:18px">
+      <button class="btn btn-ghost" onclick="closeAccessModal()">Закрыть</button>
     </div>
   </div>
 </div>
@@ -1368,15 +1416,30 @@ function populateCabinetFilter() {
   });
 }
 
+let reportsPage = 0;
+const REPORTS_PER_PAGE = 5;
+
 function renderReportsList() {
   const el = document.getElementById('reports-list');
   if (!reportsFromDB.length) { el.innerHTML = ''; return; }
+  const total = reportsFromDB.length;
+  const totalPages = Math.ceil(total / REPORTS_PER_PAGE);
+  if (reportsPage >= totalPages) reportsPage = totalPages - 1;
+  const pageItems = reportsFromDB.slice(reportsPage * REPORTS_PER_PAGE, (reportsPage + 1) * REPORTS_PER_PAGE);
+
+  const paginationHtml = totalPages > 1 ? `
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 12px;border-top:0.5px solid var(--b)">
+      <button class="btn btn-sm" onclick="reportsPage--;renderReportsList()" ${reportsPage===0?'disabled':''} style="padding:4px 10px">←</button>
+      <span style="color:var(--g2);font-size:13px">${reportsPage+1} / ${totalPages}</span>
+      <button class="btn btn-sm" onclick="reportsPage++;renderReportsList()" ${reportsPage===totalPages-1?'disabled':''} style="padding:4px 10px">→</button>
+    </div>` : '';
+
   el.innerHTML = `<div class="card" style="margin-bottom:4px"><div class="card-head">
-    <span class="card-title">Загруженные отчёты (${reportsFromDB.length})</span></div>
+    <span class="card-title">Загруженные отчёты (${total})</span></div>
     <div style="overflow-x:auto"><table class="rtable">
       <thead><tr><th>Период</th><th>Менеджер</th><th>Кабинет</th><th>Файл</th><th>Загружен</th>
       ${user?.role==='admin'?'<th></th>':''}</tr></thead>
-      <tbody>${reportsFromDB.map(r=>`<tr>
+      <tbody>${pageItems.map(r=>`<tr>
         <td style="font-weight:600;color:var(--wb)">${fmtPeriod(r.period_start,r.period_end)}</td>
         <td>${r.manager_name}</td>
         <td>${(r.cabinet_name||r.cabinet_id)?`<span class="cab-chip">${r.cabinet_name||'Кабинет'}</span>`:'—'}</td>
@@ -1384,7 +1447,9 @@ function renderReportsList() {
         <td style="color:var(--g2);font-size:11px">${new Date(r.created_at).toLocaleDateString('ru')}</td>
         ${user?.role==='admin'?`<td><button class="btn btn-danger btn-sm" onclick="deleteReport('${r.id}')">Удалить</button></td>`:''}
       </tr>`).join('')}</tbody>
-    </table></div></div>`;
+    </table></div>
+    ${paginationHtml}
+    </div>`;
 }
 
 function buildWeeksFromDB() {
@@ -1568,7 +1633,7 @@ function setStatus(txt,cls){
 
 async function deleteReport(id) {
   if (!confirm('Удалить отчёт?')) return;
-  try { await API.delete('/reports/'+id); loadReports(); }
+  try { await API.delete('/reports/'+id); reportsPage = 0; loadReports(); }
   catch(e) { alert(e.message); }
 }
 
@@ -1595,7 +1660,10 @@ async function loadCabinets() {
           <div class="cab-meta">${c.manager_name || '—'}</div>
           ${cabReportBadge(c.id)}
         </div>
-        <button class="btn btn-danger btn-sm" onclick="deleteCabinet('${c.id}')">Удалить</button>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          ${user?.role==='admin' ? `<button class="btn btn-sm" style="background:var(--wb3);color:var(--wb);border:0.5px solid var(--wb)" onclick="openAccessModal('${c.id}','${c.name.replace(/'/g,"\\'")}')">Доступ</button>` : ''}
+          ${user?.role==='admin' ? `<button class="btn btn-danger btn-sm" onclick="deleteCabinet('${c.id}')">Удалить</button>` : ''}
+        </div>
       </div>`).join('');
   } catch(e) { console.error(e); }
 }
@@ -1621,6 +1689,58 @@ async function deleteCabinet(id) {
   if (!confirm('Удалить кабинет?')) return;
   try { await API.delete('/cabinets/'+id); loadCabinets(); loadCabinetsForUpload(); }
   catch(e) { alert(e.message); }
+}
+
+// ── Cabinet Access ──
+let accessCabId = null;
+
+async function openAccessModal(cabId, cabName) {
+  accessCabId = cabId;
+  document.getElementById('cab-access-title').textContent = cabName;
+  document.getElementById('cab-access-modal').classList.add('show');
+  await renderAccessList();
+  // Заполнить select всеми менеджерами
+  const managers = await API.get('/managers');
+  const sel = document.getElementById('cab-access-add-select');
+  sel.innerHTML = '<option value="">— добавить менеджера —</option>' +
+    managers.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+}
+
+function closeAccessModal() {
+  document.getElementById('cab-access-modal').classList.remove('show');
+  accessCabId = null;
+}
+
+async function renderAccessList() {
+  const list = document.getElementById('cab-access-list');
+  list.innerHTML = '<div style="color:var(--g2);font-size:12px">Загрузка...</div>';
+  const managers = await API.get('/cabinets/'+accessCabId+'/access');
+  if (!managers.length) {
+    list.innerHTML = '<div style="color:var(--g2);font-size:12px">Нет дополнительных менеджеров</div>';
+    return;
+  }
+  list.innerHTML = managers.map(m => `
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--card2);border-radius:8px;padding:7px 10px">
+      <span style="font-size:13px;color:var(--t)">${m.name}</span>
+      <button class="btn btn-danger btn-sm" style="padding:3px 8px;font-size:11px" onclick="revokeCabAccess('${m.id}')">✕</button>
+    </div>`).join('');
+}
+
+async function grantCabAccess() {
+  const mgrId = document.getElementById('cab-access-add-select').value;
+  if (!mgrId) return;
+  try {
+    await API.post('/cabinets/'+accessCabId+'/access', { manager_id: mgrId });
+    document.getElementById('cab-access-add-select').value = '';
+    await renderAccessList();
+  } catch(e) { alert(e.message); }
+}
+
+async function revokeCabAccess(mgrId) {
+  try {
+    await API.delete('/cabinets/'+accessCabId+'/access/'+mgrId);
+    await renderAccessList();
+  } catch(e) { alert(e.message); }
 }
 
 // ── DAILY REPORTS ──
@@ -1727,7 +1847,7 @@ function openDailyModal() {
 function editDaily(r) {
   editingDailyId = r.id;
   document.getElementById('daily-modal-title').textContent = 'Редактировать отчёт';
-  document.getElementById('dr-date').value   = r.report_date;
+  document.getElementById('dr-date').value   = (r.report_date || '').slice(0, 10);
   document.getElementById('dr-notes').value  = r.notes || '';
   document.getElementById('task-rows').innerHTML = '';
   (r.tasks||[]).forEach(t => addTaskRow(t));
@@ -1790,7 +1910,7 @@ async function deleteDaily(id) {
 }
 
 // Закрытие модалок по клику вне
-['cab-modal','daily-modal','daily-view-modal'].forEach(id => {
+['cab-modal','cab-access-modal','daily-modal','daily-view-modal'].forEach(id => {
   document.getElementById(id).addEventListener('click', e => {
     if (e.target === e.currentTarget) e.currentTarget.classList.remove('show');
   });
@@ -1844,13 +1964,15 @@ init();
 // ══════════════════════════════════════
 // ФИНМОДЕЛЬ (v3 — plan + cost rework)
 // ══════════════════════════════════════
-const FM_KEY = 'wb_finmodel';
+let fmActivePlatform = 'wb';
+function fmActiveKey() { return fmActivePlatform === 'ozon' ? 'oz_finmodel' : 'wb_finmodel'; }
 let fmNextId = 1;
-let FM = { projectName: 'Финансовая модель', months: 1, startDate: '', articles: [], cabinetId: null };
+let FM = { projectName: 'Финансовая модель', months: 1, startDate: '', articles: [], cabinetId: null, labelDefs: [] };
 let fmChartInst = {};
 let fmChartTimer = null;
 let fmSaveTimer  = null;
 let fmDbLoaded   = false; // флаг: данные уже загружены из БД (не перезаписывать localStorage-мусором)
+let fmSkipDbLoad = false; // флаг: пропустить загрузку из БД при следующем переходе (при переключении платформы)
 
 function fmNewArticle(overrides = {}) {
   const id = fmNextId++;
@@ -1871,6 +1993,7 @@ function fmNewArticle(overrides = {}) {
     extraLogistics: 3000,     // batch delivery logistics
     extraPackaging: 1000,     // packaging
     extraOther: 0,
+    extraAcceptance: 0,       // приёмка на склад
     // Section states
     batchOpen: false,
     planOpen: false,
@@ -1881,6 +2004,7 @@ function fmNewArticle(overrides = {}) {
     weeklyPct: [],            // [] = auto; [20,25,...] = manual %
     weeklyPrice: {},          // { week_index: price } — dynamic price per week
     expandedWeeks: [],        // week indices with day detail open
+    labels: [],               // array of label ids assigned to this article
     ...overrides
   };
 }
@@ -1891,7 +2015,7 @@ function fmCalc(a, priceOverride) {
   // batchSize = target buyouts; orders = how many to send to achieve that buyout count
   const buyouts   = Math.max(0, +a.batchSize);
   const orders    = Math.round(buyouts / buyRate);
-  const extraTotal   = +a.extraLogistics + +a.extraPackaging + +a.extraOther;
+  const extraTotal   = +a.extraLogistics + +a.extraPackaging + +a.extraOther + +(a.extraAcceptance||0);
   const extraPerUnit = extraTotal / Math.max(1, buyouts);
   const costUnit  = +a.costPerUnit;           // direct cost per unit (display)
   const logOrder  = +a.sendCost + (1 - buyRate) * +a.returnCost;
@@ -1903,8 +2027,9 @@ function fmCalc(a, priceOverride) {
   const commUnit  = price * commPct / 100;
   const acquUnit  = price * acquPct  / 100;
   const drrUnit   = price * drrPct   / 100;
-  // Оплата на Р/С (per buyout): цена − комиссия − реклама − логистика − эквайринг
-  const receipt   = price - commUnit - drrUnit - logBuyout - acquUnit;
+  // Оплата на Р/С (per buyout): цена − комиссия − логистика − эквайринг
+  // ДРР НЕ вычитается здесь — реклама WB оплачивается отдельно (отдельный бюджет)
+  const receipt   = price - commUnit - logBuyout - acquUnit;
   // Налог: от суммы продажи или от оплаты на Р/С
   const taxBase   = a.taxBase || 'price';
   const taxUnit   = taxBase === 'rcs'
@@ -1913,8 +2038,8 @@ function fmCalc(a, priceOverride) {
   // Самовыкупы: % от ДРР-бюджета (внешние расходы)
   const selfBuyoutPct  = +(a.selfBuyoutPct || 0);
   const selfBuyoutUnit = drrUnit * selfBuyoutPct / 100;
-  // Прибыль за 1 выкуп
-  const profitUnit = receipt - taxUnit - costUnit - extraPerUnit - selfBuyoutUnit;
+  // Прибыль за 1 выкуп: приход − реклама − налог − себестоимость − доп.расходы − самовыкупы
+  const profitUnit = receipt - drrUnit - taxUnit - costUnit - extraPerUnit - selfBuyoutUnit;
   const margin     = price > 0 ? profitUnit / price * 100 : 0;
   // ROI: прибыль / все расходы
   const allCosts   = costUnit + extraPerUnit + selfBuyoutUnit + logBuyout + commUnit + acquUnit + drrUnit + taxUnit;
@@ -1925,7 +2050,8 @@ function fmCalc(a, priceOverride) {
   const fixedCosts = logBuyout + costUnit + extraPerUnit;
   let breakEven;
   if (taxBase === 'rcs') {
-    const A = (1 - cfrac - dfrac - afrac) * (1 - tfrac) - sbfrac;
+    // receipt = price*(1-cfrac-afrac) - logBuyout; tax = receipt*tfrac; drr отдельно
+    const A = (1 - cfrac - afrac) * (1 - tfrac) - dfrac - sbfrac;
     const B = logBuyout * (1 - tfrac) + costUnit + extraPerUnit;
     breakEven = A > 0.01 ? B / A : 0;
   } else {
@@ -1978,6 +2104,7 @@ function fmApplyDefaults(articles) {
     if (a.budgetOpen === undefined) a.budgetOpen = false;
     if (a.collapsed  === undefined) a.collapsed  = false;
     if (a.selfBuyoutPct === undefined) a.selfBuyoutPct = 0;
+    if (a.extraAcceptance === undefined) a.extraAcceptance = 0;
     if (!a.taxBase)             a.taxBase        = 'price';
     if (!a.months)              a.months         = FM.months || 1;
     if (!a.startDate)           a.startDate      = FM.startDate || new Date().toISOString().slice(0, 10);
@@ -2009,7 +2136,7 @@ function fmShowSaveInd(text, type) {
 
 // ── Сохранение в БД (debounced) + резервная копия в localStorage ──
 function fmSave() {
-  try { localStorage.setItem(FM_KEY, JSON.stringify({ ...FM, _nid: fmNextId })); } catch(e) {}
+  try { localStorage.setItem(fmActiveKey(), JSON.stringify({ ...FM, _nid: fmNextId })); } catch(e) {}
   clearTimeout(fmSaveTimer);
   fmShowSaveInd('Сохранение...', 'var(--g)');
   fmSaveTimer = setTimeout(fmSaveToDB, 1000);
@@ -2029,7 +2156,8 @@ async function fmSaveToDB(silent = false) {
     name:       FM.projectName,
     months:     FM.months,
     start_date: FM.startDate || null,
-    articles:   JSON.parse(JSON.stringify(FM.articles))
+    articles:   JSON.parse(JSON.stringify(FM.articles)),
+    label_defs: Array.isArray(FM.labelDefs) ? FM.labelDefs : [],
   };
   const doSave = () => API.put('/finmodels', payload);
   try {
@@ -2052,7 +2180,7 @@ async function fmSaveToDB(silent = false) {
 // ── Загрузка из localStorage (fallback) ──
 function fmLoad() {
   try {
-    const d = JSON.parse(localStorage.getItem(FM_KEY) || 'null');
+    const d = JSON.parse(localStorage.getItem(fmActiveKey()) || 'null');
     if (d) { fmNextId = d._nid || 1; delete d._nid; FM = d; }
   } catch(e) {}
   if (!FM.articles || !FM.articles.length) FM.articles = [fmNewArticle({ name: 'Артикул 1' })];
@@ -2071,6 +2199,7 @@ async function fmLoadFromDB(mgrId) {
       FM.months      = data.months || 1;
       FM.startDate   = data.start_date ? data.start_date.slice(0, 10) : new Date().toISOString().slice(0, 10);
       FM.cabinetId   = data.cabinet_id || null;
+      FM.labelDefs   = Array.isArray(data.label_defs) ? data.label_defs : [];
       FM.articles    = data.articles;
       fmApplyDefaults(FM.articles);
       if (!FM.articles.length) FM.articles = [fmNewArticle({ name: 'Артикул 1' })];
@@ -2491,7 +2620,7 @@ function fmUpdateSummary() {
   let totRev = 0, totProfit = 0, totCosts = 0, totInvest = 0, totReceipt = 0;
   fmVisibleArticles().forEach(a => {
     const c = fmCalc(a);
-    const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther;
+    const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther + +(a.extraAcceptance||0);
     totRev     += c.revenue;
     totProfit  += c.profit;
     totReceipt += c.receiptTotal;
@@ -2571,14 +2700,29 @@ function fmUpdateCard(id) {
   }
   const res = card.querySelector('.fm-results');
   if (res) res.innerHTML = fmResultsHtml(a, c);
-  // Update price row (breakeven label + slider range)
+  // Update price row — guard against destroying focused price input / slider
   const priceRow = card.querySelector('.fm-price-row');
-  if (priceRow) priceRow.innerHTML = fmPriceRowInner(a, c);
+  if (priceRow) {
+    const ae = document.activeElement;
+    const priceFocused = ae && (ae.id === 'fmp-' + id || ae.id === 'fms-' + id);
+    if (priceFocused) {
+      // Only update breakeven hint to avoid destroying focused element
+      const beB = priceRow.querySelector('.fm-be-hint b');
+      if (beB) beB.textContent = fmFmt(c.breakEven, 'rub');
+    } else {
+      priceRow.innerHTML = fmPriceRowInner(a, c);
+    }
+  }
   // Update view grid if in read mode
   if (!a.editMode) {
     const fw = card.querySelector('.fm-fields-wrap');
     if (fw) fw.innerHTML = fmViewGridHtml(a, c);
   }
+  // Sync tax-base toggle active states (edit mode doesn't re-render the fields)
+  card.querySelectorAll('.fm-taxbase-tog').forEach(btn => {
+    const isRcs = btn.textContent.trim() === 'от Р/С';
+    btn.classList.toggle('active', (a.taxBase || 'price') === (isRcs ? 'rcs' : 'price'));
+  });
   // Extra-cost amortisation display
   const epuEl = card.querySelector('.fm-epu-val');
   if (epuEl) epuEl.textContent = fmFmt(c.extraPerUnit, 'rub');
@@ -2590,14 +2734,15 @@ function fmUpdateCard(id) {
 
 // ── Budget section HTML ──
 function fmBudgetHtml(a, c) {
-  const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther;
+  const extraTotal = +a.extraLogistics + +a.extraPackaging + +a.extraOther + +(a.extraAcceptance||0);
   const procurement   = c.buyouts * c.costUnit;
   const drrBudget     = c.buyouts * c.drrUnit;
   const selfBuyouts   = c.buyouts * c.selfBuyoutUnit;
   const logisticsSend = +a.extraLogistics;
   const packaging     = +a.extraPackaging;
   const otherExtra    = +a.extraOther;
-  const totalInvest   = procurement + drrBudget + selfBuyouts + logisticsSend + packaging + otherExtra;
+  const acceptance    = +(a.extraAcceptance||0);
+  const totalInvest   = procurement + drrBudget + selfBuyouts + logisticsSend + packaging + otherExtra + acceptance;
   const pc = c.profit >= 0 ? 'pos' : 'neg';
   const br = (lbl, val, cls) =>
     `<div class="fm-budget-row"><span class="fm-budget-lbl">${lbl}</span><span class="fm-budget-val${cls?' '+cls:''}">${val}</span></div>`;
@@ -2606,6 +2751,7 @@ function fmBudgetHtml(a, c) {
     ${logisticsSend > 0 ? br('Логистика поставки', fmFmt(logisticsSend,'rub')) : ''}
     ${packaging     > 0 ? br('Упаковка', fmFmt(packaging,'rub')) : ''}
     ${otherExtra    > 0 ? br('Прочие расходы', fmFmt(otherExtra,'rub')) : ''}
+    ${acceptance    > 0 ? br('Приёмка', fmFmt(acceptance,'rub')) : ''}
     ${drrBudget     > 0 ? br('ДРР (рекламный бюджет)', fmFmt(drrBudget,'rub')) : ''}
     ${selfBuyouts   > 0 ? br('Самовыкупы', fmFmt(selfBuyouts,'rub')) : ''}
     <div class="fm-budget-row total"><span class="fm-budget-lbl">ИТОГО вложения</span><span class="fm-budget-val">${fmFmt(totalInvest,'rub')}</span></div>
@@ -2631,6 +2777,7 @@ function fmCardHtml(a) {
     ondrop="fmDrop(event,${a.id})"
     ondragend="fmDragEnd(event,${a.id})">
   <div class="fm-card-header">
+    <span class="fm-drag-handle" title="Перетащить">⠿</span>
     <button class="fm-card-edit-btn" style="padding:3px 7px;font-size:14px;line-height:1" onclick="fmToggleCollapse(${a.id})" title="${a.collapsed ? 'Развернуть' : 'Свернуть'}">${a.collapsed ? '▸' : '▾'}</button>
     <input class="fm-art-name" id="fmn-${a.id}" value="${fmEsc(a.name)}"
       oninput="fmSet(${a.id},'name',this.value)" placeholder="Название" />
@@ -2652,6 +2799,7 @@ function fmCardHtml(a) {
   </div>
   <!-- Full card body -->
   <div class="fm-card-body">
+  ${fmArtLabelsHtml(a)}
   <div class="fm-art-period-row">
     <span class="fm-art-period-lbl">Период:</span>
     <div class="fm-period-btns">${[1,2,3,4,5,6].map(m=>`<button class="fm-period-btn${(a.months||1)===m?' active':''}" onclick="fmSetArtPeriod(${a.id},${m})">${m} мес</button>`).join('')}</div>
@@ -2678,6 +2826,9 @@ function fmCardHtml(a) {
       <div class="fm-field"><label>Прочие расходы</label>
         <input type="number" id="fmf-${a.id}-extraOther" value="${+a.extraOther}" min="0"
           oninput="fmSet(${a.id},'extraOther',+this.value)" /></div>
+      <div class="fm-field"><label>Приёмка ₽</label>
+        <input type="number" id="fmf-${a.id}-extraAcceptance" value="${+(a.extraAcceptance||0)}" min="0"
+          oninput="fmSet(${a.id},'extraAcceptance',+this.value)" /></div>
     </div>
     <div class="fm-batch-cst">
       Доп. расходы / ед: <b class="fm-epu-val">${fmFmt(c.extraPerUnit,'rub')}</b>
@@ -2700,11 +2851,84 @@ function fmCardHtml(a) {
 </div>`;
 }
 
+// ── Label management ──
+let fmLabelFilter = null; // null = all, string = label id
+
+const LABEL_COLORS = ['#7C3AED','#2563EB','#059669','#D97706','#DC2626','#DB2777','#0891B2'];
+
+function fmGetLabel(id) { return FM.labelDefs.find(l => l.id === id); }
+
+function fmAddLabel() {
+  const name = prompt('Название ярлыка:');
+  if (!name || !name.trim()) return;
+  const id = 'lbl_' + Date.now();
+  const color = LABEL_COLORS[FM.labelDefs.length % LABEL_COLORS.length];
+  FM.labelDefs.push({ id, name: name.trim(), color });
+  fmSave(); fmSaveToDB(); fmRenderFull();
+}
+
+function fmDeleteLabel(id) {
+  FM.labelDefs = FM.labelDefs.filter(l => l.id !== id);
+  FM.articles.forEach(a => { if (a.labels) a.labels = a.labels.filter(lid => lid !== id); });
+  if (fmLabelFilter === id) fmLabelFilter = null;
+  fmSave(); fmSaveToDB(); fmRenderFull();
+}
+
+function fmToggleArticleLabel(artId, labelId) {
+  const a = FM.articles.find(x => x.id === artId); if (!a) return;
+  if (!a.labels) a.labels = [];
+  const idx = a.labels.indexOf(labelId);
+  if (idx >= 0) a.labels.splice(idx, 1); else a.labels.push(labelId);
+  fmSave(); fmSaveToDB();
+  fmUpdateCard(artId);
+  fmRenderLabelsBar();
+}
+
+function fmSetLabelFilter(id) {
+  fmLabelFilter = fmLabelFilter === id ? null : id;
+  fmRenderFull();
+}
+
+function fmLabelsBarHtml() {
+  if (!FM.labelDefs) FM.labelDefs = [];
+  const chips = FM.labelDefs.map(l =>
+    `<span class="fm-label-chip fm-label-filter-chip${fmLabelFilter===l.id?' active':''}"
+       style="background:${l.color}22;color:${l.color}"
+       onclick="fmSetLabelFilter('${l.id}')">${fmEsc(l.name)}
+       <span class="fm-chip-del" onclick="event.stopPropagation();fmDeleteLabel('${l.id}')">✕</span>
+     </span>`
+  ).join('');
+  return `<div class="fm-labels-bar">
+    <span class="fm-labels-bar-title">Ярлыки:</span>
+    ${chips}
+    <button class="fm-label-add-btn" onclick="fmAddLabel()">＋ Добавить</button>
+    ${fmLabelFilter ? `<button class="fm-label-add-btn" style="margin-left:auto" onclick="fmSetLabelFilter(null)">✕ Сбросить фильтр</button>` : ''}
+  </div>`;
+}
+
+function fmRenderLabelsBar() {
+  const el = document.getElementById('fm-labels-bar');
+  if (el) el.outerHTML = fmLabelsBarHtml().replace('<div class="fm-labels-bar">', '<div class="fm-labels-bar" id="fm-labels-bar">');
+}
+
+function fmArtLabelsHtml(a) {
+  if (!FM.labelDefs || !FM.labelDefs.length) return '';
+  const assigned = (a.labels || []).map(id => FM.labelDefs.find(l => l.id === id)).filter(Boolean);
+  const unassigned = FM.labelDefs.filter(l => !(a.labels || []).includes(l.id));
+  const all = [
+    ...assigned.map(l => `<span class="fm-art-label-chip" style="background:${l.color}33;color:${l.color}" onclick="fmToggleArticleLabel(${a.id},'${l.id}')" title="Снять ярлык">${fmEsc(l.name)} ✓</span>`),
+    ...unassigned.map(l => `<span class="fm-art-label-chip" style="background:var(--bg);color:var(--g);opacity:.5" onclick="fmToggleArticleLabel(${a.id},'${l.id}')" title="Добавить ярлык">+ ${fmEsc(l.name)}</span>`),
+  ];
+  return all.length ? `<div class="fm-art-labels">${all.join('')}</div>` : '';
+}
+
 // ── Full rebuild ──
 function fmRenderFull() {
   fmSave();
   const pnEl = document.getElementById('fm-project-name');
   if (pnEl) pnEl.value = FM.projectName;
+  const badge = document.getElementById('fm-platform-badge');
+  if (badge) { badge.textContent = fmActivePlatform === 'ozon' ? 'Озон' : 'WB'; badge.dataset.p = fmActivePlatform; }
   fmPopulateCabinetSel();
 
   const container = document.getElementById('fm-articles');
@@ -2725,7 +2949,24 @@ function fmRenderFull() {
 
   if (chartsSection) chartsSection.style.display = '';
   fmUpdateSummary();
-  container.innerHTML = fmVisibleArticles().map(a => fmCardHtml(a)).join('') +
+
+  // Labels bar
+  const labelsBarEl = document.getElementById('fm-labels-bar');
+  const labelsBarHtml = fmLabelsBarHtml().replace('<div class="fm-labels-bar">', '<div class="fm-labels-bar" id="fm-labels-bar">');
+  if (labelsBarEl) labelsBarEl.outerHTML = labelsBarHtml;
+  else {
+    const lbEl = document.createElement('div');
+    lbEl.innerHTML = labelsBarHtml;
+    container.parentNode.insertBefore(lbEl.firstChild, container);
+  }
+
+  // Filter articles by label if needed
+  let visible = fmVisibleArticles();
+  if (fmLabelFilter) {
+    visible = visible.filter(a => (a.labels || []).includes(fmLabelFilter));
+  }
+
+  container.innerHTML = visible.map(a => fmCardHtml(a)).join('') +
     `<button class="fm-add-btn" onclick="fmAddArticle()">＋ Добавить артикул</button>`;
   fmScheduleCharts();
 }
@@ -3236,6 +3477,10 @@ function fmFilterArticles(query) {
 // ── Drag & drop cards ──
 let fmDragId = null;
 function fmDragStart(e, id) {
+  // Only allow drag from the drag handle; block all interactive elements
+  if (e.target.closest('input, select, textarea, button, a')) {
+    e.preventDefault(); return;
+  }
   fmDragId = id;
   e.dataTransfer.effectAllowed = 'move';
   const card = document.getElementById('fmc-' + id);
@@ -3271,12 +3516,34 @@ function fmDrop(e, targetId) {
   fmDragId = null;
 }
 
+function fmSwitchAndShow(platform, el) {
+  if (fmActivePlatform !== platform) {
+    // Persist current platform state before switching
+    try { localStorage.setItem(fmActiveKey(), JSON.stringify({ ...FM, _nid: fmNextId })); } catch(e) {}
+    fmActivePlatform = platform;
+    FM = {
+      projectName: platform === 'ozon' ? 'Финансовая модель Озон' : 'Финансовая модель',
+      months: 1, startDate: '', articles: [], cabinetId: null, labelDefs: []
+    };
+    fmNextId = 1;
+    fmDbLoaded = false;
+    fmLoad(); // load new platform from localStorage
+    fmSkipDbLoad = true; // don't let showPage override overwrite with wrong platform DB data
+  }
+  showPage('finmodel', el);
+}
+
 // Init finmodel — предзаполнить из localStorage сразу, потом обновить из БД при открытии вкладки
 fmLoad();
 const _origShowPage = showPage;
 showPage = function(name, el) {
   _origShowPage(name, el);
   if (name === 'finmodel') {
+    if (fmSkipDbLoad) {
+      fmSkipDbLoad = false;
+      fmRender();
+      return;
+    }
     // Загружаем из БД при каждом переходе на вкладку
     const mgrId = (typeof user !== 'undefined' && user)
       ? (user.manager_id || (user.role === 'admin' ? (typeof selectedManagerId !== 'undefined' ? selectedManagerId : null) : null))

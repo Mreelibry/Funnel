@@ -94,11 +94,62 @@ CREATE TABLE IF NOT EXISTS finmodels (
 CREATE INDEX IF NOT EXISTS idx_finmodels_manager ON finmodels(manager_id);
 CREATE INDEX IF NOT EXISTS idx_finmodels_updated ON finmodels(updated_at DESC);
 
+-- ──────────────────────────────────────────
+-- ТАБЛИЦА: daily_reports
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS daily_reports (
+  id          UUID      PRIMARY KEY DEFAULT uuid_generate_v4(),
+  manager_id  UUID      NOT NULL REFERENCES managers(id) ON DELETE CASCADE,
+  report_date DATE      NOT NULL DEFAULT CURRENT_DATE,
+  tasks       JSONB     NOT NULL DEFAULT '[]',
+  notes       TEXT      NOT NULL DEFAULT '',
+  created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_manager ON daily_reports(manager_id);
+CREATE INDEX IF NOT EXISTS idx_daily_date    ON daily_reports(report_date DESC);
+
+-- ──────────────────────────────────────────
 -- Migrations for existing databases (safe to re-run)
 ALTER TABLE reports   ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id) ON DELETE SET NULL;
 ALTER TABLE finmodels ADD COLUMN IF NOT EXISTS cabinet_id UUID REFERENCES cabinets(id) ON DELETE SET NULL;
 -- One finmodel per cabinet (main UPSERT key)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_finmodels_cabinet ON finmodels(cabinet_id) WHERE cabinet_id IS NOT NULL;
+
+-- ──────────────────────────────────────────
+-- ТАБЛИЦА: unit_economics
+-- Юнит-экономика — расчёт себестоимости и прибыли по товарам
+-- ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS unit_economics (
+  id               UUID          PRIMARY KEY DEFAULT uuid_generate_v4(),
+  manager_id       UUID          NOT NULL REFERENCES managers(id) ON DELETE CASCADE,
+  name             TEXT          NOT NULL DEFAULT 'Новый товар',
+  currency_rate    NUMERIC(12,4) NOT NULL DEFAULT 1,
+  purchase_price   NUMERIC(12,2) NOT NULL DEFAULT 0,
+  batch_qty        INTEGER       NOT NULL DEFAULT 1,
+  length_cm        NUMERIC(8,2)  NOT NULL DEFAULT 0,
+  width_cm         NUMERIC(8,2)  NOT NULL DEFAULT 0,
+  height_cm        NUMERIC(8,2)  NOT NULL DEFAULT 0,
+  commission_pct   NUMERIC(6,3)  NOT NULL DEFAULT 0,
+  price_before_spp NUMERIC(12,2) NOT NULL DEFAULT 0,
+  buyout_pct       NUMERIC(6,2)  NOT NULL DEFAULT 100,
+  ad_spend_pct     NUMERIC(6,3)  NOT NULL DEFAULT 0,
+  loc_index        NUMERIC(10,5) NOT NULL DEFAULT 1,
+  sales_dist_index NUMERIC(10,5) NOT NULL DEFAULT 0,
+  tax_system       TEXT          NOT NULL DEFAULT 'Не считать налог',
+  tax_rate         NUMERIC(6,3)  NOT NULL DEFAULT 0,
+  spp              NUMERIC(6,3),
+  acceptance_cost  NUMERIC(12,2) NOT NULL DEFAULT 0,
+  storage_cost     NUMERIC(12,2) NOT NULL DEFAULT 0,
+  warehouse_coeff     NUMERIC(8,2)  NOT NULL DEFAULT 100,  -- в %: 100=×1.0, 150=×1.5
+  wh_coeff_logistics  NUMERIC(8,2)  NOT NULL DEFAULT 100,  -- в %: 100=×1.0, 150=×1.5
+  extra_expenses      NUMERIC(12,2) NOT NULL DEFAULT 0,
+  created_at       TIMESTAMP     NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_unit_econ_manager ON unit_economics(manager_id);
 
 -- ──────────────────────────────────────────
 -- НАЧАЛЬНЫЕ ДАННЫЕ: Admin пользователь
