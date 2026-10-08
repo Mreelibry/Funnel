@@ -29,6 +29,7 @@ const ICON = {
   sheet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 9v12"/></svg>',
   box: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M8 12l8-4 8 4v9l-8 4-8-4z"/><path d="M8 12l8 4 8-4M16 16v9"/></svg>',
   chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+  doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>',
   print: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4v-7h16v7h-2"/><rect x="6" y="14" width="12" height="7"/></svg>',
   logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
 };
@@ -116,6 +117,9 @@ function route() {
   state.activeEd = null;
   $app.oninput = $app.onclick = $app.onkeydown = $app.onpaste = null;
   window.scrollTo(0, 0);
+  document.title = 'Отправки';
+  const act = hash.match(/^\/s\/(\d+)\/act$/);
+  if (act) return renderAct(Number(act[1]));
   const m = hash.match(/^\/s\/(\d+)(\/edit)?$/);
   if (hash === '/new') return renderEditor(null);
   if (hash.startsWith('/new?copy=')) return renderEditor(null, Number(hash.split('=')[1]));
@@ -380,6 +384,7 @@ function drawDetail(s) {
       <div class="row no-print">
         ${sheets.enabled ? `<button class="btn" id="sync" title="Перезаписать лист в Google Таблице">${ICON.sync}<span class="hide-sm">Синхронизировать</span></button>` : ''}
         <button class="btn" onclick="window.print()" title="Печать">${ICON.print}</button>
+        <a class="btn" href="#/s/${s.id}/act" title="Акт приёма-передачи для печати (A4)">${ICON.doc}<span class="hide-sm">Акт</span></a>
         <a class="btn" href="#/new?copy=${s.id}" title="Создать копию">${ICON.copy}<span class="hide-sm">Копия</span></a>
         <button class="btn danger" id="del" title="Удалить">${ICON.trash}</button>
         <a class="btn primary" href="#/s/${s.id}/edit">${ICON.edit}Редактировать</a>
@@ -435,6 +440,161 @@ function drawDetail(s) {
 }
 
 // ============================================================
+//  Акт приёма-передачи (A4)
+// ============================================================
+
+// 520 → «пятьсот двадцать»
+function numberWords(n) {
+  if (!n) return 'ноль';
+  const ones = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
+  const onesF = ['', 'одна', 'две', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
+  const teens = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
+  const tens = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто'];
+  const hundreds = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот'];
+  const triple = (x, fem) => {
+    const out = [hundreds[Math.floor(x / 100)]];
+    const r = x % 100;
+    if (r >= 10 && r < 20) out.push(teens[r - 10]);
+    else out.push(tens[Math.floor(r / 10)], (fem ? onesF : ones)[r % 10]);
+    return out.filter(Boolean).join(' ');
+  };
+  const plural = (x, one, few, many) => {
+    const r = x % 100;
+    if (r >= 11 && r <= 14) return many;
+    return [many, one, few, few, few, many, many, many, many, many][x % 10];
+  };
+  const th = Math.floor(n / 1000);
+  const rest = n % 1000;
+  const parts = [];
+  if (th) parts.push(triple(th, true), plural(th, 'тысяча', 'тысячи', 'тысяч'));
+  if (rest) parts.push(triple(rest, false));
+  return parts.join(' ');
+}
+
+function actSizes(models) {
+  const order = [];
+  for (const m of models) for (const x of m.sizes) if (!order.includes(x)) order.push(x);
+  return order;
+}
+
+function actTable(models, title) {
+  if (!models.length) return '';
+  const sizes = actSizes(models);
+  let n = 0;
+  let total = 0;
+  const sizeTotals = Object.fromEntries(sizes.map((x) => [x, 0]));
+  const rows = models.flatMap((m) => m.colors.map((c, ci) => {
+    n += 1;
+    const t = colorTotal(c);
+    total += t;
+    sizes.forEach((x) => { sizeTotals[x] += c.qty[x] || 0; });
+    return `<tr>
+      <td class="c">${n}</td>
+      ${ci === 0 ? `<td rowspan="${m.colors.length}" class="model">${esc(m.name)}</td>` : ''}
+      <td>${esc(c.name)}${c.article ? `<div class="art">Арт. ${esc(c.article)}</div>` : ''}</td>
+      ${sizes.map((x) => `<td class="c">${m.sizes.includes(x) ? (c.qty[x] || '—') : ''}</td>`).join('')}
+      <td class="c b">${t}</td>
+    </tr>`;
+  }));
+  return `
+    <h3 class="act-h3">${title}</h3>
+    <table class="act-table">
+      <thead><tr><th class="c" style="width:7mm">№</th><th>Модель</th><th>Цвет / артикул</th>${sizes.map((x) => `<th class="c sz">${esc(x)}</th>`).join('')}<th class="c" style="width:17mm">Всего, ед.</th></tr></thead>
+      <tbody>${rows.join('')}</tbody>
+      <tfoot><tr><td colspan="3" class="r b">Итого:</td>${sizes.map((x) => `<td class="c b">${sizeTotals[x]}</td>`).join('')}<td class="c b">${total}</td></tr></tfoot>
+    </table>`;
+}
+
+function actPage(s, b, index, count) {
+  const shipped = b.models.filter((m) => m.kind !== 'return');
+  const returned = b.models.filter((m) => m.kind === 'return');
+  const sum = (ms) => ms.reduce((a, m) => a + modelTotal(m), 0);
+  const tShipped = sum(shipped);
+  const tReturned = sum(returned);
+  const number = count > 1 ? `${s.id}/${index + 1}` : `${s.id}`;
+  const receiver = s.fulfillment || '';
+  const sign = (role, who) => `
+    <div class="act-sign">
+      <div class="role">${role}</div>
+      <div class="who">${who ? esc(who) : '&nbsp;'}</div>
+      <div class="lines"><span class="line"></span><span class="slash">/</span><span class="line wide"></span></div>
+      <div class="hints"><span>подпись</span><span>Ф. И. О.</span></div>
+      <div class="date">«____» ______________ 20___ г.</div>
+    </div>`;
+  return `
+    <section class="act-page">
+      <div class="act-top"><span>Акт № ${esc(number)}</span><span>${esc(longDate(s.date))} г.</span></div>
+      <h1 class="act-title">Акт приёма-передачи товара</h1>
+      <div class="act-sub">№ ${esc(number)} от ${esc(longDate(s.date))} г.</div>
+      <table class="act-parties">
+        <tr><td class="k">Отправитель:</td><td>${esc(b.owner || '—')}${b.name ? `, бренд «${esc(b.name)}»` : ''}</td></tr>
+        <tr><td class="k">Получатель:</td><td>${receiver ? esc(receiver) : '<span class="blank"></span>'}</td></tr>
+        ${s.comment ? `<tr><td class="k">Примечание:</td><td>${esc(s.comment)}</td></tr>` : ''}
+      </table>
+      <p class="act-text">Отправитель передал, а получатель принял следующий товар:</p>
+      ${actTable(shipped, 'Передаваемый товар')}
+      ${actTable(returned, 'Возврат товара')}
+      <div class="act-total">
+        ${shipped.length ? `<div>Всего передано: <b>${tShipped} (${numberWords(tShipped)}) ед.</b></div>` : ''}
+        ${returned.length ? `<div>Всего возвращено: <b>${tReturned} (${numberWords(tReturned)}) ед.</b></div>` : ''}
+      </div>
+      <p class="act-text">Товар передан в указанном количестве. Стороны претензий по количеству и комплектности не имеют.</p>
+      <div class="act-signs">
+        ${sign('Отправил', b.owner)}
+        ${sign('Принял', receiver)}
+      </div>
+    </section>`;
+}
+
+async function renderAct(id) {
+  topActions();
+  spinner();
+  let s;
+  try {
+    s = await api(`/shipments/${id}`);
+  } catch (e) {
+    $app.innerHTML = `<div class="card empty"><h2>${esc(e.message)}</h2></div>`;
+    return;
+  }
+  const brands = s.brands.filter((b) => b.models.some((m) => m.colors.length));
+  let pick = 'all';
+  const draw = () => {
+    const list = pick === 'all' ? brands : [brands[Number(pick)]];
+    document.title = `Акт ${s.title}${pick === 'all' ? '' : ` — ${list[0].owner || list[0].name}`}`;
+    $app.innerHTML = `
+      <div class="act-toolbar no-print">
+        <a class="back" href="#/s/${s.id}">${ICON.back}К отправке</a>
+        <div class="row">
+          ${brands.length > 1 ? `<select class="input select" id="act-pick" style="width:auto">
+            <option value="all">Все ИП (${brands.length} ${[2, 3, 4].includes(brands.length % 10) && ![12, 13, 14].includes(brands.length % 100) ? 'листа' : 'листов'})</option>
+            ${brands.map((b, i) => `<option value="${i}" ${String(i) === pick ? 'selected' : ''}>${esc(b.owner || b.name)}</option>`).join('')}
+          </select>` : ''}
+          <button class="btn primary" id="act-print">${ICON.print}Печать / PDF</button>
+        </div>
+        <div class="muted act-hint">На телефоне: «Печать / PDF» → «Поделиться» → «Сохранить в Файлы». На компьютере в окне печати выберите «Сохранить как PDF».</div>
+      </div>
+      <div class="act-stage"><div class="act-scale">${list.length ? list.map((b) => actPage(s, b, brands.indexOf(b), brands.length)).join('') : '<div class="card empty"><p>В отправке нет товаров.</p></div>'}</div></div>`;
+    fitAct();
+    const sel = document.getElementById('act-pick');
+    if (sel) sel.onchange = () => { pick = sel.value; draw(); };
+    document.getElementById('act-print').onclick = () => window.print();
+  };
+  draw();
+}
+
+// На узком экране уменьшаем лист, чтобы он помещался целиком.
+function fitAct() {
+  const stage = $app.querySelector('.act-stage');
+  const scale = $app.querySelector('.act-scale');
+  const page = $app.querySelector('.act-page');
+  if (!stage || !scale || !page) return;
+  scale.style.zoom = '';
+  const k = Math.min(1, stage.clientWidth / page.offsetWidth);
+  if (k < 1) scale.style.zoom = String(k);
+}
+window.addEventListener('resize', () => { if (location.hash.endsWith('/act')) fitAct(); });
+
+// ============================================================
 //  Редактор
 // ============================================================
 
@@ -465,6 +625,13 @@ async function renderEditor(id, copyFrom) {
     return;
   }
 
+  for (const b of s.brands) {
+    const e = matchEntity(b.owner);
+    if (!e) continue;
+    b.owner = e.owner;
+    if (e.brands.length === 1) b.name = e.brands[0];
+  }
+
   // Заголовок считается «авто», пока его не трогали руками.
   const titleAuto = !s.title || s.title === autoTitle(s.date, s.fulfillment);
   if (titleAuto) s.title = autoTitle(s.date, s.fulfillment);
@@ -482,8 +649,6 @@ function datalists() {
   const uniq = (arr) => [...new Set(arr)];
   return `
     <datalist id="dl-ff">${sg.fulfillments.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
-    <datalist id="dl-brand">${sg.brands.map((x) => `<option value="${esc(x.name)}">${esc(x.owner)}</option>`).join('')}</datalist>
-    <datalist id="dl-owner">${uniq(sg.brands.map((x) => x.owner).filter(Boolean)).map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
     <datalist id="dl-model">${sg.models.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
     <datalist id="dl-color">${uniq(sg.colors.map((x) => x.name)).map((x) => `<option value="${esc(x)}">`).join('')}</datalist>`;
 }
@@ -619,6 +784,55 @@ function edModel(ed, b, m, bi, mi) {
     </div>`;
 }
 
+const entities = () => (state.config && state.config.legalEntities) || [];
+const entityOf = (owner) => entities().find((e) => e.owner === owner);
+
+// «ИП НУРЛАНОВА А» → «нурланова а»; «ИП Темирова Ассоль» → фамилия + первая буква имени.
+const ownerKey = (v) => String(v || '').toLowerCase().replace(/ё/g, 'е').replace(/^\s*ип(?![a-zа-я])/, '').replace(/[^a-zа-я0-9]+/g, ' ').trim();
+const ownerShortKey = (v) => {
+  const [surname, name = ''] = ownerKey(v).split(' ');
+  return `${surname} ${name.charAt(0)}`.trim();
+};
+
+// Привязывает ИП из старых отправок к записи справочника (если однозначно похоже).
+function matchEntity(owner) {
+  if (!owner || entityOf(owner)) return entityOf(owner);
+  const exact = entities().filter((e) => ownerKey(e.owner) === ownerKey(owner));
+  if (exact.length === 1) return exact[0];
+  const short = entities().filter((e) => ownerShortKey(e.owner) === ownerShortKey(owner));
+  if (short.length === 1) return short[0];
+  const surname = (v) => ownerKey(v).split(' ')[0];
+  const bySurname = entities().filter((e) => surname(e.owner) === surname(owner));
+  return bySurname.length === 1 ? bySurname[0] : null;
+}
+
+// ИП — только из справочника; бренд подставляется из справочника по ИП.
+function brandFields(b, bi) {
+  const list = entities();
+  const known = entityOf(b.owner);
+  const ownerOptions = [
+    `<option value="" ${b.owner ? '' : 'selected'} disabled>Выберите ИП…</option>`,
+    ...list.map((e) => `<option value="${esc(e.owner)}" ${e.owner === b.owner ? 'selected' : ''}>${esc(e.owner)}</option>`),
+    // старые отправки могли быть с ИП не из списка — показываем как есть
+    ...(b.owner && !known ? [`<option value="${esc(b.owner)}" selected>${esc(b.owner)} (нет в справочнике)</option>`] : []),
+  ].join('');
+  const owner = `<label class="field"><span>ИП</span><select class="input select" data-f="brand.owner" data-bi="${bi}">${ownerOptions}</select></label>`;
+
+  let brand;
+  if (known && known.brands.length > 1) {
+    const opts = known.brands.map((x) => `<option value="${esc(x)}" ${x === b.name ? 'selected' : ''}>${esc(x)}</option>`);
+    if (b.name && !known.brands.includes(b.name)) opts.push(`<option value="${esc(b.name)}" selected>${esc(b.name)}</option>`);
+    brand = `<select class="input select" data-f="brand.name" data-bi="${bi}">${b.name ? '' : '<option value="" selected disabled>Выберите бренд…</option>'}${opts.join('')}</select>`;
+  } else if (known && known.brands.length === 1) {
+    brand = `<div class="input brand-fixed">${esc(b.name || known.brands[0])}</div>`;
+  } else if (!b.owner) {
+    brand = '<div class="input brand-fixed muted">Сначала выберите ИП</div>';
+  } else {
+    brand = `<input class="input" placeholder="Бренд (пока нет в справочнике)" autocomplete="off" data-f="brand.name" data-bi="${bi}" value="${esc(b.name)}">`;
+  }
+  return `${owner}<label class="field"><span>Бренд</span>${brand}</label>`;
+}
+
 function drawEditor(ed) {
   const { s } = ed;
   ed.mobile = MOBILE.matches;
@@ -648,8 +862,7 @@ function drawEditor(ed) {
     ${s.brands.map((b, bi) => `
       <section class="card ed-brand">
         <div class="ed-brand-head">
-          <label class="field"><span>Бренд</span><input class="input" list="dl-brand" placeholder="AESTA" autocomplete="off" data-f="brand.name" data-bi="${bi}" value="${esc(b.name)}"></label>
-          <label class="field"><span>ИП / владелец</span><input class="input" list="dl-owner" placeholder="ИП Нурланова А." autocomplete="off" data-f="brand.owner" data-bi="${bi}" value="${esc(b.owner)}"></label>
+          ${brandFields(b, bi)}
           <div class="row brand-tools">
             <span class="muted">Итого: <b data-total="brand" data-bi="${bi}">${fmt(b.models.reduce((a, m) => a + modelTotal(m), 0))}</b></span>
             <button type="button" class="btn ghost icon danger" data-act="del-brand" data-bi="${bi}" title="Удалить бренд">${ICON.trash}</button>
@@ -783,17 +996,18 @@ function bindEditor(ed) {
         if (ed.titleAuto) s.title = autoTitle(s.date, s.fulfillment);
         return;
       case 'comment': s.comment = el.value; return;
-      case 'brand.name': {
+      case 'brand.name':
         b.name = el.value;
-        const known = state.suggestions.brands.find((x) => x.name === el.value);
-        if (known && !b.owner) {
-          b.owner = known.owner;
-          $app.querySelector(`[data-f="brand.owner"][data-bi="${el.dataset.bi}"]`).value = known.owner;
-        }
         refreshChips(ed, num(el.dataset.bi));
         return;
+      case 'brand.owner': {
+        b.owner = el.value;
+        const known = entityOf(b.owner);
+        if (known && known.brands.length === 1) b.name = known.brands[0];
+        else if (known && !known.brands.includes(b.name)) b.name = '';
+        drawEditor(ed);
+        return;
       }
-      case 'brand.owner': b.owner = el.value; return;
       case 'model.name': m.name = el.value; refreshChips(ed, num(el.dataset.bi)); return;
       case 'color.name': {
         c.name = el.value;
@@ -958,9 +1172,9 @@ function bindEditor(ed) {
       heads[heads.length - 1].focus();
     }
     if (el.dataset.act === 'add-model' || el.dataset.act === 'add-brand') {
-      const sel = el.dataset.act === 'add-brand' ? '[data-f="brand.name"]' : `[data-f="model.name"][data-bi="${bi}"]`;
+      const sel = el.dataset.act === 'add-brand' ? '[data-f="brand.owner"]' : `[data-f="model.name"][data-bi="${bi}"]`;
       const all = $app.querySelectorAll(sel);
-      all[all.length - 1].focus();
+      if (all.length) all[all.length - 1].focus();
     }
     if (el.dataset.act === 'add-known-color' && ed.mobile) {
       const first = $app.querySelector(`[data-f="qty"][data-bi="${bi}"][data-mi="${mi}"][data-ci="${m.colors.length - 1}"][data-si="0"]`);
@@ -978,7 +1192,7 @@ function cleanForSave(s) {
     for (const m of b.models) m.colors = m.colors.filter((c) => c.name.trim() || colorTotal(c));
     b.models = b.models.filter((m) => m.name.trim() || m.colors.length);
   }
-  out.brands = out.brands.filter((b) => b.name.trim() || b.models.length);
+  out.brands = out.brands.filter((b) => b.name.trim() || b.owner || b.models.length);
   for (const b of out.brands) {
     for (const m of b.models) {
       m.colors.forEach((c, i) => { if (!c.name.trim()) c.name = `Цвет ${i + 1}`; });
@@ -992,6 +1206,16 @@ async function save(ed) {
   const body = cleanForSave(ed.s);
   if (!body.brands.length) {
     toast('Добавьте хотя бы один бренд', true);
+    return;
+  }
+  const noOwner = body.brands.find((b) => !b.owner);
+  if (noOwner) {
+    toast('Выберите ИП для каждого бренда', true);
+    return;
+  }
+  const noName = body.brands.find((b) => !b.name.trim());
+  if (noName) {
+    toast(`Укажите бренд для ${noName.owner}`, true);
     return;
   }
   ed.saving = true;

@@ -6,6 +6,7 @@ const express = require('express');
 const db = require('./db');
 const sheets = require('./sheets');
 const { normalizeShipment, shipmentTotals } = require('./model');
+const { LEGAL_ENTITIES } = require('./directory');
 
 const PORT = Number(process.env.PORT) || 3000;
 const APP_PASSWORD = process.env.APP_PASSWORD || '';
@@ -100,7 +101,7 @@ const idParam = (req) => {
   return id;
 };
 
-app.get('/api/config', (req, res) => res.json({ sheets: sheets.status() }));
+app.get('/api/config', (req, res) => res.json({ sheets: sheets.status(), legalEntities: LEGAL_ENTITIES }));
 
 app.get('/api/shipments', (req, res) => res.json(db.list().map(summary)));
 

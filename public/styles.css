@@ -450,3 +450,68 @@ details.more[open] summary::before { content: '− '; }
   .page-head > .row { width: 100%; }
   .page-head > .row .btn.primary { flex: 1; }
 }
+
+/* ============================================================
+   Справочник ИП в редакторе
+   ============================================================ */
+.select { appearance: none; -webkit-appearance: none; padding-right: 34px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7180' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; }
+.brand-fixed { display: flex; align-items: center; background: var(--surface-2); font-weight: 600; cursor: default; }
+.brand-fixed.muted { font-weight: 400; }
+
+/* ============================================================
+   Акт приёма-передачи — лист A4
+   ============================================================ */
+.act-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+.act-toolbar .back { margin-bottom: 0; }
+.act-hint { flex-basis: 100%; font-size: 12px; }
+.act-stage { overflow: hidden; }
+.act-scale { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+
+.act-page {
+  width: 210mm; min-height: 297mm; padding: 16mm 14mm 14mm; box-sizing: border-box;
+  background: #fff; color: #111; box-shadow: 0 2px 20px rgba(0, 0, 0, .18); border-radius: 2px;
+  font: 10.5pt/1.4 Inter, Arial, sans-serif; display: flex; flex-direction: column;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.act-top { display: flex; justify-content: space-between; font-size: 9pt; color: #555; }
+.act-title { text-align: center; font-size: 15pt; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; margin: 8mm 0 1mm; }
+.act-sub { text-align: center; color: #333; margin-bottom: 7mm; }
+.act-parties { border-collapse: collapse; margin-bottom: 4mm; width: 100%; }
+.act-parties td { padding: 1.2mm 0; vertical-align: top; }
+.act-parties td.k { width: 32mm; font-weight: 600; }
+.act-parties .blank { display: inline-block; width: 80mm; border-bottom: 1px solid #111; }
+.act-text { margin: 3mm 0; }
+.act-h3 { font-size: 10.5pt; font-weight: 700; margin: 4mm 0 2mm; }
+.act-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; font-variant-numeric: tabular-nums; }
+.act-table th, .act-table td { border: 1px solid #333; padding: 1.4mm 1.8mm; vertical-align: middle; }
+.act-table thead th { background: #eee; font-weight: 700; text-align: left; }
+.act-table tfoot td { background: #f4f4f4; }
+.act-table .c { text-align: center; }
+.act-table .r { text-align: right; }
+.act-table .b { font-weight: 700; }
+.act-table .sz { width: 11mm; }
+.act-table .model { font-weight: 600; }
+.act-table .art { color: #555; font-size: 8.5pt; }
+.act-table tr { break-inside: avoid; }
+.act-total { margin: 4mm 0 1mm; display: flex; flex-direction: column; gap: 1mm; }
+.act-signs { display: grid; grid-template-columns: 1fr 1fr; gap: 14mm; margin-top: auto; padding-top: 12mm; break-inside: avoid; }
+.act-sign .role { font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.act-sign .who { min-height: 5mm; margin: 1mm 0 9mm; color: #333; }
+.act-sign .lines { display: flex; align-items: flex-end; gap: 2mm; }
+.act-sign .line { flex: 1; border-bottom: 1px solid #111; height: 1px; }
+.act-sign .line.wide { flex: 1.6; }
+.act-sign .hints { display: flex; justify-content: space-between; font-size: 8pt; color: #666; padding: 0.5mm 6mm 0 6mm; }
+.act-sign .date { margin-top: 7mm; }
+
+@page { size: A4; margin: 0; }
+@media print {
+  html, body { background: #fff !important; }
+  .container { max-width: none; padding: 0; margin: 0; }
+  .act-stage { overflow: visible; }
+  .act-scale { zoom: 1 !important; display: block; }
+  .act-page { box-shadow: none; border-radius: 0; break-after: page; margin: 0; min-height: 296mm; }
+  .act-page:last-child { break-after: auto; }
+  .toasts { display: none; }
+}
