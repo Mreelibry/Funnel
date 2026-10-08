@@ -11,6 +11,7 @@ const cabinetRoutes   = require('./routes/cabinets');
 const dailyRoutes     = require('./routes/daily');
 const finmodelRoutes  = require('./routes/finmodels');
 const unitEconRoutes  = require('./routes/unit_economics');
+const shipmentRoutes  = require('./routes/shipments');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +35,7 @@ app.use('/api/cabinets',   cabinetRoutes);
 app.use('/api/daily',          dailyRoutes);
 app.use('/api/finmodels',      finmodelRoutes);
 app.use('/api/unit-economics', unitEconRoutes);
+app.use('/api/shipments',      shipmentRoutes);
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 app.use((err, req, res, next) => {
@@ -103,6 +105,26 @@ async function runMigrations() {
       granted_at TIMESTAMP NOT NULL DEFAULT NOW(),
       PRIMARY KEY (cabinet_id, manager_id)
     )`,
+    // Отправки товаров (синхронизируются с Google Таблицей)
+    `CREATE TABLE IF NOT EXISTS shipments (
+      id          UUID      PRIMARY KEY DEFAULT uuid_generate_v4(),
+      title       TEXT      NOT NULL DEFAULT 'Отправка',
+      ship_date   DATE,
+      fulfillment TEXT      NOT NULL DEFAULT '',
+      status      TEXT      NOT NULL DEFAULT 'sent',
+      comment     TEXT      NOT NULL DEFAULT '',
+      blocks      JSONB     NOT NULL DEFAULT '[]',
+      total_qty   INTEGER   NOT NULL DEFAULT 0,
+      return_qty  INTEGER   NOT NULL DEFAULT 0,
+      sheet_gid   INTEGER,
+      sheet_title TEXT,
+      synced_at   TIMESTAMP,
+      sync_error  TEXT,
+      created_by  UUID      REFERENCES users(id) ON DELETE SET NULL,
+      created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_shipments_date ON shipments(ship_date DESC)`,
   ];
   for (const sql of migrations) {
     try { await db.query(sql); }
