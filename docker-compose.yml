@@ -1,0 +1,23 @@
+# «Отправки» — отдельный контейнер, не пересекается с другими проектами на сервере.
+services:
+  otpravki:
+    build: .
+    container_name: otpravki
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_PATH: /data/otpravki.db
+      PORT: 3000
+      # ключ Google монтируется ниже; если файла нет — синхронизация просто выключена
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/service-account.json
+    ports:
+      # по умолчанию http://IP_СЕРВЕРА:3100; за nginx поставьте OTPRAVKI_BIND=127.0.0.1
+      - "${OTPRAVKI_BIND:-0.0.0.0}:${OTPRAVKI_PORT:-3100}:3000"
+    volumes:
+      - ./data:/data
+      - ./service-account.json:/run/secrets/service-account.json:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/me"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

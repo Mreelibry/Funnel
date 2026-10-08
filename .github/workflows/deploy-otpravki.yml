@@ -1,0 +1,77 @@
+name: Deploy «Отправки»
+
+# Деплой на свой сервер по SSH: код копируется в /opt/otpravki и пересобирается контейнер.
+# .env, база (data/) и ключ Google живут только на сервере и при деплое не трогаются.
+on:
+  push:
+    branches:
+      - claude/wonderful-shannon-l6ye11
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-otpravki
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      APP_DIR: /opt/otpravki
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Тесты
+        run: npm ci && npm test
+
+      - name: Проверка секретов
+        id: check
+        env:
+          HOST: ${{ secrets.OTPRAVKI_SSH_HOST }}
+        run: |
+          if [ -z "$HOST" ]; then
+            echo "::notice::Секреты OTPRAVKI_SSH_* не заданы — деплой пропущен (см. deploy/README.md)"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Копирование кода на сервер
+        if: steps.check.outputs.ok == 'true'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.OTPRAVKI_SSH_HOST }}
+          username: ${{ secrets.OTPRAVKI_SSH_USER }}
+          key: ${{ secrets.OTPRAVKI_SSH_KEY }}
+          port: ${{ secrets.OTPRAVKI_SSH_PORT || 22 }}
+          source: "server,public,package.json,package-lock.json,Dockerfile,.dockerignore,docker-compose.yml"
+          target: ${{ env.APP_DIR }}
+          rm: false
+
+      - name: Пересборка и перезапуск
+        if: steps.check.outputs.ok == 'true'
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.OTPRAVKI_SSH_HOST }}
+          username: ${{ secrets.OTPRAVKI_SSH_USER }}
+          key: ${{ secrets.OTPRAVKI_SSH_KEY }}
+          port: ${{ secrets.OTPRAVKI_SSH_PORT || 22 }}
+          envs: APP_DIR
+          script: |
+            set -e
+            cd "$APP_DIR"
+            mkdir -p data
+            [ -f .env ] || { echo "Нет $APP_DIR/.env — см. deploy/README.md"; exit 1; }
+            [ -f service-account.json ] || echo '{}' > service-account.json
+            docker compose up -d --build --remove-orphans
+            docker image prune -f >/dev/null
+            for i in $(seq 1 20); do
+              if docker compose exec -T otpravki wget -qO- http://127.0.0.1:3000/api/me >/dev/null 2>&1; then
+                echo "Сервис поднялся"; docker compose logs --tail 5 otpravki; exit 0
+              fi
+              sleep 2
+            done
+            echo "Сервис не отвечает"; docker compose logs --tail 50 otpravki; exit 1

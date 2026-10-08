@@ -46,6 +46,10 @@ docker build -t otpravki .
 docker run -d -p 3000:3000 -v otpravki-data:/data --env-file .env otpravki
 ```
 
+## Деплой на сервер
+
+См. [deploy/README.md](deploy/README.md) — Docker Compose + автодеплой по SSH из GitHub Actions.
+
 ## Подключение Google Таблицы
 
 1. https://console.cloud.google.com → создать проект (или взять существующий).

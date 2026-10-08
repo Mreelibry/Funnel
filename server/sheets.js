@@ -25,7 +25,7 @@ let client = null;
 let serviceEmail = '';
 try {
   const creds = loadCredentials();
-  if (creds && SPREADSHEET_ID) {
+  if (creds && creds.client_email && creds.private_key && SPREADSHEET_ID) {
     serviceEmail = creds.client_email;
     client = new JWT({
       email: creds.client_email,
