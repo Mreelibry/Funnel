@@ -1,0 +1,19 @@
+{
+  "name": "otpravki",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Внутренний сервис учёта отправок с синхронизацией в Google Sheets",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node --no-warnings server/index.js",
+    "dev": "node --no-warnings --watch server/index.js",
+    "test": "node --no-warnings --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "google-auth-library": "^9.15.1"
+  }
+}
