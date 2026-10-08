@@ -81,15 +81,62 @@ done
 
 # ---------- Автообновление ----------
 chmod +x deploy/update.sh
-cat > /etc/cron.d/otpravki <<CRON
+rm -f /etc/cron.d/otpravki
+if [ -d /run/systemd/system ]; then
+  # systemd-таймер: есть почти везде, в отличие от cron
+  cat > /etc/systemd/system/otpravki-update.service <<UNIT
+[Unit]
+Description=Обновление «Отправок» из GitHub
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+Environment=BRANCH=$BRANCH
+ExecStart=$APP_DIR/deploy/update.sh
+StandardOutput=append:/var/log/otpravki-update.log
+StandardError=append:/var/log/otpravki-update.log
+UNIT
+  cat > /etc/systemd/system/otpravki-update.timer <<UNIT
+[Unit]
+Description=Проверка обновлений «Отправок» каждые 5 минут
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+UNIT
+  systemctl daemon-reload
+  systemctl enable --now otpravki-update.timer >/dev/null 2>&1
+  AUTOUPDATE="systemd-таймер otpravki-update.timer"
+else
+  if ! command -v cron >/dev/null 2>&1 && ! command -v crond >/dev/null 2>&1; then
+    say "Ставлю cron"
+    { apt-get update -qq && apt-get install -y -qq cron; } >/dev/null 2>&1 \
+      || { command -v dnf >/dev/null 2>&1 && dnf install -y -q cronie >/dev/null 2>&1; } \
+      || { command -v apk >/dev/null 2>&1 && apk add -q dcron >/dev/null 2>&1; } \
+      || true
+  fi
+  if command -v cron >/dev/null 2>&1 || command -v crond >/dev/null 2>&1; then
+    mkdir -p /etc/cron.d
+    cat > /etc/cron.d/otpravki <<CRON
 # Подтягивает новые версии «Отправок» из GitHub каждые 5 минут
 */5 * * * * root BRANCH=$BRANCH $APP_DIR/deploy/update.sh >> /var/log/otpravki-update.log 2>&1
 CRON
-chmod 644 /etc/cron.d/otpravki
+    chmod 644 /etc/cron.d/otpravki
+    { service cron start || service crond start || cron || crond; } >/dev/null 2>&1 || true
+    AUTOUPDATE="cron (/etc/cron.d/otpravki)"
+  else
+    AUTOUPDATE="ВЫКЛЮЧЕНО — нет ни systemd, ни cron; обновлять повторным запуском этой же команды"
+  fi
+fi
+echo "$(date '+%F %T') автообновление включено: $AUTOUPDATE" >> /var/log/otpravki-update.log
 
 IP="$(curl -fsS --max-time 5 https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')"
 printf '\n\033[1;32m✔ Готово!\033[0m\n\n'
 printf '  Адрес:   http://%s:%s\n' "$IP" "$PORT"
 printf '  Пароль:  %s\n\n' "$PASSWORD"
-printf '  Обновления из GitHub подтягиваются сами каждые 5 минут.\n'
+printf '  Обновления из GitHub подтягиваются сами каждые 5 минут (%s).\n' "$AUTOUPDATE"
+printf '  Журнал обновлений: /var/log/otpravki-update.log\n'
 printf '  Пароль и настройки: %s/.env  ·  база: %s/data\n\n' "$APP_DIR" "$APP_DIR"
