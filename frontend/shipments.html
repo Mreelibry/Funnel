@@ -194,6 +194,73 @@
     .spin{display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
     @keyframes sp{to{transform:rotate(360deg)}}
 
+
+    /* Редактор: элементы для телефона (на десктопе скрыты) */
+    .mob-only,.ed-brand-bar,.mc{display:none}
+    .mc-add{display:none}
+
+    @media(max-width:640px){
+      .desk-only{display:none!important}
+      .mob-only{display:inline}
+      /* iOS не приближает поля при шрифте ≥16px */
+      .inp,.q,select.inp{font-size:16px}
+      #ov-edit,#ov-view{padding:0}
+      #ov-edit .modal,#ov-view .modal{border-radius:0;min-height:100%;max-width:none}
+      #ov-edit .m-head,#ov-view .m-head{position:sticky;top:0;z-index:6;background:var(--card);padding:12px 16px}
+      #ov-edit .m-head h2{font-size:16px}
+      #ov-edit .m-sub{display:none}
+      #ov-edit .m-body{padding:14px 12px 24px;gap:12px}
+      #ov-edit .m-foot,#ov-view .m-foot{border-radius:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));flex-wrap:nowrap}
+      #ov-edit .m-foot .total-big{flex:1;font-size:13px}
+      #ov-edit .m-foot .btn-primary{padding:12px 22px;font-size:15px}
+      #ov-view .m-foot{flex-wrap:wrap}
+      #ov-view .m-body{padding:14px 12px}
+      .fgrid{grid-template-columns:1fr 1fr;gap:10px}
+      .fgrid .field:first-child,.fgrid .field:nth-child(3){grid-column:1 / -1}
+      .fgrid .field:nth-child(3){order:3}
+
+      .ed-brand{padding:0;gap:0;overflow:hidden}
+      .ed-brand > *:not(.ed-brand-bar){margin:0 10px 10px}
+      .ed-brand-bar{display:flex;align-items:center;gap:8px;width:100%;border:none;background:var(--wb2);padding:12px 14px;margin-bottom:10px;font-size:15px;font-weight:700;color:var(--wb);cursor:pointer;text-align:left}
+      .ed-brand-bar .chev{transition:transform .15s;font-size:13px}
+      .ed-brand-bar .bb-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .ed-brand-bar .bb-sum{font-weight:500;color:var(--g);font-size:13px}
+      .ed-brand-bar .bb-sum b{color:var(--t);font-size:15px}
+      .ed-brand.collapsed .ed-brand-bar{margin-bottom:0}
+      .ed-brand.collapsed .chev{transform:rotate(-90deg)}
+      .ed-brand.collapsed > *:not(.ed-brand-bar){display:none}
+      .ed-brand-top{grid-template-columns:1fr 1fr;gap:8px}
+      .ed-brand-top .field:first-child,.ed-brand-top .field:nth-child(2){grid-column:1 / -1}
+      .ed-brand-top > div:last-child{justify-content:flex-end;align-self:end}
+      #toasts{top:calc(10px + env(safe-area-inset-top));bottom:auto;left:12px;right:12px}
+      .toast{max-width:none}
+
+      .ed-grp{padding:10px;gap:10px}
+      .ed-grp-top .inp{min-width:100%}
+      .seg button{padding:8px 14px;font-size:13px}
+      .sizes-row{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+      .sizes-row > *{flex-shrink:0}
+      .sz{padding:6px 6px 6px 11px;font-size:13px}
+      .sz button{font-size:16px;padding:0 4px}
+      .preset{padding:7px 10px;font-size:12.5px}
+      .sz-add{width:96px}
+
+      .mc{display:flex;flex-direction:column;gap:8px;border:0.5px solid var(--b);border-radius:12px;padding:10px;background:var(--bg)}
+      .mc-top{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center}
+      .mc-top .inp{padding:9px 10px}
+      .mc-top .inp.c{font-weight:600}
+      .mc-del{font-size:20px;padding:6px 8px}
+      .mc-sizes{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:6px}
+      .mq{display:flex;flex-direction:column;gap:3px;font-size:12px;font-weight:700;color:var(--g);text-align:center}
+      .mq .q{width:100%;height:48px;font-size:18px;padding:4px}
+      .mc-foot{display:flex;gap:6px;align-items:center}
+      .mc-fill{flex:1;min-width:0;padding:9px 10px}
+      .mc-foot .btn-sm{padding:9px 10px}
+      .mc-sum{font-size:13px;color:var(--g);white-space:nowrap;padding-left:4px}
+      .mc-sum b{color:var(--wb);font-size:16px}
+      .mc-add{display:block;width:100%;padding:12px}
+      .add-row .add-dashed{flex:1;padding:12px}
+    }
     @media(max-width:860px){
       .kpis{grid-template-columns:1fr 1fr}
       .fgrid{grid-template-columns:1fr 1fr}
@@ -204,8 +271,7 @@
       .nav-links{display:none}
       .ship{flex-wrap:wrap;gap:12px}
       .ship-right{flex-direction:row;align-items:center;width:100%;justify-content:space-between}
-      .fgrid,.ed-brand-top{grid-template-columns:1fr}
-      .m-head,.m-body,.m-foot{padding-left:16px;padding-right:16px}
+      .modal:not(#edit-box):not(#view-box) .m-head,.modal:not(#edit-box):not(#view-box) .m-body,.modal:not(#edit-box):not(#view-box) .m-foot{padding-left:16px;padding-right:16px}
       .head-actions{margin-left:0}
     }
   </style>

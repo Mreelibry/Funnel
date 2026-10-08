@@ -13,7 +13,13 @@ const S = {
   titleAuto: false,
   imports: [],       // разобранные из Excel
   importIdx: null,   // какой импорт открыт в редакторе
+  collapsed: new Set(), // свёрнутые бренды в редакторе (телефон)
 };
+
+// Телефон: отдельная раскладка редактора (карточка на каждый цвет)
+const MQ = window.matchMedia('(max-width: 640px)');
+const isMobile = () => MQ.matches;
+const DRAFT_KEY = 'shipment_draft';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -311,21 +317,51 @@ function openEditor(sh, { asNew = false, autoTitle: auto = false } = {}) {
   S.titleAuto = !sh || auto;
   if (S.titleAuto) S.draft.title = autoTitle(S.draft);
   S.dirty = false;
+  S.collapsed = new Set();
+
+  // Восстановление черновика, если вкладку закрыли/перезагрузили, не сохранив
+  const saved = readLocalDraft();
+  if (saved && saved.id === S.editingId && Date.now() - saved.ts < 3 * 864e5 &&
+      confirm(`Найден несохранённый черновик «${saved.draft.title || 'Отправка'}» от ${new Date(saved.ts).toLocaleString('ru-RU')}. Восстановить?`)) {
+    S.draft = saved.draft;
+    S.titleAuto = false;
+    S.dirty = true;
+  } else if (saved && saved.id === S.editingId) {
+    clearLocalDraft();
+  }
   renderEditor();
   openOv('ov-edit');
+}
+
+function readLocalDraft() {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch { return null; }
+}
+function clearLocalDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch {}
+}
+let draftTimer;
+function storeLocalDraft() {
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => {
+    if (!S.draft || !S.dirty) return;
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ id: S.editingId, ts: Date.now(), draft: S.draft })); } catch {}
+  }, 400);
 }
 
 function renderEditor() {
   const d = S.draft;
   const brands = d.blocks.map((b, bi) => {
-    const groups = b.groups.map((g, gi) => editorGroup(g, bi, gi)).join('');
-    return `<div class="ed-brand">
+    const groups = b.groups.map((g, gi) => (isMobile() ? editorGroupMobile : editorGroup)(g, bi, gi)).join('');
+    return `<div class="ed-brand ${S.collapsed.has(bi) ? 'collapsed' : ''}">
+      <button class="ed-brand-bar" data-act="toggle-brand" data-b="${bi}">
+        <span class="chev">▾</span><span class="bb-name">${esc(b.brand || 'Новый бренд')}</span>
+        <span class="bb-sum"><b data-bt="${bi}">0</b> ед.</span></button>
       <div class="ed-brand-top">
         <div class="field"><label>Бренд</label><input class="inp" list="dl-brand" data-bf="brand" data-b="${bi}" value="${esc(b.brand)}" placeholder="AESTA"></div>
         <div class="field"><label>Владелец (ИП)</label><input class="inp" list="dl-owner" data-bf="owner" data-b="${bi}" value="${esc(b.owner)}" placeholder="ИП Нурланова А."></div>
         <div class="field"><label>Дата (если другая)</label><input class="inp" type="date" data-bf="date" data-b="${bi}" value="${esc(b.date || '')}"></div>
         <div style="display:flex;gap:4px;align-items:center;padding-bottom:4px">
-          <span class="total-big" style="white-space:nowrap"><b data-bt="${bi}">0</b> ед.</span>
+          <span class="total-big desk-only" style="white-space:nowrap"><b data-bt="${bi}">0</b> ед.</span>
           <button class="icon-btn" title="Дублировать бренд" data-act="dup-brand" data-b="${bi}" style="color:var(--g)">⧉</button>
           <button class="icon-btn" title="Удалить бренд" data-act="del-brand" data-b="${bi}">🗑</button>
         </div>
@@ -352,9 +388,9 @@ function renderEditor() {
       <div class="add-row"><button class="add-dashed" data-act="add-brand">+ Бренд / ИП</button></div>
     </div>
     <div class="m-foot">
-      <button class="btn btn-ghost" data-act="close">Отмена</button>
-      <div class="grow"></div>
-      <span class="total-big">Итого к отправке:<b id="ed-total">0</b></span>
+      <button class="btn btn-ghost desk-only" data-act="close">Отмена</button>
+      <div class="grow desk-only"></div>
+      <span class="total-big"><span class="desk-only">Итого к отправке:</span><span class="mob-only">Итого</span><b id="ed-total">0</b></span>
       <button class="btn btn-primary" data-act="save" id="ed-save">Сохранить</button>
     </div>`;
   updateTotals();
@@ -377,13 +413,47 @@ function editorGroup(g, bi, gi) {
       <span class="total-big"><b data-gt="${bi}-${gi}">0</b> ед.</span>
       <button class="icon-btn" title="Удалить модель" data-act="del-group" ${k}>🗑</button>
     </div>
-    <div class="sizes-row">Размеры:
-      ${g.sizes.map(s => `<span class="sz">${esc(s)}<button data-act="del-size" data-s="${esc(s)}" ${k} title="Убрать размер">×</button></span>`).join('')}
-      <input class="inp sz-add" placeholder="+ размер" data-addsize ${k}>
-      ${SIZE_PRESETS.map(p => `<button class="preset" data-act="preset" data-sizes="${p.join(',')}" ${k}>${p[0]}–${p[p.length - 1]}</button>`).join('')}
-    </div>
+    ${sizesRowHtml(g, k)}
     <div class="mx-wrap"><table class="ed"><thead><tr><th>Размер</th>${heads}<th>Итого</th><th><button class="addcol" data-act="add-col" ${k} title="Добавить цвет">+</button></th></tr></thead>
       <tbody>${rows}<tr class="tot"><td>Общ:</td>${tots}<td class="rt" data-gt2="${bi}-${gi}">0</td><td></td></tr></tbody></table></div>
+  </div>`;
+}
+
+function sizesRowHtml(g, k) {
+  return `<div class="sizes-row">Размеры:
+      ${g.sizes.map(s => `<span class="sz">${esc(s)}<button data-act="del-size" data-s="${esc(s)}" ${k} title="Убрать размер">×</button></span>`).join('')}
+      <input class="inp sz-add" placeholder="+ размер" data-addsize ${k} enterkeyhint="done" autocapitalize="characters">
+      ${SIZE_PRESETS.map(p => `<button class="preset" data-act="preset" data-sizes="${p.join(',')}" ${k}>${p[0]}–${p[p.length - 1]}</button>`).join('')}
+    </div>`;
+}
+
+// Телефон: каждый цвет — карточка с полями размеров в сетке
+function editorGroupMobile(g, bi, gi) {
+  const k = `data-b="${bi}" data-g="${gi}"`;
+  const cards = g.items.map((it, ii) => `<div class="mc">
+      <div class="mc-top">
+        <input class="inp c" list="dl-color" placeholder="Цвет" data-if="color" ${k} data-i="${ii}" value="${esc(it.color)}" enterkeyhint="next">
+        <input class="inp" placeholder="Артикул" data-if="article" ${k} data-i="${ii}" value="${esc(it.article)}" enterkeyhint="next">
+        <button class="icon-btn mc-del" title="Удалить цвет" data-act="del-col" ${k} data-i="${ii}">×</button>
+      </div>
+      <div class="mc-sizes">${g.sizes.map((sz, si) => `<label class="mq"><span>${esc(sz)}</span>
+        <input class="inp q" type="number" min="0" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" placeholder="—" data-q="${esc(sz)}" data-si="${si}" ${k} data-i="${ii}" value="${it.qty?.[sz] || ''}"></label>`).join('')}</div>
+      <div class="mc-foot">
+        <input class="inp mc-fill" type="number" min="0" inputmode="numeric" pattern="[0-9]*" placeholder="Всем размерам…" data-fill ${k} data-i="${ii}" enterkeyhint="done">
+        ${ii ? `<button class="btn btn-soft btn-sm" data-act="copy-prev" ${k} data-i="${ii}" title="Скопировать количество из цвета выше">⧉ как выше</button>` : ''}
+        <span class="mc-sum">Σ <b data-ct="${bi}-${gi}-${ii}">0</b></span>
+      </div>
+    </div>`).join('');
+  return `<div class="ed-grp ${g.kind === 'return' ? 'is-ret' : ''}">
+    <div class="ed-grp-top">
+      <input class="inp" list="dl-model" placeholder="Модель (напр. «2-х лямка цветок»)" data-gf="model" ${k} value="${esc(g.model)}">
+      <div class="seg"><button class="${g.kind !== 'return' ? 'on' : ''}" data-act="kind" data-kind="ship" ${k}>Отгрузка</button><button class="${g.kind === 'return' ? 'on' : ''}" data-act="kind" data-kind="return" ${k}>Возврат</button></div>
+      <span class="total-big"><b data-gt="${bi}-${gi}">0</b> ед.</span>
+      <button class="icon-btn" title="Удалить модель" data-act="del-group" ${k}>🗑</button>
+    </div>
+    ${sizesRowHtml(g, k)}
+    ${cards}
+    <button class="add-dashed mc-add" data-act="add-col" ${k}>+ Цвет</button>
   </div>`;
 }
 
@@ -393,8 +463,7 @@ function updateTotals() {
   S.draft.blocks.forEach((b, bi) => {
     const bs = brandSums(b);
     total += bs.ship;
-    const bt = box.querySelector(`[data-bt="${bi}"]`);
-    if (bt) bt.textContent = num(bs.ship) + (bs.ret ? ` (+↩${num(bs.ret)})` : '');
+    box.querySelectorAll(`[data-bt="${bi}"]`).forEach(el => (el.textContent = num(bs.ship) + (bs.ret ? ` (+↩${num(bs.ret)})` : '')));
     b.groups.forEach((g, gi) => {
       const gs = num(groupSum(g));
       box.querySelectorAll(`[data-gt="${bi}-${gi}"],[data-gt2="${bi}-${gi}"]`).forEach(el => (el.textContent = gs));
@@ -438,6 +507,7 @@ function editorInput(e) {
     }
   } else if (ds.bf) {
     b[ds.bf] = t.value || (ds.bf === 'date' ? null : '');
+    if (ds.bf === 'brand') t.closest('.ed-brand').querySelector('.bb-name').textContent = t.value || 'Новый бренд';
   } else if (ds.gf) {
     g[ds.gf] = t.value;
   } else if (ds.if) {
@@ -447,8 +517,16 @@ function editorInput(e) {
     const qty = g.items[+ds.i].qty;
     if (v) qty[ds.q] = v; else delete qty[ds.q];
     updateTotals();
+  } else if (ds.fill !== undefined) {
+    const v = Math.max(0, Math.round(+t.value || 0));
+    const it = g.items[+ds.i];
+    it.qty = {};
+    g.sizes.forEach(sz => { if (v) it.qty[sz] = v; });
+    $('edit-box').querySelectorAll(`[data-q][data-b="${ds.b}"][data-g="${ds.g}"][data-i="${ds.i}"]`).forEach(el => (el.value = v || ''));
+    updateTotals();
   } else return;
   S.dirty = true;
+  storeLocalDraft();
 }
 
 function editorChange(e) {
@@ -490,9 +568,12 @@ function editorKey(e) {
   if (t.dataset.q !== undefined && ['Enter', 'ArrowDown', 'ArrowUp'].includes(e.key)) {
     e.preventDefault();
     const si = +t.dataset.si + (e.key === 'ArrowUp' ? -1 : 1);
-    const next = $('edit-box').querySelector(`[data-b="${t.dataset.b}"][data-g="${t.dataset.g}"][data-i="${t.dataset.i}"][data-si="${si}"]`);
-    if (next) { next.focus(); next.select(); }
+    const sel = (i, s) => $('edit-box').querySelector(`[data-q][data-b="${t.dataset.b}"][data-g="${t.dataset.g}"][data-i="${i}"][data-si="${s}"]`);
+    // Конец столбца → первый размер следующего цвета
+    const next = sel(t.dataset.i, si) || (e.key !== 'ArrowUp' && sel(+t.dataset.i + 1, 0));
+    if (next) { next.focus(); next.select(); } else t.blur();
   }
+  if (t.dataset.fill !== undefined && e.key === 'Enter') { e.preventDefault(); t.blur(); }
 }
 
 function editorClick(e) {
@@ -504,7 +585,11 @@ function editorClick(e) {
   switch (act) {
     case 'close': return closeEditor();
     case 'save': return saveDraft();
-    case 'add-brand': d.blocks.push(newBrand()); break;
+    case 'add-brand':
+      // На телефоне сворачиваем заполненные бренды, чтобы не листать
+      if (isMobile()) d.blocks.forEach((_, i) => S.collapsed.add(i));
+      d.blocks.push(newBrand());
+      break;
     case 'dup-brand': {
       const copy = clone(d.blocks[bi]);
       copy.brand = ''; copy.owner = '';
@@ -516,6 +601,7 @@ function editorClick(e) {
     case 'del-brand':
       if (d.blocks[bi].groups.some(x => groupSum(x)) && !confirm(`Удалить бренд «${d.blocks[bi].brand || 'без названия'}» со всеми моделями?`)) return;
       d.blocks.splice(bi, 1);
+      S.collapsed = new Set();
       if (!d.blocks.length) d.blocks.push(newBrand());
       break;
     case 'add-group': d.blocks[bi].groups.push(newGroup()); break;
@@ -542,18 +628,35 @@ function editorClick(e) {
       g.sizes = [...ps, ...extra];
       break;
     }
+    case 'toggle-brand':
+      S.collapsed.has(bi) ? S.collapsed.delete(bi) : S.collapsed.add(bi);
+      renderEditor();
+      return;
+    case 'copy-prev': {
+      const ii = +el.dataset.i;
+      g.items[ii].qty = { ...g.items[ii - 1].qty };
+      break;
+    }
     default: return;
   }
   S.dirty = true;
+  storeLocalDraft();
   renderEditor();
+  if (act === 'add-brand') {
+    const cards = $('edit-box').querySelectorAll('.ed-brand');
+    cards[cards.length - 1].scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
   if (act === 'add-col') {
     const heads = $('edit-box').querySelectorAll(`[data-if="color"][data-b="${bi}"][data-g="${gi}"]`);
-    heads[heads.length - 1]?.focus();
+    const last = heads[heads.length - 1];
+    if (last) { last.focus(); last.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
   }
 }
 
 function closeEditor() {
   if (S.dirty && !confirm('Закрыть без сохранения? Изменения будут потеряны.')) return;
+  clearTimeout(draftTimer);
+  clearLocalDraft();
   closeOv('ov-edit');
   S.draft = null;
   if (S.importIdx !== null) { S.importIdx = null; if (S.imports.length) renderImport(); }
@@ -571,6 +674,8 @@ async function saveDraft() {
     const row = S.editingId ? await API.put(`/shipments/${S.editingId}`, body) : await API.post('/shipments', body);
     replaceRow(row);
     S.dirty = false;
+    clearTimeout(draftTimer);
+    clearLocalDraft();
     closeOv('ov-edit');
     if (S.importIdx !== null) { S.imports.splice(S.importIdx, 1); S.importIdx = null; }
     fillDatalists(); renderFfFilter(); renderList();
@@ -735,6 +840,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (open) open.id === 'ov-edit' ? closeEditor() : closeOv(open.id);
   });
   window.addEventListener('beforeunload', e => { if (S.draft && S.dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  MQ.addEventListener('change', () => { if (S.draft && $('ov-edit').classList.contains('show')) renderEditor(); });
 
   await loadGoogle();
   await load();
