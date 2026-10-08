@@ -317,7 +317,7 @@ table.grid-ed .rowtotal { text-align: center; color: var(--muted); font-weight: 
    Телефон: редактор карточками, крупные цели касания
    ============================================================ */
 .hidden { display: none !important; }
-.only-mobile { display: none; }
+.only-mobile { display: none !important; }
 
 .suggest { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
 .suggest-label { font-size: 12px; font-weight: 500; color: var(--muted); margin-right: 2px; }
@@ -396,8 +396,8 @@ details.more[open] summary::before { content: '− '; }
 .cl-size.zero { background: var(--surface-2); color: var(--muted); font-weight: 500; }
 
 @media (max-width: 700px) {
-  .only-mobile { display: flex; }
-  .only-desktop { display: none; }
+  .only-mobile { display: flex !important; }
+  .only-desktop { display: none !important; }
   html { scroll-padding-bottom: 120px; scroll-padding-top: 70px; }
   .container { padding: 16px 12px calc(110px + env(safe-area-inset-bottom)); }
   .topbar { padding: 10px 12px; }
