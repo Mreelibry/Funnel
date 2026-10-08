@@ -50,10 +50,11 @@ port_busy() { ss -ltn 2>/dev/null | awk '{print $4}' | grep -qE "[:.]$1\$"; }
 if [ ! -f .env ]; then
   PORT=3100
   while port_busy "$PORT"; do PORT=$((PORT + 1)); done
-  PASSWORD="$(tr -dc 'a-z0-9' </dev/urandom | head -c 10)"
+  rand_hex() { od -An -N"$1" -tx1 /dev/urandom | tr -d ' \n'; }
+  PASSWORD="$(rand_hex 5)"
   cat > .env <<ENV
 APP_PASSWORD=$PASSWORD
-SESSION_SECRET=$(tr -dc 'a-f0-9' </dev/urandom | head -c 64)
+SESSION_SECRET=$(rand_hex 32)
 SPREADSHEET_ID=1daZLTn20ExCasdwpCW9bgayToJT1DUwolHC2r80b8II
 OTPRAVKI_PORT=$PORT
 ENV
