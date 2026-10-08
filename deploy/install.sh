@@ -42,6 +42,13 @@ else
   git clone -q --branch "$BRANCH" --single-branch "$REPO_URL" "$APP_DIR"
 fi
 cd "$APP_DIR"
+
+# Скрипт по ссылке raw.githubusercontent.com может прийти из кеша (до 5 минут).
+# Поэтому после обновления кода перезапускаемся из свежей копии в репозитории.
+if [ -z "${OTPRAVKI_REEXEC:-}" ] && [ -f deploy/install.sh ]; then
+  exec env OTPRAVKI_REEXEC=1 REPO_URL="$REPO_URL" BRANCH="$BRANCH" APP_DIR="$APP_DIR" bash deploy/install.sh
+fi
+
 mkdir -p data
 [ -f service-account.json ] || echo '{}' > service-account.json
 
