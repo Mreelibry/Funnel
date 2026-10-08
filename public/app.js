@@ -357,7 +357,7 @@ function colorList(m) {
       ${m.colors.map((c) => `
         <div class="cl-row">
           <div class="cl-head"><b>${esc(c.name)}</b>${c.article ? `<span class="muted">Арт. ${esc(c.article)}</span>` : ''}<span class="spacer"></span><b>${fmt(colorTotal(c))}</b></div>
-          <div class="cl-sizes">${m.sizes.map((size) => `<span class="cl-size${c.qty[size] ? '' : ' zero'}"><small>${esc(size)}</small>${c.qty[size] || '—'}</span>`).join('')}</div>
+          <div class="cl-sizes" style="--n:${Math.min(m.sizes.length, 5)}">${m.sizes.map((size) => `<span class="cl-size${c.qty[size] ? '' : ' zero'}"><small>${esc(size)}</small>${c.qty[size] || '—'}</span>`).join('')}</div>
         </div>`).join('')}
     </div>`;
 }
@@ -543,7 +543,7 @@ function edModel(ed, b, m, bi, mi) {
       <button type="button" class="btn ghost icon collapse${collapsed ? ' is-collapsed' : ''}" ${attrs({ act: 'toggle', ...ids })} title="${collapsed ? 'Развернуть' : 'Свернуть'}">${ICON.chevron}</button>
       ${collapsed
         ? `<button type="button" class="model-summary" ${attrs({ act: 'toggle', ...ids })}><b>${esc(m.name || 'Без названия')}</b><span>${m.colors.length} цв. · ${esc(m.sizes.join(' '))}</span></button>`
-        : `<input class="input model-name" list="dl-model" placeholder="Модель, например «Вилка однотон»" autocomplete="off" ${attrs({ f: 'model.name', ...ids })} value="${esc(m.name)}">`}
+        : `<input class="input model-name" list="dl-model" placeholder="${mob ? 'Название модели' : 'Модель, например «Вилка однотон»'}" autocomplete="off" ${attrs({ f: 'model.name', ...ids })} value="${esc(m.name)}">`}
       ${collapsed ? `<span class="badge ${m.kind}">${KIND[m.kind]}</span>` : `<div class="segmented kind">${Object.entries(KIND).map(([k, v]) => `<button type="button" class="${m.kind === k ? 'on' : ''}" ${attrs({ act: 'kind', kind: k, ...ids })}>${v}</button>`).join('')}</div>`}
       <span class="model-total"><span class="hide-sm">Общ. кол-во: </span><b data-total="model" ${attrs(ids)}>${fmt(modelTotal(m))}</b> ед.</span>
       ${collapsed ? '' : `

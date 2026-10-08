@@ -283,6 +283,7 @@ table.grid-ed .rowtotal { text-align: center; color: var(--muted); font-weight: 
 }
 .toast.err { background: var(--red); color: #fff; }
 @keyframes pop { from { opacity: 0; transform: translateY(6px); } }
+@keyframes drop { from { opacity: 0; transform: translateY(6px); } }
 .spinner {
   width: 22px; height: 22px; border-radius: 50%; border: 2.5px solid var(--border); border-top-color: var(--accent);
   animation: spin .7s linear infinite; margin: 60px auto;
@@ -340,7 +341,7 @@ table.grid-ed .rowtotal { text-align: center; color: var(--muted); font-weight: 
 /* нижняя шторка */
 .sheet-backdrop {
   position: fixed; inset: 0; z-index: 60; background: rgba(10, 12, 20, .45);
-  display: flex; align-items: flex-end; justify-content: center; animation: fade .15s ease-out;
+  display: flex; align-items: flex-end; justify-content: center; animation: dim .15s ease-out;
 }
 .sheet {
   width: 100%; max-width: 440px; background: var(--surface); border-radius: 20px 20px 0 0;
@@ -356,7 +357,7 @@ table.grid-ed .rowtotal { text-align: center; color: var(--muted); font-weight: 
   .sheet-backdrop { align-items: center; }
   .sheet { border-radius: 20px; }
 }
-@keyframes fade { from { opacity: 0; } }
+@keyframes dim { from { background: rgba(10, 12, 20, 0); } }
 @keyframes slideup { from { transform: translateY(40px); } }
 
 details.more { grid-column: 1 / -1; }
@@ -386,9 +387,9 @@ details.more[open] summary::before { content: '− '; }
 .cl-row { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
 .cl-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .cl-head .muted { font-size: 12px; }
-.cl-sizes { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.cl-sizes { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
 .cl-size {
-  display: inline-flex; flex-direction: column; align-items: center; min-width: 48px; padding: 4px 8px;
+  display: flex; flex-direction: column; align-items: center; padding: 4px 6px;
   border-radius: 8px; background: var(--accent-soft); font-weight: 700; font-variant-numeric: tabular-nums;
 }
 .cl-size small { font-size: 11px; color: var(--muted); font-weight: 600; }
@@ -400,6 +401,9 @@ details.more[open] summary::before { content: '− '; }
   html { scroll-padding-bottom: 120px; scroll-padding-top: 70px; }
   .container { padding: 16px 12px calc(110px + env(safe-area-inset-bottom)); }
   .topbar { padding: 10px 12px; }
+  .topbar .btn { height: 38px; }
+  .topbar .btn.primary { width: 44px; padding: 0; border-radius: 11px; }
+  .topbar .btn.icon { width: 38px; }
 
   /* 16px — чтобы iOS не зумил страницу при фокусе */
   .input, .select, .textarea, .cell, .size-add { font-size: 16px; }
@@ -438,8 +442,8 @@ details.more[open] summary::before { content: '− '; }
   .savebar .sum b { font-size: 15px; }
   .save-btn { height: 48px; padding: 0 28px; font-size: 16px; border-radius: 12px; }
 
-  .toasts { left: 12px; right: 12px; bottom: calc(86px + env(safe-area-inset-bottom)); }
-  .toast { max-width: none; }
+  .toasts { left: 12px; right: 12px; bottom: calc(88px + env(safe-area-inset-bottom)); align-items: center; pointer-events: none; }
+  .toast { max-width: 100%; padding: 8px 14px; font-size: 14px; border-radius: 999px; animation: drop .2s ease-out; }
 
   .brand-head { flex-direction: column; align-items: flex-start; padding: 12px 14px; }
   .brand-body { padding: 12px; }
