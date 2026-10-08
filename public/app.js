@@ -28,6 +28,7 @@ const ICON = {
   sync: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg>',
   sheet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 9v12"/></svg>',
   box: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M8 12l8-4 8 4v9l-8 4-8-4z"/><path d="M8 12l8 4 8-4M16 16v9"/></svg>',
+  chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
   print: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4v-7h16v7h-2"/><rect x="6" y="14" width="12" height="7"/></svg>',
   logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
 };
@@ -112,6 +113,7 @@ let restoringHash = false;
 function route() {
   const hash = location.hash.replace(/^#/, '') || '/';
   currentHash = location.hash;
+  state.activeEd = null;
   $app.oninput = $app.onclick = $app.onkeydown = $app.onpaste = null;
   window.scrollTo(0, 0);
   const m = hash.match(/^\/s\/(\d+)(\/edit)?$/);
@@ -348,6 +350,18 @@ function qtyTable(m) {
     </table></div>`;
 }
 
+// Компактный вид для телефона: цвет → размеры чипами.
+function colorList(m) {
+  return `
+    <div class="only-mobile color-list">
+      ${m.colors.map((c) => `
+        <div class="cl-row">
+          <div class="cl-head"><b>${esc(c.name)}</b>${c.article ? `<span class="muted">Арт. ${esc(c.article)}</span>` : ''}<span class="spacer"></span><b>${fmt(colorTotal(c))}</b></div>
+          <div class="cl-sizes">${m.sizes.map((size) => `<span class="cl-size${c.qty[size] ? '' : ' zero'}"><small>${esc(size)}</small>${c.qty[size] || '—'}</span>`).join('')}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
 function drawDetail(s) {
   const t = totals(s);
   const sheets = state.config.sheets;
@@ -391,7 +405,7 @@ function drawDetail(s) {
             ${b.models.map((m) => `
               <div>
                 <div class="model-head"><h3>${esc(m.name)}</h3><span class="badge ${m.kind}">${KIND[m.kind]}</span><span class="model-total">Общ. кол-во: <b>${fmt(modelTotal(m))} ед.</b></span></div>
-                ${m.colors.length ? qtyTable(m) : '<div class="muted">Цвета не добавлены</div>'}
+                ${m.colors.length ? `<div class="only-desktop">${qtyTable(m)}</div>${colorList(m)}` : '<div class="muted">Цвета не добавлены</div>'}
               </div>`).join('') || '<div class="muted">Модели не добавлены</div>'}
           </div>
         </section>`;
@@ -454,7 +468,11 @@ async function renderEditor(id, copyFrom) {
   // Заголовок считается «авто», пока его не трогали руками.
   const titleAuto = !s.title || s.title === autoTitle(s.date, s.fulfillment);
   if (titleAuto) s.title = autoTitle(s.date, s.fulfillment);
-  const ed = { s, id, titleAuto, initial: JSON.stringify(s), saving: false };
+  const ed = { s, id, titleAuto, initial: JSON.stringify(s), saving: false, collapsed: new Set() };
+  // На телефоне длинную отправку открываем свёрнутой — видно все модели сразу.
+  const models = s.brands.flatMap((b) => b.models);
+  if (MOBILE.matches && models.length > 1) models.forEach((m) => ed.collapsed.add(m.id));
+  state.activeEd = ed;
   leaveGuard = () => !ed.saving && JSON.stringify(ed.s) !== ed.initial;
   drawEditor(ed);
 }
@@ -470,106 +488,228 @@ function datalists() {
     <datalist id="dl-color">${uniq(sg.colors.map((x) => x.name)).map((x) => `<option value="${esc(x)}">`).join('')}</datalist>`;
 }
 
-function edModel(m, bi, mi) {
+const MOBILE = window.matchMedia('(max-width: 700px)');
+MOBILE.addEventListener('change', () => { if (state.activeEd) drawEditor(state.activeEd); });
+
+const attrs = (o) => Object.entries(o).filter(([, v]) => v !== undefined).map(([k, v]) => `data-${k}="${esc(v)}"`).join(' ');
+
+// Цвета, которые уже встречались у этой модели (артикул — от того же бренда), но ещё не добавлены.
+function knownColors(b, m) {
+  const sg = state.suggestions;
+  if (!sg || !m.name.trim()) return [];
+  const have = new Set(m.colors.map((c) => c.name.trim().toLowerCase()));
+  const byName = new Map();
+  for (const c of sg.colors) {
+    if (c.model !== m.name || have.has(c.name.toLowerCase())) continue;
+    const prev = byName.get(c.name);
+    if (!prev || (c.brand === b.name && prev.brand !== b.name)) byName.set(c.name, c);
+  }
+  return [...byName.values()].slice(0, 16).map((c) => ({ name: c.name, article: c.brand === b.name ? c.article : '' }));
+}
+
+// Модели, которые этот бренд уже отправлял, но которых нет в текущей отправке.
+function knownModels(b) {
+  const sg = state.suggestions;
+  if (!sg || !b.name.trim()) return [];
+  const have = new Set(b.models.map((m) => m.name.trim().toLowerCase()));
+  return sg.templates
+    .map((t, ti) => ({ ...t, ti }))
+    .filter((t) => t.brand === b.name && !have.has(t.model.toLowerCase()))
+    .slice(0, 12);
+}
+
+function colorChips(b, m, bi, mi) {
+  const list = knownColors(b, m);
+  if (!list.length) return '';
+  return `<div class="suggest"><span class="suggest-label">Быстро добавить цвет:</span>${list.map((c) => `<button type="button" class="chip sm" ${attrs({ act: 'add-known-color', bi, mi, name: c.name, article: c.article })}>+ ${esc(c.name)}</button>`).join('')}</div>`;
+}
+
+function modelChips(b, bi) {
+  const list = knownModels(b);
+  if (!list.length) return '';
+  return `<div class="suggest"><span class="suggest-label">Уже отправляли:</span>${list.map((t) => `<button type="button" class="chip sm" ${attrs({ act: 'add-template', bi, ti: t.ti })}>+ ${esc(t.model)} <small>${t.colors.length} цв.</small></button>`).join('')}</div>`;
+}
+
+function edModel(ed, b, m, bi, mi) {
+  const mob = ed.mobile;
+  const collapsed = ed.collapsed.has(m.id);
+  const ids = { bi, mi };
   const rowTotal = (size) => m.colors.reduce((a, c) => a + (Number(c.qty[size]) || 0), 0);
-  return `
-    <div class="ed-model${m.kind === 'return' ? ' is-return' : ''}" data-bi="${bi}" data-mi="${mi}">
-      <div class="ed-model-head">
-        <input class="input" list="dl-model" placeholder="Модель, например «Вилка однотон»" data-f="model.name" data-bi="${bi}" data-mi="${mi}" value="${esc(m.name)}">
-        <div class="segmented">
-          ${Object.entries(KIND).map(([k, v]) => `<button type="button" class="${m.kind === k ? 'on' : ''}" data-act="kind" data-kind="${k}" data-bi="${bi}" data-mi="${mi}">${v}</button>`).join('')}
-        </div>
-        <span class="model-total">Общ. кол-во: <b data-total="model" data-bi="${bi}" data-mi="${mi}">${fmt(modelTotal(m))}</b> ед.</span>
-        <button type="button" class="btn ghost sm" data-act="dup-model" data-bi="${bi}" data-mi="${mi}" title="Дублировать модель">${ICON.copy}</button>
-        <button type="button" class="btn ghost sm danger" data-act="del-model" data-bi="${bi}" data-mi="${mi}" title="Удалить модель">${ICON.trash}</button>
-      </div>
-      <div class="sizes">
-        <span class="muted" style="font-size:12px;font-weight:500">Размеры:</span>
-        ${m.sizes.map((size, si) => `<span class="size-chip">${esc(size)}<button type="button" data-act="del-size" data-bi="${bi}" data-mi="${mi}" data-si="${si}" title="Убрать размер">×</button></span>`).join('')}
-        <input class="size-add" placeholder="+ размер" data-act="add-size" data-bi="${bi}" data-mi="${mi}" title="Введите размер и нажмите Enter">
-      </div>
+  const cell = (c, ci, size, si) =>
+    `<input class="cell" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" autocomplete="off" placeholder="·" ${attrs({ f: 'qty', bi, mi, ci, si })} value="${c.qty[size] || ''}">`;
+
+  const head = `
+    <div class="ed-model-head">
+      <button type="button" class="btn ghost icon collapse${collapsed ? ' is-collapsed' : ''}" ${attrs({ act: 'toggle', ...ids })} title="${collapsed ? 'Развернуть' : 'Свернуть'}">${ICON.chevron}</button>
+      ${collapsed
+        ? `<button type="button" class="model-summary" ${attrs({ act: 'toggle', ...ids })}><b>${esc(m.name || 'Без названия')}</b><span>${m.colors.length} цв. · ${esc(m.sizes.join(' '))}</span></button>`
+        : `<input class="input model-name" list="dl-model" placeholder="Модель, например «Вилка однотон»" autocomplete="off" ${attrs({ f: 'model.name', ...ids })} value="${esc(m.name)}">`}
+      ${collapsed ? `<span class="badge ${m.kind}">${KIND[m.kind]}</span>` : `<div class="segmented kind">${Object.entries(KIND).map(([k, v]) => `<button type="button" class="${m.kind === k ? 'on' : ''}" ${attrs({ act: 'kind', kind: k, ...ids })}>${v}</button>`).join('')}</div>`}
+      <span class="model-total"><span class="hide-sm">Общ. кол-во: </span><b data-total="model" ${attrs(ids)}>${fmt(modelTotal(m))}</b> ед.</span>
+      ${collapsed ? '' : `
+        <button type="button" class="btn ghost icon" ${attrs({ act: 'dup-model', ...ids })} title="Дублировать модель">${ICON.copy}</button>
+        <button type="button" class="btn ghost icon danger" ${attrs({ act: 'del-model', ...ids })} title="Удалить модель">${ICON.trash}</button>`}
+    </div>`;
+  if (collapsed) return `<div class="ed-model is-collapsed${m.kind === 'return' ? ' is-return' : ''}">${head}</div>`;
+
+  const sizes = `
+    <div class="sizes">
+      <span class="suggest-label">Размеры:</span>
+      ${m.sizes.map((size, si) => `<span class="size-chip">${esc(size)}<button type="button" ${attrs({ act: 'del-size', si, ...ids })} title="Убрать размер" aria-label="Убрать ${esc(size)}">×</button></span>`).join('')}
+      <input class="size-add" placeholder="+ размер" enterkeyhint="done" autocapitalize="characters" autocomplete="off" ${attrs({ act: 'add-size', ...ids })} title="Введите размер и нажмите Enter">
+    </div>`;
+
+  const body = mob
+    ? `
+      <div class="color-cards">
+        ${m.colors.map((c, ci) => `
+          <div class="color-card">
+            <div class="cc-head">
+              <input class="input cc-name" list="dl-color" placeholder="Цвет" autocomplete="off" ${attrs({ f: 'color.name', ci, ...ids })} value="${esc(c.name)}">
+              <button type="button" class="btn ghost icon danger" ${attrs({ act: 'del-color', ci, ...ids })} title="Удалить цвет">${ICON.trash}</button>
+            </div>
+            <input class="input art-input" placeholder="Артикул" autocomplete="off" ${attrs({ f: 'color.article', ci, ...ids })} value="${esc(c.article)}">
+            <div class="cc-sizes" style="--n:${Math.min(m.sizes.length, 4)}">
+              ${m.sizes.map((size, si) => `<label class="cc-size"><span>${esc(size)}</span>${cell(c, ci, size, si)}</label>`).join('')}
+            </div>
+            <div class="cc-foot">
+              <button type="button" class="btn sm" ${attrs({ act: 'fill', ci, ...ids })}>= всем размерам</button>
+              <span>Итого: <b data-total="color" ${attrs({ ci, ...ids })}>${fmt(colorTotal(c))}</b></span>
+            </div>
+          </div>`).join('')}
+        <button type="button" class="add-row" ${attrs({ act: 'add-color', ...ids })}>+ Цвет</button>
+      </div>`
+    : `
       <div class="table-wrap" style="border:0">
         <table class="grid-ed">
           <thead><tr>
             <th class="size"></th>
             ${m.colors.map((c, ci) => `
               <th><div class="col-head">
-                <input class="input" list="dl-color" placeholder="Цвет" data-f="color.name" data-bi="${bi}" data-mi="${mi}" data-ci="${ci}" value="${esc(c.name)}">
-                <input class="input art-input" placeholder="Артикул" data-f="color.article" data-bi="${bi}" data-mi="${mi}" data-ci="${ci}" value="${esc(c.article)}">
+                <input class="input" list="dl-color" placeholder="Цвет" autocomplete="off" ${attrs({ f: 'color.name', ci, ...ids })} value="${esc(c.name)}">
+                <input class="input art-input" placeholder="Артикул" autocomplete="off" ${attrs({ f: 'color.article', ci, ...ids })} value="${esc(c.article)}">
                 <div class="col-tools">
-                  <button type="button" class="btn ghost" data-act="fill" data-bi="${bi}" data-mi="${mi}" data-ci="${ci}" title="Проставить одно число во все размеры">= всем</button>
-                  <button type="button" class="btn ghost danger" data-act="del-color" data-bi="${bi}" data-mi="${mi}" data-ci="${ci}" title="Удалить цвет">×</button>
+                  <button type="button" class="btn ghost" ${attrs({ act: 'fill', ci, ...ids })} title="Проставить одно число во все размеры">= всем</button>
+                  <button type="button" class="btn ghost danger" ${attrs({ act: 'del-color', ci, ...ids })} title="Удалить цвет">×</button>
                 </div>
               </div></th>`).join('')}
-            <th rowspan="${m.sizes.length + 2}" style="vertical-align:top"><button type="button" class="add-col" data-act="add-color" data-bi="${bi}" data-mi="${mi}">+ цвет</button></th>
+            <th rowspan="${m.sizes.length + 2}" style="vertical-align:top"><button type="button" class="add-col" ${attrs({ act: 'add-color', ...ids })}>+ цвет</button></th>
           </tr></thead>
           <tbody>
             ${m.sizes.map((size, si) => `
               <tr>
                 <th class="size">${esc(size)}</th>
-                ${m.colors.map((c, ci) => `<td><input class="cell" inputmode="numeric" placeholder="·" data-f="qty" data-bi="${bi}" data-mi="${mi}" data-ci="${ci}" data-si="${si}" value="${c.qty[size] || ''}"></td>`).join('')}
-                <td class="rowtotal" data-total="row" data-bi="${bi}" data-mi="${mi}" data-si="${si}">${fmt(rowTotal(size))}</td>
+                ${m.colors.map((c, ci) => `<td>${cell(c, ci, size, si)}</td>`).join('')}
+                <td class="rowtotal" data-total="row" ${attrs({ si, ...ids })}>${fmt(rowTotal(size))}</td>
               </tr>`).join('')}
           </tbody>
           <tfoot><tr>
             <td class="size muted" style="text-align:left">Общ:</td>
-            ${m.colors.map((c, ci) => `<td data-total="color" data-bi="${bi}" data-mi="${mi}" data-ci="${ci}">${fmt(colorTotal(c))}</td>`).join('')}
+            ${m.colors.map((c, ci) => `<td data-total="color" ${attrs({ ci, ...ids })}>${fmt(colorTotal(c))}</td>`).join('')}
           </tr></tfoot>
         </table>
-      </div>
+      </div>`;
+
+  return `
+    <div class="ed-model${m.kind === 'return' ? ' is-return' : ''}">
+      ${head}
+      ${sizes}
+      ${body}
+      <div data-chips="model" ${attrs(ids)}>${colorChips(b, m, bi, mi)}</div>
     </div>`;
 }
 
 function drawEditor(ed) {
   const { s } = ed;
+  ed.mobile = MOBILE.matches;
+  const mob = ed.mobile;
   const focusKey = document.activeElement && document.activeElement.dataset ? keyOf(document.activeElement) : null;
   const t = totals(s);
+  const back = ed.id ? `#/s/${ed.id}` : '#/';
+  const extra = `
+      <label class="field title-field"><span>Название (так будет назван лист в таблице)</span><input class="input" data-f="title" autocomplete="off" placeholder="${esc(autoTitle(s.date, s.fulfillment))}" value="${esc(ed.titleAuto ? '' : s.title)}"></label>
+      <label class="field comment-field"><span>Комментарий</span><input class="input" data-f="comment" autocomplete="off" placeholder="Накладная, номер машины, что угодно" value="${esc(s.comment)}"></label>`;
   $app.innerHTML = `
     ${datalists()}
-    <a class="back" href="${ed.id ? `#/s/${ed.id}` : '#/'}">${ICON.back}${ed.id ? 'К отправке' : 'Все отправки'}</a>
-    <div class="page-head"><div><h1>${ed.id ? 'Редактирование отправки' : 'Новая отправка'}</h1>
-      <div class="sub">Количество можно вставлять из Excel/Google Таблиц прямо в сетку (Ctrl+V)</div></div></div>
+    <a class="back" href="${back}">${ICON.back}${ed.id ? 'К отправке' : 'Все отправки'}</a>
+    <div class="page-head"><div><h1>${ed.id ? 'Редактирование' : 'Новая отправка'}</h1>
+      ${mob ? '' : '<div class="sub">Количество можно вставлять из Excel/Google Таблиц прямо в сетку (Ctrl+V)</div>'}</div></div>
 
     <section class="card meta-grid">
       <label class="field"><span>Дата</span><input class="input" type="date" data-f="date" value="${esc(s.date)}"></label>
-      <label class="field"><span>Фулфилмент</span><input class="input" list="dl-ff" placeholder="Азамат ФФ" data-f="fulfillment" value="${esc(s.fulfillment)}"></label>
-      <label class="field title-field"><span>Название (так будет назван лист в таблице)</span><input class="input" data-f="title" placeholder="${esc(autoTitle(s.date, s.fulfillment))}" value="${esc(ed.titleAuto ? '' : s.title)}"></label>
+      <label class="field"><span>Фулфилмент</span><input class="input" list="dl-ff" placeholder="Азамат ФФ" autocomplete="off" data-f="fulfillment" value="${esc(s.fulfillment)}"></label>
+      ${mob ? '' : extra}
       <div class="field status-field"><span>Статус</span>
         <div class="segmented">${Object.entries(STATUS).map(([k, v]) => `<button type="button" class="${s.status === k ? 'on' : ''}" data-act="status" data-status="${k}">${v}</button>`).join('')}</div>
       </div>
-      <label class="field comment-field"><span>Комментарий</span><input class="input" data-f="comment" placeholder="Накладная, номер машины, что угодно" value="${esc(s.comment)}"></label>
+      ${mob ? `<details class="more"${ed.moreOpen || !ed.titleAuto || s.comment ? ' open' : ''}><summary>Название листа и комментарий</summary><div class="more-body">${extra}</div></details>` : ''}
     </section>
 
     ${s.brands.map((b, bi) => `
       <section class="card ed-brand">
         <div class="ed-brand-head">
-          <label class="field"><span>Бренд</span><input class="input" list="dl-brand" placeholder="AESTA" data-f="brand.name" data-bi="${bi}" value="${esc(b.name)}"></label>
-          <label class="field"><span>ИП / владелец</span><input class="input" list="dl-owner" placeholder="ИП Нурланова А." data-f="brand.owner" data-bi="${bi}" value="${esc(b.owner)}"></label>
-          <div class="row">
-            <span class="muted hide-sm">Итого: <b data-total="brand" data-bi="${bi}">${fmt(b.models.reduce((a, m) => a + modelTotal(m), 0))}</b></span>
-            <button type="button" class="btn ghost danger" data-act="del-brand" data-bi="${bi}" title="Удалить бренд">${ICON.trash}</button>
+          <label class="field"><span>Бренд</span><input class="input" list="dl-brand" placeholder="AESTA" autocomplete="off" data-f="brand.name" data-bi="${bi}" value="${esc(b.name)}"></label>
+          <label class="field"><span>ИП / владелец</span><input class="input" list="dl-owner" placeholder="ИП Нурланова А." autocomplete="off" data-f="brand.owner" data-bi="${bi}" value="${esc(b.owner)}"></label>
+          <div class="row brand-tools">
+            <span class="muted">Итого: <b data-total="brand" data-bi="${bi}">${fmt(b.models.reduce((a, m) => a + modelTotal(m), 0))}</b></span>
+            <button type="button" class="btn ghost icon danger" data-act="del-brand" data-bi="${bi}" title="Удалить бренд">${ICON.trash}</button>
           </div>
         </div>
         <div class="ed-brand-body">
-          ${b.models.map((m, mi) => edModel(m, bi, mi)).join('')}
+          ${b.models.map((m, mi) => edModel(ed, b, m, bi, mi)).join('')}
+          <div data-chips="brand" data-bi="${bi}">${modelChips(b, bi)}</div>
           <button type="button" class="add-row" data-act="add-model" data-bi="${bi}">+ Модель</button>
         </div>
       </section>`).join('')}
     <button type="button" class="add-row add-brand" data-act="add-brand">+ Бренд / ИП</button>
 
     <div class="savebar"><div class="savebar-inner">
-      <div class="sum"><span>Отгрузка: <b id="sum-shipped">${fmt(t.shipped)}</b></span><span>Возвраты: <b id="sum-returned">${fmt(t.returned)}</b></span></div>
+      <div class="sum">
+        <span>Отгрузка: <b id="sum-shipped">${fmt(t.shipped)}</b></span>
+        <span class="${t.returned || !mob ? '' : 'hidden'}" id="sum-returned-wrap">Возвраты: <b id="sum-returned">${fmt(t.returned)}</b></span>
+      </div>
       <div class="spacer"></div>
-      <a class="btn ghost" href="${ed.id ? `#/s/${ed.id}` : '#/'}">Отмена</a>
-      <button type="button" class="btn primary" id="save">${ed.saving ? 'Сохраняю…' : 'Сохранить'}</button>
+      <a class="btn ghost hide-sm" href="${back}">Отмена</a>
+      <button type="button" class="btn primary save-btn" id="save">${ed.saving ? 'Сохраняю…' : 'Сохранить'}</button>
     </div></div>`;
 
   if (focusKey) {
     const el = [...$app.querySelectorAll('[data-f],[data-act="add-size"]')].find((x) => keyOf(x) === focusKey);
-    if (el) el.focus();
+    if (el) el.focus({ preventScroll: true });
   }
 
   bindEditor(ed);
+}
+
+// Нижняя шторка для ввода одного числа — удобнее системного prompt() на телефоне.
+function askNumber(title) {
+  return new Promise((resolve) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'sheet-backdrop';
+    wrap.innerHTML = `
+      <form class="sheet" role="dialog" aria-label="${esc(title)}">
+        <div class="sheet-grip"></div>
+        <h3>${esc(title)}</h3>
+        <input class="input sheet-input" type="text" inputmode="numeric" pattern="[0-9]*" enterkeyhint="done" placeholder="0" autocomplete="off">
+        <div class="chips quick">${[5, 10, 12, 15, 20, 25, 30, 50].map((n) => `<button type="button" class="chip" data-n="${n}">${n}</button>`).join('')}</div>
+        <div class="row sheet-actions"><button type="button" class="btn ghost" data-cancel>Отмена</button><button class="btn primary">Готово</button></div>
+      </form>`;
+    const close = (v) => { wrap.remove(); resolve(v); };
+    const input = wrap.querySelector('input');
+    wrap.addEventListener('click', (e) => {
+      if (e.target === wrap || e.target.closest('[data-cancel]')) close(null);
+      const q = e.target.closest('[data-n]');
+      if (q) close(Number(q.dataset.n));
+    });
+    wrap.querySelector('form').onsubmit = (e) => {
+      e.preventDefault();
+      const n = parseInt(input.value, 10);
+      close(Number.isFinite(n) ? n : null);
+    };
+    wrap.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(null); });
+    document.body.append(wrap);
+    input.focus();
+  });
 }
 
 const keyOf = (el) => ['f', 'act', 'bi', 'mi', 'ci', 'si'].map((k) => el.dataset[k] ?? '').join('|');
@@ -594,6 +734,17 @@ function refreshTotals(ed) {
   const t = totals(s);
   document.getElementById('sum-shipped').textContent = fmt(t.shipped);
   document.getElementById('sum-returned').textContent = fmt(t.returned);
+  if (t.returned) document.getElementById('sum-returned-wrap').classList.remove('hidden');
+}
+
+function refreshChips(ed, bi) {
+  const b = ed.s.brands[bi];
+  const box = $app.querySelector(`[data-chips="brand"][data-bi="${bi}"]`);
+  if (box) box.innerHTML = modelChips(b, bi);
+  $app.querySelectorAll(`[data-chips="model"][data-bi="${bi}"]`).forEach((el) => {
+    const mi = num(el.dataset.mi);
+    el.innerHTML = colorChips(b, b.models[mi], bi, mi);
+  });
 }
 
 function setQty(m, ci, si, raw) {
@@ -639,10 +790,11 @@ function bindEditor(ed) {
           b.owner = known.owner;
           $app.querySelector(`[data-f="brand.owner"][data-bi="${el.dataset.bi}"]`).value = known.owner;
         }
+        refreshChips(ed, num(el.dataset.bi));
         return;
       }
       case 'brand.owner': b.owner = el.value; return;
-      case 'model.name': m.name = el.value; return;
+      case 'model.name': m.name = el.value; refreshChips(ed, num(el.dataset.bi)); return;
       case 'color.name': {
         c.name = el.value;
         const known = state.suggestions.colors.find((x) => x.brand === b.name && x.model === m.name && x.name === el.value);
@@ -650,6 +802,7 @@ function bindEditor(ed) {
           c.article = known.article;
           $app.querySelector(`[data-f="color.article"][data-bi="${el.dataset.bi}"][data-mi="${el.dataset.mi}"][data-ci="${el.dataset.ci}"]`).value = known.article;
         }
+        refreshChips(ed, num(el.dataset.bi));
         return;
       }
       case 'color.article': c.article = el.value; return;
@@ -699,18 +852,27 @@ function bindEditor(ed) {
     if (el.dataset.f === 'qty' && ['Enter', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
       const d = { Enter: [1, 0], ArrowDown: [1, 0], ArrowUp: [-1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
       if ((e.key === 'ArrowLeft' && el.selectionStart > 0) || (e.key === 'ArrowRight' && el.selectionEnd < el.value.length)) return;
-      const next = $app.querySelector(
-        `[data-f="qty"][data-bi="${el.dataset.bi}"][data-mi="${el.dataset.mi}"][data-si="${num(el.dataset.si) + d[0]}"][data-ci="${num(el.dataset.ci) + d[1]}"]`
+      const q = (si, ci) => $app.querySelector(
+        `[data-f="qty"][data-bi="${el.dataset.bi}"][data-mi="${el.dataset.mi}"][data-si="${si}"][data-ci="${ci}"]`
       );
+      const si = num(el.dataset.si);
+      const ci = num(el.dataset.ci);
+      // После последнего размера Enter переходит к первому размеру следующего цвета.
+      const next = q(si + d[0], ci + d[1]) || (e.key === 'Enter' ? q(0, ci + 1) : null);
       if (next) {
         e.preventDefault();
         next.focus();
         next.select();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        el.blur(); // на телефоне прячет клавиатуру
       }
     }
   };
 
-  $app.onclick = (e) => {
+  $app.onclick = async (e) => {
+    const summary = e.target.closest('details.more > summary');
+    if (summary) ed.moreOpen = !summary.parentElement.open;
     const el = e.target.closest('[data-act]');
     if (!el || el.dataset.act === 'add-size') return;
     const { b, m } = at(el);
@@ -725,9 +887,39 @@ function bindEditor(ed) {
         if (b.models.some((x) => modelTotal(x)) && !confirm(`Удалить бренд «${b.name || 'без названия'}» со всеми моделями?`)) return;
         s.brands.splice(bi, 1);
         break;
+      case 'toggle':
+        if (ed.collapsed.has(m.id)) ed.collapsed.delete(m.id);
+        else ed.collapsed.add(m.id);
+        break;
       case 'add-model': {
         const last = b.models[b.models.length - 1];
+        if (ed.mobile) b.models.forEach((x) => { if (x.name.trim()) ed.collapsed.add(x.id); });
         b.models.push(blankModel(last ? last.sizes : DEFAULT_SIZES));
+        break;
+      }
+      case 'add-template': {
+        const t = state.suggestions.templates[num(el.dataset.ti)];
+        const model = {
+          id: uid(),
+          name: t.model,
+          kind: t.kind,
+          sizes: [...t.sizes],
+          colors: t.colors.map((c) => ({ id: uid(), name: c.name, article: c.article, qty: {} })),
+        };
+        if (ed.mobile) b.models.forEach((x) => { if (x.name.trim()) ed.collapsed.add(x.id); });
+        const isBlank = (x) => !x.name.trim() && !modelTotal(x) && x.colors.every((c) => !c.name.trim());
+        if (b.models.length === 1 && isBlank(b.models[0])) b.models[0] = model;
+        else b.models.push(model);
+        drawEditor(ed);
+        const first = $app.querySelector(`[data-f="qty"][data-bi="${bi}"][data-mi="${b.models.indexOf(model)}"][data-ci="0"][data-si="0"]`);
+        if (first) first.closest('.ed-model').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      case 'add-known-color': {
+        const color = { id: uid(), name: el.dataset.name, article: el.dataset.article || '', qty: {} };
+        const blank = m.colors.length === 1 && !m.colors[0].name.trim() && !colorTotal(m.colors[0]);
+        if (blank) m.colors[0] = color;
+        else m.colors.push(color);
         break;
       }
       case 'dup-model': {
@@ -742,7 +934,10 @@ function bindEditor(ed) {
         b.models.splice(mi, 1);
         break;
       case 'add-color': m.colors.push(blankColor()); break;
-      case 'del-color': m.colors.splice(ci, 1); break;
+      case 'del-color':
+        if (colorTotal(m.colors[ci]) && !confirm(`Удалить цвет «${m.colors[ci].name || 'без названия'}»?`)) return;
+        m.colors.splice(ci, 1);
+        break;
       case 'del-size': {
         const size = m.sizes[num(el.dataset.si)];
         m.sizes.splice(num(el.dataset.si), 1);
@@ -750,7 +945,7 @@ function bindEditor(ed) {
         break;
       }
       case 'fill': {
-        const v = prompt('Сколько единиц поставить во все размеры этого цвета?');
+        const v = await askNumber(`Всем размерам${m.colors[ci].name ? ` · ${m.colors[ci].name}` : ''}`);
         if (v === null) return;
         m.sizes.forEach((_, si) => setQty(m, ci, si, v));
         break;
@@ -766,6 +961,10 @@ function bindEditor(ed) {
       const sel = el.dataset.act === 'add-brand' ? '[data-f="brand.name"]' : `[data-f="model.name"][data-bi="${bi}"]`;
       const all = $app.querySelectorAll(sel);
       all[all.length - 1].focus();
+    }
+    if (el.dataset.act === 'add-known-color' && ed.mobile) {
+      const first = $app.querySelector(`[data-f="qty"][data-bi="${bi}"][data-mi="${mi}"][data-ci="${m.colors.length - 1}"][data-si="0"]`);
+      if (first) first.focus();
     }
   };
 

@@ -142,12 +142,24 @@ app.delete('/api/shipments/:id', route(async (req, res) => {
 // Подсказки для автодополнения — всё, что уже встречалось в отправках.
 app.get('/api/suggestions', (req, res) => {
   const sets = { fulfillments: new Set(), brands: new Map(), models: new Set(), colors: new Map(), sizes: new Set() };
+  // Последний состав каждой модели бренда — чтобы с телефона добавлять модель целиком в одно касание.
+  const templates = new Map();
   for (const s of db.list()) {
     if (s.fulfillment) sets.fulfillments.add(s.fulfillment);
     for (const b of s.brands) {
       if (b.name && !sets.brands.has(b.name)) sets.brands.set(b.name, b.owner);
       for (const m of b.models) {
         if (m.name) sets.models.add(m.name);
+        const tkey = `${b.name}|${m.name}`;
+        if (b.name && m.name && !templates.has(tkey)) {
+          templates.set(tkey, {
+            brand: b.name,
+            model: m.name,
+            kind: m.kind,
+            sizes: m.sizes,
+            colors: m.colors.map((c) => ({ name: c.name, article: c.article })),
+          });
+        }
         m.sizes.forEach((x) => sets.sizes.add(x));
         for (const c of m.colors) {
           // Артикул зависит от бренда и модели, поэтому ключ — тройка.
@@ -165,6 +177,7 @@ app.get('/api/suggestions', (req, res) => {
       const [brand, model, name] = key.split('|');
       return { brand, model, name, article };
     }),
+    templates: [...templates.values()],
   });
 });
 
