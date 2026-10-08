@@ -214,7 +214,20 @@ function renderList() {
 }
 
 // ── Просмотр ──
+// Телефон: цвета строками, размеры колонками — помещается в ширину экрана
+function matrixHtmlMobile(g) {
+  const sizes = g.sizes || [];
+  const head = sizes.map(sz => `<th>${esc(sz)}</th>`).join('');
+  const rows = g.items.map(it => `<tr><td><span class="clr">${esc(it.color || '—')}</span>${it.article ? `<span class="art">${esc(it.article)}</span>` : ''}</td>
+    ${sizes.map(sz => { const q = +it.qty?.[sz] || 0; return `<td class="${q ? '' : 'zero'}">${q || '—'}</td>`; }).join('')}
+    <td class="rt">${num(itemSum(it))}</td></tr>`).join('');
+  const tot = sizes.map(sz => `<td>${num(g.items.reduce((a, it) => a + (+it.qty?.[sz] || 0), 0))}</td>`).join('');
+  return `<table class="mx mx-m"><thead><tr><th>Цвет</th>${head}<th>Σ</th></tr></thead>
+    <tbody>${rows}<tr class="tot"><td>Общ:</td>${tot}<td class="rt">${num(groupSum(g))}</td></tr></tbody></table>`;
+}
+
 function matrixHtml(g) {
+  if (isMobile()) return matrixHtmlMobile(g);
   const sizes = g.sizes || [];
   const head = g.items.map(it => `<th><span class="clr">${esc(it.color || '—')}</span>${it.article ? `<span class="art">Арт. ${esc(it.article)}</span>` : ''}</th>`).join('');
   const rows = sizes.map(sz => {
@@ -230,6 +243,7 @@ function matrixHtml(g) {
 function openView(id) {
   const sh = S.list.find(s => s.id === id);
   if (!sh) return;
+  S.viewId = id;
   const sums = shipSums(sh);
   const gLink = S.google.configured && sh.sheet_gid !== null && sh.sheet_gid !== undefined
     ? `${S.google.spreadsheet_url}#gid=${sh.sheet_gid}` : null;
@@ -249,7 +263,7 @@ function openView(id) {
       <div class="m-sub">${sh.ship_date ? `📅 ${fmtDate(sh.ship_date)}` : ''}
         ${sh.fulfillment ? `<span class="badge ff">${esc(sh.fulfillment)}</span>` : ''}
         <span class="badge st-${sh.status}">${STATUS[sh.status] || ''}</span> ${syncBadge(sh)}
-        ${sh.created_by_name ? `<span>· создал ${esc(sh.created_by_name)}</span>` : ''}</div>
+        ${sh.created_by_name ? `<span class="desk-only">· создал ${esc(sh.created_by_name)}</span>` : ''}</div>
     </div><button class="m-close" data-close="ov-view">×</button></div>
     <div class="m-body">
       ${sh.sync_error ? `<div class="err-box">Не удалось выгрузить в Google: ${esc(sh.sync_error)}</div>` : ''}
@@ -433,8 +447,8 @@ function editorGroupMobile(g, bi, gi) {
   const cards = g.items.map((it, ii) => `<div class="mc">
       <div class="mc-top">
         <input class="inp c" list="dl-color" placeholder="Цвет" data-if="color" ${k} data-i="${ii}" value="${esc(it.color)}" enterkeyhint="next">
-        <input class="inp" placeholder="Артикул" data-if="article" ${k} data-i="${ii}" value="${esc(it.article)}" enterkeyhint="next">
         <button class="icon-btn mc-del" title="Удалить цвет" data-act="del-col" ${k} data-i="${ii}">×</button>
+        <input class="inp mc-art" placeholder="Артикул" data-if="article" ${k} data-i="${ii}" value="${esc(it.article)}" enterkeyhint="next">
       </div>
       <div class="mc-sizes">${g.sizes.map((sz, si) => `<label class="mq"><span>${esc(sz)}</span>
         <input class="inp q" type="number" min="0" inputmode="numeric" pattern="[0-9]*" enterkeyhint="next" placeholder="—" data-q="${esc(sz)}" data-si="${si}" ${k} data-i="${ii}" value="${it.qty?.[sz] || ''}"></label>`).join('')}</div>
@@ -841,7 +855,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   window.addEventListener('beforeunload', e => { if (S.draft && S.dirty) { e.preventDefault(); e.returnValue = ''; } });
 
-  MQ.addEventListener('change', () => { if (S.draft && $('ov-edit').classList.contains('show')) renderEditor(); });
+  MQ.addEventListener('change', () => {
+    if (S.draft && $('ov-edit').classList.contains('show')) renderEditor();
+    if (S.viewId && $('ov-view').classList.contains('show')) openView(S.viewId);
+  });
 
   await loadGoogle();
   await load();
